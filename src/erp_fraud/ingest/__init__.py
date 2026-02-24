@@ -10,13 +10,16 @@ from .zip_reader import (
 from .tabular_loader import TabularLoadError, cargar_fichero_tabular_desde_zip
 from .technical_cleaner import TechnicalCleaningSummary, limpiar_tecnicamente_dataframe
 from .type_normalizer import TypeNormalizationSummary, normalizar_tipos_dataframe
+from .dataset_hash import DatasetHashResult, calcular_dataset_hash
 
 __all__ = [
     "DatasetValidationError",
     "EXPECTED_JOINT_DATASET_FILES",
+    "DatasetHashResult",
     "TabularLoadError",
     "TechnicalCleaningSummary",
     "TypeNormalizationSummary",
+    "calcular_dataset_hash",
     "cargar_fichero_tabular_desde_zip",
     "limpiar_tecnicamente_dataframe",
     "localizar_joint_datasets",
