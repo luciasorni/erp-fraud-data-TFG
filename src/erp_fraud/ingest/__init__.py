@@ -8,13 +8,19 @@ from .zip_reader import (
     validar_ficheros_esperados_joint_datasets,
 )
 from .tabular_loader import TabularLoadError, cargar_fichero_tabular_desde_zip
+from .technical_cleaner import TechnicalCleaningSummary, limpiar_tecnicamente_dataframe
+from .type_normalizer import TypeNormalizationSummary, normalizar_tipos_dataframe
 
 __all__ = [
     "DatasetValidationError",
     "EXPECTED_JOINT_DATASET_FILES",
     "TabularLoadError",
+    "TechnicalCleaningSummary",
+    "TypeNormalizationSummary",
     "cargar_fichero_tabular_desde_zip",
+    "limpiar_tecnicamente_dataframe",
     "localizar_joint_datasets",
     "listar_ficheros_joint_datasets",
+    "normalizar_tipos_dataframe",
     "validar_ficheros_esperados_joint_datasets",
 ]
