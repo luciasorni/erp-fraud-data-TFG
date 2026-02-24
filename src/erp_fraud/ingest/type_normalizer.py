@@ -45,6 +45,10 @@ class TypeNormalizationSummary:
     id_columns: tuple[str, ...]
 
 
+class TypeNormalizationError(ValueError):
+    """Error de normalización de tipos con detalle de parseo."""
+
+
 def _normalize_name(column_name: str) -> str:
     return column_name.strip().lower()
 
@@ -88,12 +92,20 @@ def _to_float(series: pd.Series) -> pd.Series:
     return pd.to_numeric(text, errors="coerce")
 
 
+def _count_parse_failures(original: pd.Series, parsed: pd.Series) -> int:
+    original_text = original.astype("string").str.strip()
+    original_non_empty = original_text.notna() & (original_text != "")
+    parsed_invalid = parsed.isna()
+    return int((original_non_empty & parsed_invalid).sum())
+
+
 def normalizar_tipos_dataframe(
     df: pd.DataFrame,
     *,
     date_columns: Iterable[str] | None = None,
     amount_columns: Iterable[str] | None = None,
     id_columns: Iterable[str] | None = None,
+    fail_on_parse_errors: bool = False,
 ) -> tuple[pd.DataFrame, TypeNormalizationSummary]:
     """Normaliza tipos mínimos del dataframe.
 
@@ -120,14 +132,30 @@ def normalizar_tipos_dataframe(
     amount_cols = [col for col in inferred_amount_cols if col in normalized_df.columns and col not in inferred_id_cols]
     id_cols = [col for col in inferred_id_cols if col in normalized_df.columns]
 
+    parse_errors: list[str] = []
+
     for col in date_cols:
-        normalized_df[col] = _to_datetime(normalized_df[col])
+        parsed = _to_datetime(normalized_df[col])
+        failures = _count_parse_failures(normalized_df[col], parsed)
+        if fail_on_parse_errors and failures > 0:
+            parse_errors.append(f"fecha:{col} ({failures} valores no parseables)")
+        normalized_df[col] = parsed
 
     for col in amount_cols:
-        normalized_df[col] = _to_float(normalized_df[col])
+        parsed = _to_float(normalized_df[col])
+        failures = _count_parse_failures(normalized_df[col], parsed)
+        if fail_on_parse_errors and failures > 0:
+            parse_errors.append(f"importe:{col} ({failures} valores no parseables)")
+        normalized_df[col] = parsed
 
     for col in id_cols:
         normalized_df[col] = _to_string_dtype(normalized_df[col])
+
+    if parse_errors:
+        raise TypeNormalizationError(
+            "Tipos no parseables detectados durante la normalización: "
+            + "; ".join(parse_errors)
+        )
 
     summary = TypeNormalizationSummary(
         date_columns=tuple(date_cols),

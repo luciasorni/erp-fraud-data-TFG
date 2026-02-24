@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
 
 JOINT_DATASETS_DIRNAME = "joint_datasets"
@@ -27,14 +27,17 @@ class DatasetValidationError(ValueError):
 
 def localizar_joint_datasets(zip_path: str | Path) -> str:
     """Devuelve el prefijo dentro del zip que apunta a `joint_datasets/`."""
-    with ZipFile(zip_path) as zf:
-        for name in zf.namelist():
-            if name.startswith("__MACOSX/"): 
-                continue
-            parts = [part for part in name.split("/") if part]
-            if JOINT_DATASETS_DIRNAME in parts:
-                idx = parts.index(JOINT_DATASETS_DIRNAME)
-                return "/".join(parts[: idx + 1]) + "/"
+    try:
+        with ZipFile(zip_path) as zf:
+            for name in zf.namelist():
+                if name.startswith("__MACOSX/"):
+                    continue
+                parts = [part for part in name.split("/") if part]
+                if JOINT_DATASETS_DIRNAME in parts:
+                    idx = parts.index(JOINT_DATASETS_DIRNAME)
+                    return "/".join(parts[: idx + 1]) + "/"
+    except BadZipFile as exc:
+        raise DatasetValidationError(f"Zip corrupto o no válido: {zip_path}") from exc
 
     raise FileNotFoundError(
         f"No se encontró la carpeta '{JOINT_DATASETS_DIRNAME}/' dentro del zip: {zip_path}"
@@ -45,18 +48,21 @@ def listar_ficheros_joint_datasets(zip_path: str | Path) -> list[str]:
     """Lista ficheros dentro de `joint_datasets/` (rutas relativas a esa carpeta)."""
     prefix = localizar_joint_datasets(zip_path)
 
-    with ZipFile(zip_path) as zf:
-        files: list[str] = []
-        for name in zf.namelist():
-            if not name.startswith(prefix):
-                continue
-            if name.startswith("__MACOSX/") or name.endswith("/"):
-                continue
+    try:
+        with ZipFile(zip_path) as zf:
+            files: list[str] = []
+            for name in zf.namelist():
+                if not name.startswith(prefix):
+                    continue
+                if name.startswith("__MACOSX/") or name.endswith("/"):
+                    continue
 
-            rel_name = name[len(prefix) :]
-            if not rel_name:
-                continue
-            files.append(rel_name)
+                rel_name = name[len(prefix) :]
+                if not rel_name:
+                    continue
+                files.append(rel_name)
+    except BadZipFile as exc:
+        raise DatasetValidationError(f"Zip corrupto o no válido: {zip_path}") from exc
 
     return sorted(files)
 

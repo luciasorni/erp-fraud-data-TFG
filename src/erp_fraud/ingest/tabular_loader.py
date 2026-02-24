@@ -5,7 +5,7 @@ from __future__ import annotations
 import csv
 import io
 from pathlib import Path
-from zipfile import ZipFile
+from zipfile import BadZipFile, ZipFile
 
 import pandas as pd
 import pyarrow.parquet as pq
@@ -51,6 +51,7 @@ def _leer_csv_bytes(
                 "sep": detected_sep,
                 "dtype": dtype,
                 "engine": engine,
+                "on_bad_lines": "error",
             }
             if engine == "c":
                 kwargs["low_memory"] = False
@@ -60,8 +61,10 @@ def _leer_csv_bytes(
                 last_error = exc
                 continue
 
+    error_details = f"{type(last_error).__name__}: {last_error}" if last_error else "sin detalle"
     raise TabularLoadError(
-        "No se pudo leer el CSV con los encodings/separadores configurados"
+        "CSV mal formado o no legible con los encodings/separadores configurados "
+        f"({error_details})"
     ) from last_error
 
 
@@ -85,18 +88,26 @@ def cargar_fichero_tabular_desde_zip(
     member_path = f"{prefix}{file_name}"
     suffix = Path(file_name).suffix.lower()
 
-    with ZipFile(zip_path) as zf:
-        try:
-            raw_bytes = zf.read(member_path)
-        except KeyError as exc:
-            raise FileNotFoundError(
-                f"No existe '{file_name}' dentro de {prefix} en el zip {zip_path}"
-            ) from exc
+    try:
+        with ZipFile(zip_path) as zf:
+            try:
+                raw_bytes = zf.read(member_path)
+            except KeyError as exc:
+                raise FileNotFoundError(
+                    f"No existe '{file_name}' dentro de {prefix} en el zip {zip_path}"
+                ) from exc
+    except BadZipFile as exc:
+        raise TabularLoadError(f"Zip corrupto o no válido: {zip_path}") from exc
 
-    if suffix == ".csv":
-        return _leer_csv_bytes(raw_bytes, dtype=dtype, sep=sep)
-    if suffix == ".parquet":
-        return _leer_parquet_bytes(raw_bytes)
+    try:
+        if suffix == ".csv":
+            return _leer_csv_bytes(raw_bytes, dtype=dtype, sep=sep)
+        if suffix == ".parquet":
+            return _leer_parquet_bytes(raw_bytes)
+    except TabularLoadError as exc:
+        raise TabularLoadError(
+            f"Error al cargar '{file_name}' desde joint_datasets: {exc}"
+        ) from exc
 
     raise TabularLoadError(
         f"Extensión no soportada para carga tabular: '{suffix or '<sin extensión>'}'"

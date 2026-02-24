@@ -9,7 +9,11 @@ from .zip_reader import (
 )
 from .tabular_loader import TabularLoadError, cargar_fichero_tabular_desde_zip
 from .technical_cleaner import TechnicalCleaningSummary, limpiar_tecnicamente_dataframe
-from .type_normalizer import TypeNormalizationSummary, normalizar_tipos_dataframe
+from .type_normalizer import (
+    TypeNormalizationError,
+    TypeNormalizationSummary,
+    normalizar_tipos_dataframe,
+)
 from .dataset_hash import DatasetHashResult, calcular_dataset_hash
 
 __all__ = [
@@ -18,6 +22,7 @@ __all__ = [
     "DatasetHashResult",
     "TabularLoadError",
     "TechnicalCleaningSummary",
+    "TypeNormalizationError",
     "TypeNormalizationSummary",
     "calcular_dataset_hash",
     "cargar_fichero_tabular_desde_zip",
