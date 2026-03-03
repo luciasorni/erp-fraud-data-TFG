@@ -2,6 +2,14 @@
 
 Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el dataset `ERP Fraud Data` y DuckDB.
 
+## Documentación
+
+- `docs/architecture.md`
+- `docs/rf01.md`
+- `docs/rf02.md`
+- `docs/data.md`
+- `docs/how_to_run.md`
+
 ## Alcance actual (Fase 1 - RF01 en progreso)
 
 - Ingesta orientada a `joint_datasets/` (P2P, dataset plano)
