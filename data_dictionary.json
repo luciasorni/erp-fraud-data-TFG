@@ -1,0 +1,5428 @@
+{
+  "entries": [
+    {
+      "column": "0",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "1",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "2",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "3",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "4",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "6",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "7",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "8",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "9",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "10",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "11",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "12",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "13",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "14",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "15",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "16",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "17",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "18",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "19",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "20",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "21",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "22",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "23",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "24",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "25",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "26",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "27",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "28",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "29",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "30",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "31",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "32",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "33",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "34",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "35",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "36",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "37",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "38",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "39",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "40",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "41",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "42",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "43",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "44",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "45",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "46",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "47",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "48",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "49",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "50",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "51",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "52",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "53",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "54",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "55",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "56",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "57",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 58,
+      "table": "column_information",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "iloc",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_1_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 58,
+      "table": "fraud_1_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "iloc",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_2_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 58,
+      "table": "fraud_2_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_3",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_3",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "iloc",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "fraud_3_expls",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 58,
+      "table": "fraud_3_expls",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "normal_1",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "normal_1",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandskonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 1,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungsklasse",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 2,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Einzelpostenanzeige moeglich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 3,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfolgskontentyp",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 4,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Geschaeftsbereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 5,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gruppenkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 6,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "KZ EKBE",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 7,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kennzeichen: Posten nicht kopierbar ?",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 8,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenstelle",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 9,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_Bereich",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 10,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Laufende Kontierung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 11,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "PartnerPrctr",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 12,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Profitcenter",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 13,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Rechnungsbezug",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 14,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Soll/Haben-Kennz_",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 15,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sperrgrund Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 16,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerkennzeichen",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 17,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bewertungskreis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 18,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Steuerstandort",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 19,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Umsatzwirksam",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 20,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Verwaltung offener Posten",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 21,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Werk",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 22,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungsbedingung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 23,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Zahlungssperre",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 24,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Alternative Kontonummer",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 25,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Basismengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 26,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "BestPreisMngEinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 27,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestandsbuchung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 28,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Bestellmengeneinheit",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 29,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungsschluessel",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 30,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Buchungszeilen-Id",
+      "description": "Identificador único de línea de asiento; útil para trazabilidad y deduplicación técnica.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 31,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "ErfassungsMngEinh",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 32,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Hauptbuchkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 33,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kontoart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 34,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kostenart",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 35,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditor",
+      "description": "Identificador de proveedor (vendor); permite segmentar tests por tercero.",
+      "examples": [
+        "<vendor_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 36,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Material",
+      "description": "Identificador de material/artículo; útil para detectar patrones atípicos por producto.",
+      "examples": [
+        "<material_id>"
+      ],
+      "nullable": true,
+      "ordinal_position": 37,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Preissteuerung",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 38,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Sachkonto",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 39,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgang",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 40,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Vorgangsart GL",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 41,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Wertestring",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 42,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag Hauswaehr",
+      "description": "Importe en moneda local; soporte para comparativas de rango cuando se normaliza divisa.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 43,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag",
+      "description": "Importe monetario de la operación; campo clave para tests de importes anómalos/fuera de rango.",
+      "examples": [
+        "20000000",
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 44,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Betrag_5",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 45,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtbestand",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 46,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Gesamtwert",
+      "description": "Valor total asociado a la línea/material; relevante para controles de magnitud inusual.",
+      "examples": [
+        "0"
+      ],
+      "nullable": true,
+      "ordinal_position": 47,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Kreditkontr_betrag",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 48,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in BPME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 49,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge in ErfassME",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 50,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Menge",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 51,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Skontobasis",
+      "description": "",
+      "examples": [],
+      "nullable": true,
+      "ordinal_position": 52,
+      "table": "normal_2",
+      "type": "DOUBLE",
+      "used_in_tests": []
+    },
+    {
+      "column": "Label",
+      "description": "Etiqueta del dataset (p.ej. Fraud/NonFraud) usada como referencia en validaciones internas.",
+      "examples": [
+        "Fraud",
+        "NonFraud"
+      ],
+      "nullable": true,
+      "ordinal_position": 53,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Belegnummer",
+      "description": "Identificador de documento contable; clave principal para detectar duplicados de documento.",
+      "examples": [
+        "100000000"
+      ],
+      "nullable": true,
+      "ordinal_position": 54,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Position",
+      "description": "Posición/línea dentro del documento; permite granularidad documento-línea en reglas de duplicidad.",
+      "examples": [
+        "1",
+        "2"
+      ],
+      "nullable": true,
+      "ordinal_position": 55,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Transaktionsart",
+      "description": "Tipo de transacción registrada en la línea; se usa para filtrar reglas por naturaleza operativa.",
+      "examples": [
+        "Sachkontenbuchung"
+      ],
+      "nullable": true,
+      "ordinal_position": 56,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    },
+    {
+      "column": "Erfassungsuhrzeit",
+      "description": "Hora de registro/captura; apoyo para reglas temporales básicas (horarios inusuales).",
+      "examples": [
+        "09:30:32"
+      ],
+      "nullable": true,
+      "ordinal_position": 57,
+      "table": "normal_2",
+      "type": "VARCHAR",
+      "used_in_tests": []
+    }
+  ],
+  "entry_format": {
+    "field_notes": {
+      "column": "Nombre de columna",
+      "description": "Descripción funcional/técnica mínima",
+      "examples": "Lista corta de valores ejemplo (sin datos sensibles)",
+      "table": "Nombre de tabla en DuckDB",
+      "type": "Tipo de dato (preferiblemente según schema_summary/DuckDB)",
+      "used_in_tests": "Lista de test_ids que usan el campo"
+    },
+    "required_fields": [
+      "table",
+      "column",
+      "type",
+      "description",
+      "examples",
+      "used_in_tests"
+    ]
+  },
+  "example_entry": {
+    "column": "Belegnummer",
+    "description": "Identificador de documento/numero de asiento en el dataset conjunto.",
+    "examples": [
+      "100000000"
+    ],
+    "table": "fraud_1",
+    "type": "VARCHAR",
+    "used_in_tests": []
+  },
+  "generated_from": {
+    "generated_at_utc": "2026-02-25T20:42:28+00:00",
+    "schema_summary_json": "run_results/rf01-18-verification-20260224/schema_summary.json"
+  },
+  "scope": {
+    "phase": "Fase1",
+    "process": "P2P",
+    "source": "ERP Fraud Data / joint_datasets"
+  },
+  "version": "0.1.0"
+}

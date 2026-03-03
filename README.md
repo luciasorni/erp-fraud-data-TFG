@@ -33,17 +33,54 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - Logging estructurado JSONL para ingesta
 - Manejo de errores típicos (zip corrupto, CSV mal formado, parseos)
 
+## Data Dictionary (RF02)
+
+Se añadió una base de diccionario de datos para alinear tests y campos del dataset.
+
+Artefactos:
+
+- `data_dictionary.json`: formato máquina
+- `data_dictionary.md`: formato humano
+
+Capacidades actuales:
+
+- Generar borrador desde `schema_summary.json` (tablas/columnas/tipos)
+- Garantizar campos mínimos por entrada:
+  - `table`, `column`, `type`, `description`, `examples`, `used_in_tests`
+- Anotar `used_in_tests` desde catálogo de tests (`tests/catalog`)
+- Validar completitud: falla si un test usa un campo no documentado
+
+CLI disponible:
+
+```bash
+python3 -m src.erp_fraud.cli.main validate-dictionary \
+  --dictionary data_dictionary.json \
+  --catalog tests/catalog
+```
+
+Opcional:
+
+- `--output-json` para resumen en JSON
+
+Código de salida:
+
+- `0`: diccionario completo
+- `1`: faltan campos documentados usados por tests
+- `2`: error de entrada/parseo
+
 ## Cómo verificarlo (actual)
 
 Ejecutar tests unitarios de la base de ingesta/storage:
 
 ```bash
-pytest -q tests/test_rf01_ingest_storage.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf01_ingest_storage.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
 ```
 
 Resultado esperado:
 
-- `9 passed` (puede variar si se amplían tests)
+- RF01: `9 passed` (puede variar si se amplían tests)
+- RF02: `6 passed` (puede variar si se amplían tests)
 
 ## Notas
 
