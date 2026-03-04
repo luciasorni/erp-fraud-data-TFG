@@ -76,6 +76,28 @@ Código de salida:
 - `1`: faltan campos documentados usados por tests
 - `2`: error de entrada/parseo
 
+## Data Validation (RF02b)
+
+Se añadió validación técnica previa a ejecución de tests, basada en columnas requeridas por `TestSpec`.
+
+Checks implementados:
+
+- `missing_required_columns` (critical)
+- `type_parse_errors_dates` (critical)
+- `type_parse_errors_amounts` (critical)
+- `null_percentage_required_columns` (warning)
+- `basic_ranges_dates` (warning)
+- `basic_ranges_amounts` (warning)
+
+Artefacto principal:
+
+- `data_validation_report.json` (estructura estable, ordenada y con severidades)
+
+Regla de bloqueo:
+
+- el run se bloquea **solo** si hay errores `critical`
+- si hay solo `warning`, el run continúa
+
 ## Cómo verificarlo (actual)
 
 Ejecutar tests unitarios de la base de ingesta/storage:
@@ -83,12 +105,14 @@ Ejecutar tests unitarios de la base de ingesta/storage:
 ```bash
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf01_ingest_storage.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
 ```
 
 Resultado esperado:
 
 - RF01: `9 passed` (puede variar si se amplían tests)
 - RF02: `6 passed` (puede variar si se amplían tests)
+- RF02b: `4 passed` (puede variar si se amplían tests)
 
 ## Notas
 

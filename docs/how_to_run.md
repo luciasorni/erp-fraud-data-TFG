@@ -29,6 +29,24 @@ Ejecutar tests RF02:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
 ```
 
+Ejecutar tests RF02b:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
+```
+
+## Validación técnica (RF02b)
+
+Si ya tienes columnas requeridas por test, el pipeline genera:
+
+- `data_validation_report.json`
+- sección `Data Validation` en `report.md` (enlazando el JSON)
+
+Regla operativa:
+
+- si hay fallos críticos -> bloquear ejecución de tests
+- si hay solo warnings -> continuar ejecución
+
 ## Evidencias
 
 - Artefactos de ejecución en `run_results/<run_id>/`

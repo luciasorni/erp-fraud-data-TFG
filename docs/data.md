@@ -32,6 +32,7 @@ Artefactos principales por ejecución (`run_results/<run_id>/`):
 - `schema_summary.json`: esquema real cargado (tablas/columnas/tipos)
 - `run_metadata.json`: contexto del run (`run_id`, `dataset_hash`, timestamp, versiones)
 - `ingest_logs.jsonl`: eventos de ingesta por tabla
+- `data_validation_report.json`: validación técnica previa a tests (RF02b)
 
 Hash reproducible del dataset:
 
@@ -55,6 +56,24 @@ Antes de cargar a DuckDB:
   - fechas -> `datetime`
   - importes -> numérico
   - IDs -> `string`
+
+## Validación técnica previa a tests (RF02b)
+
+Checks:
+
+- columnas requeridas faltantes
+- parseo de fechas/importes
+- % de nulos por columna requerida
+- rangos básicos (fechas e importes; conteo de negativos)
+
+Severidad:
+
+- críticos: faltantes y parseos
+- warnings: nulos y rangos
+
+Decisión de bloqueo:
+
+- se bloquea el run solo si hay errores críticos
 
 ## Estado de calidad de documentación
 

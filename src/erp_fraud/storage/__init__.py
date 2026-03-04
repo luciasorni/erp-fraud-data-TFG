@@ -10,25 +10,60 @@ from .data_dictionary import (
     load_test_specs_from_catalog,
     normalize_data_dictionary_entry_min_fields,
 )
+from .data_validation_policy import (
+    VALIDATION_SEVERITY_POLICY,
+    ValidationRule,
+    get_validation_policy_dict,
+    get_validation_severity,
+    is_critical_check,
+)
+from .data_validation_requirements import extract_required_columns_from_testspecs
+from .data_validation_checks import (
+    check_basic_ranges_in_duckdb,
+    check_missing_required_columns_in_duckdb,
+    check_null_percentage_required_columns_in_duckdb,
+    check_type_parse_errors_in_duckdb,
+)
+from .data_validation_report import build_data_validation_report, write_data_validation_report_json
+from .data_validation_pipeline import (
+    TechnicalValidationOutcome,
+    run_technical_validation_before_tests,
+)
 from .paths import RUTA_SALIDA, ruta_run
 from .json_logging import DEFAULT_INGEST_LOG_FILENAME, IngestJsonLogger
 from .run_metadata import build_run_metadata, write_run_metadata_json
+from .reporting import write_or_update_report_markdown_with_data_validation
 
 __all__ = [
     "DEFAULT_INGEST_LOG_FILENAME",
     "RUTA_SALIDA",
     "DataDictionaryCompletenessError",
     "IngestJsonLogger",
+    "TechnicalValidationOutcome",
+    "VALIDATION_SEVERITY_POLICY",
     "annotate_dictionary_from_tests",
     "build_data_dictionary_draft_from_schema_summary",
+    "build_data_validation_report",
     "build_run_metadata",
     "check_dictionary_completeness",
+    "check_basic_ranges_in_duckdb",
+    "check_missing_required_columns_in_duckdb",
+    "check_null_percentage_required_columns_in_duckdb",
+    "check_type_parse_errors_in_duckdb",
     "ensure_min_fields_in_data_dictionary",
     "generate_data_dictionary_json_draft",
+    "extract_required_columns_from_testspecs",
+    "get_validation_policy_dict",
+    "get_validation_severity",
     "load_test_specs_from_catalog",
+    "is_critical_check",
     "normalize_data_dictionary_entry_min_fields",
+    "run_technical_validation_before_tests",
+    "ValidationRule",
     "ruta_run",
     "write_run_metadata_json",
+    "write_or_update_report_markdown_with_data_validation",
+    "write_data_validation_report_json",
 ]
 
 try:
