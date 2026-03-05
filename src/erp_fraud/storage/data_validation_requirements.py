@@ -30,7 +30,11 @@ def _extract_pairs_from_data_requirements(data_requirements: Any) -> set[tuple[s
             if not isinstance(item, dict):
                 continue
             table = item.get("table") or item.get("name") or item.get("table_name")
-            columns = item.get("columns") or item.get("required_columns")
+            columns = (
+                item.get("required_columns_exact")
+                or item.get("required_columns")
+                or item.get("columns")
+            )
             if not table or not isinstance(columns, list):
                 continue
             for col in columns:

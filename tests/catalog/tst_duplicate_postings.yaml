@@ -1,0 +1,32 @@
+id: TST-DUPLICATE-POSTINGS
+version: 1.0.0
+name: Duplicate postings by vendor and amount
+fraud_type: duplicate_payment
+description: Detecta asientos potencialmente duplicados por proveedor, documento y importe.
+source:
+  catalog: acfe_coso
+  reference: duplicate_payments
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Betrag
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Betrag
+logic:
+  implementation_type: sql
+  description: Agrupar por proveedor, documento, posición e importe y filtrar grupos con COUNT > 1.
+  sql_ref: sql/tests/tst_duplicate_postings.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - duplicates
+  - acfe

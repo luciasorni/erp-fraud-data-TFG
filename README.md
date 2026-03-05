@@ -7,6 +7,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/architecture.md`
 - `docs/rf01.md`
 - `docs/rf02.md`
+- `docs/rf03.md`
+- `docs/rf04.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
 
@@ -98,6 +100,46 @@ Regla de bloqueo:
 - el run se bloquea **solo** si hay errores `critical`
 - si hay solo `warning`, el run continúa
 
+## Fraud Test Catalog (RF03)
+
+Se añadió un catálogo inicial versionado de tests antifraude (alineado con ACFE/COSO) con 2 controles P2P implementados.
+
+Catálogo:
+
+- `tests/catalog/tst_duplicate_postings.yaml`
+- `tests/catalog/tst_unusual_amount_by_vendor.yaml`
+
+Componentes:
+
+- Esquema `TestSpec`: `src/erp_fraud/catalog/test_spec_schema.py`
+- Loader y validación de `TestSpec`: `src/erp_fraud/catalog/test_spec_loader.py`
+- Ejecución de tests y resultado estándar: `src/erp_fraud/catalog/test_execution.py`
+- SQL de referencia: `sql/tests/`
+- Changelog de catálogo: `tests/CHANGELOG.md`
+
+Nota:
+
+- `data_requirements.required_columns_exact` define columnas exactas por test para soporte de validación técnica previa (RF02b).
+
+## Secure Test Runner (RF04)
+
+Se añadió el motor de ejecución seguro base para catálogo:
+
+- Allowlist de `test_id` (solo IDs existentes en `tests/catalog`)
+- Continuidad ante fallo por test (`status=ERROR` + `error_summary`)
+- Timeout por test best-effort (`status=TIMEOUT`)
+- Métricas de tiempo:
+  - por test
+  - por fase (`selection`, `execution`, `total`)
+- Persistencia de resultados de ejecución:
+  - `test_runs.json` por run
+- Logs por test:
+  - `test_start` / `test_end` en JSONL con `run_id` y `test_id`
+
+Componente principal:
+
+- `src/erp_fraud/catalog/test_runner.py`
+
 ## Cómo verificarlo (actual)
 
 Ejecutar tests unitarios de la base de ingesta/storage:
@@ -106,6 +148,8 @@ Ejecutar tests unitarios de la base de ingesta/storage:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf01_ingest_storage.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf03_catalog.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
 ```
 
 Resultado esperado:
@@ -113,8 +157,10 @@ Resultado esperado:
 - RF01: `9 passed` (puede variar si se amplían tests)
 - RF02: `6 passed` (puede variar si se amplían tests)
 - RF02b: `4 passed` (puede variar si se amplían tests)
+- RF03: `4 passed` (puede variar si se amplían tests)
+- RF04: `6 passed` (puede variar si se amplían tests)
 
 ## Notas
 
 - El dataset grande `erp_fraud_data.zip` está trackeado con Git LFS.
-- Esta fase construye la infraestructura reproducible; la ejecución de tests de fraude (catálogo/motor) se implementa en requisitos posteriores (`RF03`, `RF04`).
+- La ejecución inicial de tests de catálogo está implementada en RF03; el motor de ejecución completo y endurecido se extiende en `RF04`.

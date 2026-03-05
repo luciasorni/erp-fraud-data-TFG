@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ..catalog.test_spec_loader import load_test_specs_from_catalog as load_catalog_test_specs
+
 MIN_DATA_DICTIONARY_ENTRY_FIELDS = (
     "table",
     "column",
@@ -56,39 +58,10 @@ def ensure_min_fields_in_data_dictionary(dictionary: dict) -> dict:
     return normalized
 
 
-def _load_test_spec_file(path: Path) -> dict:
-    suffix = path.suffix.lower()
-    raw_text = path.read_text(encoding="utf-8")
-    if suffix == ".json":
-        return json.loads(raw_text)
-    if suffix in {".yml", ".yaml"}:
-        try:
-            import yaml  # type: ignore
-        except Exception as exc:
-            raise RuntimeError(
-                f"No se puede leer YAML sin PyYAML instalado: {path}"
-            ) from exc
-        data = yaml.safe_load(raw_text)
-        return data or {}
-    raise ValueError(f"Formato de TestSpec no soportado: {path}")
-
-
 def load_test_specs_from_catalog(catalog_path: str | Path = "tests/catalog") -> list[dict]:
-    """Carga TestSpecs desde `tests/catalog` (JSON/YAML). Si no existe, devuelve []."""
-    path = Path(catalog_path)
-    if not path.exists():
-        return []
-    if path.is_file():
-        return [_load_test_spec_file(path)]
-
-    specs: list[dict] = []
-    for file_path in sorted(path.rglob("*")):
-        if not file_path.is_file():
-            continue
-        if file_path.suffix.lower() not in {".json", ".yml", ".yaml"}:
-            continue
-        specs.append(_load_test_spec_file(file_path))
-    return specs
+    """Carga TestSpecs desde catálogo sin aplicar validación estricta de RF03."""
+    specs = load_catalog_test_specs(catalog_path, validate_schema=False)
+    return [dict(spec) for spec in specs]
 
 
 def _extract_fields_from_data_requirements(data_requirements: Any) -> set[tuple[str, str]]:

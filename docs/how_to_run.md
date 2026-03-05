@@ -35,6 +35,18 @@ Ejecutar tests RF02b:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
 ```
 
+Ejecutar tests RF03:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf03_catalog.py
+```
+
+Ejecutar tests RF04:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:
@@ -47,7 +59,29 @@ Regla operativa:
 - si hay fallos críticos -> bloquear ejecución de tests
 - si hay solo warnings -> continuar ejecución
 
+## Catálogo RF03
+
+- Especificaciones en `tests/catalog/` (YAML versionado por test)
+- Changelog en `tests/CHANGELOG.md`
+- Referencias SQL en `sql/tests/`
+
+Implementaciones actuales:
+
+- `TST-DUPLICATE-POSTINGS`
+- `TST-UNUSUAL-AMOUNT-BY-VENDOR`
+
+## Runner seguro RF04
+
+- Ejecución solo de tests en allowlist (`tests/catalog`)
+- Timeout por test (best-effort) opcional
+- Continuidad si un test falla (`ERROR`) o expira (`TIMEOUT`)
+- Persistencia de:
+  - `test_runs.json`
+  - `test_runner_logs.jsonl`
+
 ## Evidencias
 
 - Artefactos de ejecución en `run_results/<run_id>/`
 - DB local generada en `erp.duckdb`
+- Ejecución de tests: `run_results/<run_id>/test_runs.json`
+- Logs por test: `run_results/<run_id>/test_runner_logs.jsonl`

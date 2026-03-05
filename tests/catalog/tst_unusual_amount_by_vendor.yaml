@@ -1,0 +1,31 @@
+id: TST-UNUSUAL-AMOUNT-BY-VENDOR
+version: 1.0.0
+name: Unusual amount by vendor
+fraud_type: amount_anomaly
+description: Detecta importes atípicos por proveedor para priorizar revisión manual.
+source:
+  catalog: acfe_coso
+  reference: unusual_transaction_amounts
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Betrag
+        - Transaktionsart
+      required_columns_exact:
+        - Kreditor
+        - Betrag
+        - Transaktionsart
+logic:
+  implementation_type: sql
+  description: Calcular distribución por proveedor y marcar importes fuera de umbral estadístico.
+  sql_ref: sql/tests/tst_unusual_amount_by_vendor.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - amount
+  - anomaly
+  - acfe
