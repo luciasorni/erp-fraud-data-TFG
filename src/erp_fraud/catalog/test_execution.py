@@ -10,8 +10,12 @@ from typing import Any
 import duckdb
 
 from ..storage.duckdb_store import DEFAULT_DUCKDB_PATH, get_duckdb_connection
+from .drilldown_templates import build_drilldown_template_ref
+from .entity_key import build_entity_key
+from .drilldown_keys import get_minimum_keys_for_test_id
+from .result_schema import RESULT_SCHEMA_VERSION
 
-STANDARD_TEST_RESULT_SCHEMA_VERSION = "1.0.0"
+STANDARD_TEST_RESULT_SCHEMA_VERSION = RESULT_SCHEMA_VERSION
 
 
 def _utc_timestamp_iso() -> str:
@@ -22,6 +26,29 @@ def _quote_identifier(identifier: str) -> str:
     if not isinstance(identifier, str) or not identifier.strip():
         raise ValueError("identifier debe ser string no vacío")
     return '"' + identifier.strip().replace('"', '""') + '"'
+
+
+def _build_finding_common_fields(
+    *,
+    test_id: str,
+    keys: dict[str, str],
+    evidence_columns: list[str],
+    metrics: dict[str, object],
+) -> dict[str, object]:
+    min_keys = get_minimum_keys_for_test_id(test_id)
+    missing = [name for name in min_keys if name not in keys]
+    if missing:
+        raise ValueError(f"keys incompletas para {test_id}: faltan {missing}")
+    return {
+        "keys": keys,
+        "entity_key": build_entity_key(keys),
+        "evidence_columns": evidence_columns,
+        "metrics": metrics,
+        "drilldown_template": build_drilldown_template_ref(
+            test_id=test_id,
+            keys=keys,
+        ),
+    }
 
 
 def build_standard_test_result(
@@ -97,13 +124,30 @@ def run_test_duplicate_postings(
 
     columns = ["kreditor", "belegnummer", "position", "betrag", "duplicate_count"]
     rows = [
-        {
-            "kreditor": row[0],
-            "belegnummer": row[1],
-            "position": row[2],
-            "betrag": row[3],
-            "duplicate_count": int(row[4]),
-        }
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                        "position": str(base["position"]),
+                        "betrag": str(base["betrag"]),
+                    },
+                    evidence_columns=["kreditor", "belegnummer", "position", "betrag", "duplicate_count"],
+                    metrics={"duplicate_count": int(base["duplicate_count"])},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "position": row[2],
+                "betrag": row[3],
+                "duplicate_count": int(row[4]),
+            }
+        )
         for row in raw_rows
     ]
 
@@ -195,15 +239,38 @@ def run_test_unusual_amount_by_vendor(
         "z_score",
     ]
     rows = [
-        {
-            "kreditor": row[0],
-            "transaktionsart": row[1],
-            "betrag": row[2],
-            "n_rows": int(row[3]),
-            "mean_betrag": row[4],
-            "std_betrag": row[5],
-            "z_score": row[6],
-        }
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "betrag": str(base["betrag"]),
+                    },
+                    evidence_columns=[
+                        "kreditor",
+                        "transaktionsart",
+                        "betrag",
+                        "n_rows",
+                        "mean_betrag",
+                        "std_betrag",
+                        "z_score",
+                    ],
+                    metrics={"z_score": float(base["z_score"]) if base["z_score"] is not None else None},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "transaktionsart": row[1],
+                "betrag": row[2],
+                "n_rows": int(row[3]),
+                "mean_betrag": row[4],
+                "std_betrag": row[5],
+                "z_score": row[6],
+            }
+        )
         for row in raw_rows
     ]
 

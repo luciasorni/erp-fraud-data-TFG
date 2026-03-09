@@ -33,6 +33,7 @@ from .paths import RUTA_SALIDA, ruta_run
 from .json_logging import DEFAULT_INGEST_LOG_FILENAME, IngestJsonLogger
 from .run_metadata import build_run_metadata, write_run_metadata_json
 from .reporting import write_or_update_report_markdown_with_data_validation
+from .reporting import write_or_update_report_markdown_with_drilldown_instructions
 
 __all__ = [
     "DEFAULT_INGEST_LOG_FILENAME",
@@ -63,6 +64,7 @@ __all__ = [
     "ruta_run",
     "write_run_metadata_json",
     "write_or_update_report_markdown_with_data_validation",
+    "write_or_update_report_markdown_with_drilldown_instructions",
     "write_data_validation_report_json",
 ]
 

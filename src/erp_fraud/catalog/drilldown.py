@@ -1,0 +1,140 @@
+"""Drilldown seguro por test_id + keys (RF06-03)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from ..storage.duckdb_store import DEFAULT_DUCKDB_PATH, get_duckdb_connection
+from .drilldown_keys import validate_minimum_keys_for_test_id
+from .drilldown_templates import get_drilldown_query_id_for_test_id
+
+DEFAULT_DRILLDOWN_LIMIT = 200
+MAX_DRILLDOWN_LIMIT = 200
+
+
+def _normalize_limit(limit_rows: int) -> int:
+    if not isinstance(limit_rows, int):
+        raise TypeError("limit_rows debe ser int")
+    if limit_rows <= 0:
+        raise ValueError("limit_rows debe ser > 0")
+    return min(limit_rows, MAX_DRILLDOWN_LIMIT)
+
+
+def _normalize_order_direction(order_direction: str) -> str:
+    value = str(order_direction or "").strip().upper()
+    if value not in {"ASC", "DESC"}:
+        raise ValueError("order_direction debe ser 'ASC' o 'DESC'")
+    return value
+
+
+def _build_drilldown_query_and_params(
+    *,
+    test_id: str,
+    keys: dict[str, str],
+    schema_name: str = "main",
+    table_name: str = "fraud_1",
+    limit_rows: int = DEFAULT_DRILLDOWN_LIMIT,
+    order_direction: str = "ASC",
+    extra_filters: dict[str, str] | None = None,
+) -> tuple[str, list[object]]:
+    query_id = get_drilldown_query_id_for_test_id(test_id)
+    validate_minimum_keys_for_test_id(test_id, keys)
+    resolved_limit = _normalize_limit(limit_rows)
+    resolved_order_direction = _normalize_order_direction(order_direction)
+    filters = dict(extra_filters or {})
+
+    table_ref = f'"{schema_name}"."{table_name}"'
+
+    if query_id == "drilldown_duplicate_postings_v1":
+        if any(key not in {"Transaktionsart"} for key in filters.keys()):
+            raise ValueError("extra_filters no permitidos para duplicate_postings; permitido: Transaktionsart")
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE REGEXP_REPLACE(CAST("Kreditor" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND REGEXP_REPLACE(CAST("Position" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND (
+                    (TRY_CAST("Betrag" AS DOUBLE) IS NULL AND TRY_CAST(? AS DOUBLE) IS NULL)
+                    OR ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
+                  )
+              AND (? IS NULL OR "Transaktionsart" = ?)
+            ORDER BY "Belegnummer" {resolved_order_direction}, "Position" {resolved_order_direction}
+            LIMIT ?
+        """
+        params: list[object] = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            keys["position"],
+            keys["betrag"],
+            keys["betrag"],
+            filters.get("Transaktionsart"),
+            filters.get("Transaktionsart"),
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_unusual_amount_by_vendor_v1":
+        if any(key not in {"Transaktionsart"} for key in filters.keys()):
+            raise ValueError(
+                "extra_filters no permitidos para unusual_amount_by_vendor; permitido: Transaktionsart"
+            )
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND TRY_CAST("Betrag" AS DOUBLE) = TRY_CAST(? AS DOUBLE)
+              AND (? IS NULL OR "Transaktionsart" = ?)
+            ORDER BY "Kreditor" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["betrag"],
+            filters.get("Transaktionsart"),
+            filters.get("Transaktionsart"),
+            resolved_limit,
+        ]
+        return query, params
+
+    raise KeyError(f"query_id no soportado para drilldown: {query_id}")
+
+
+def drilldown(
+    *,
+    test_id: str,
+    keys: dict[str, str],
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    schema_name: str = "main",
+    table_name: str = "fraud_1",
+    limit_rows: int = DEFAULT_DRILLDOWN_LIMIT,
+    order_direction: str = "ASC",
+    extra_filters: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Devuelve filas origen para un hallazgo usando SQL parametrizado seguro."""
+    query, params = _build_drilldown_query_and_params(
+        test_id=test_id,
+        keys=keys,
+        schema_name=schema_name,
+        table_name=table_name,
+        limit_rows=limit_rows,
+        order_direction=order_direction,
+        extra_filters=extra_filters,
+    )
+
+    conn = get_duckdb_connection(db_path)
+    try:
+        cur = conn.execute(query, params)
+        columns = [str(col[0]) for col in cur.description]
+        rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        out.append({columns[idx]: row[idx] for idx in range(len(columns))})
+    return out

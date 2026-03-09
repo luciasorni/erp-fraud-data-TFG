@@ -9,6 +9,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf02.md`
 - `docs/rf03.md`
 - `docs/rf04.md`
+- `docs/rf05.md`
+- `docs/rf06.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
 
@@ -140,6 +142,49 @@ Componente principal:
 
 - `src/erp_fraud/catalog/test_runner.py`
 
+## Result Schema & Outputs (RF05)
+
+Se añadió estandarización de salida por test y serialización reproducible.
+
+Componentes:
+
+- Contrato `ResultSchema`: `src/erp_fraud/catalog/result_schema.py`
+- Validador: `src/erp_fraud/catalog/result_schema_validator.py`
+- Convención de `entity_key`: `src/erp_fraud/catalog/entity_key.py`
+- Writer por test: `src/erp_fraud/catalog/result_writer.py`
+
+Salidas por test:
+
+- `run_results/<run_id>/tests_outputs/<test_id>/findings.jsonl`
+- `run_results/<run_id>/tests_outputs/<test_id>/findings.parquet` (opcional)
+- `run_results/<run_id>/tests_outputs/<test_id>/sample_top20.json`
+
+Reglas:
+
+- validación de columnas obligatorias del resultado
+- orden estable antes de escribir (reproducibilidad)
+- sample top-N por test para reporte
+
+## Drilldown Bidireccional (RF06)
+
+Se añadió trazabilidad de hallazgos para reconstruir filas origen en DuckDB de forma segura.
+
+Componentes:
+
+- Keys mínimas por test (`drilldown_keys.py`)
+- Plantillas seguras por `query_id` (`drilldown_templates.py`)
+- Ejecutor de drilldown parametrizado (`drilldown.py`)
+- CLI `drilldown` (`src/erp_fraud/cli/main.py`)
+
+Ejemplo:
+
+```bash
+python3 -m src.erp_fraud.cli.main drilldown \
+  --run-id <run_id> \
+  --test-id TST-UNUSUAL-AMOUNT-BY-VENDOR \
+  --entity-key "betrag=10296.0|kreditor=V1024"
+```
+
 ## Cómo verificarlo (actual)
 
 Ejecutar tests unitarios de la base de ingesta/storage:
@@ -150,6 +195,8 @@ Ejecutar tests unitarios de la base de ingesta/storage:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf03_catalog.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
 ```
 
 Resultado esperado:
@@ -159,6 +206,8 @@ Resultado esperado:
 - RF02b: `4 passed` (puede variar si se amplían tests)
 - RF03: `4 passed` (puede variar si se amplían tests)
 - RF04: `6 passed` (puede variar si se amplían tests)
+- RF05: `6 passed` (puede variar si se amplían tests)
+- RF06: `11 passed` (puede variar si se amplían tests)
 
 ## Notas
 

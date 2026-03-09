@@ -47,6 +47,12 @@ Ejecutar tests RF04:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
 ```
 
+Ejecutar tests RF05:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:
@@ -78,6 +84,48 @@ Implementaciones actuales:
 - Persistencia de:
   - `test_runs.json`
   - `test_runner_logs.jsonl`
+
+## Outputs RF05
+
+- `ResultSchema` validado por test
+- `entity_key` estable (`key=value|key2=value2`)
+- Serialización por test en:
+  - `tests_outputs/<test_id>/findings.jsonl`
+  - `tests_outputs/<test_id>/findings.parquet` (opcional)
+  - `tests_outputs/<test_id>/sample_top20.json`
+
+## Drilldown RF06
+
+1. Localiza un `entity_key` en un output por test:
+
+```bash
+cat run_results/<run_id>/tests_outputs/TST-UNUSUAL-AMOUNT-BY-VENDOR/findings.jsonl
+```
+
+2. Ejecuta drilldown seguro:
+
+```bash
+python3 -m src.erp_fraud.cli.main drilldown \
+  --run-id <run_id> \
+  --test-id TST-UNUSUAL-AMOUNT-BY-VENDOR \
+  --entity-key "betrag=10296.0|kreditor=V1024"
+```
+
+3. Guardar salida en fichero:
+
+```bash
+python3 -m src.erp_fraud.cli.main drilldown \
+  --run-id <run_id> \
+  --test-id TST-UNUSUAL-AMOUNT-BY-VENDOR \
+  --entity-key "betrag=10296.0|kreditor=V1024" \
+  --output run_results/<run_id>/drilldowns/example_unusual_amount.json
+```
+
+Notas:
+
+- Sin SQL libre: solo plantillas allowlist.
+- Si faltan keys mínimas o hay filtros no permitidos, devuelve error controlado.
+- `limit_rows` máximo: `200`.
 
 ## Evidencias
 

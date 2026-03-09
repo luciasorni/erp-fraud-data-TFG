@@ -18,6 +18,40 @@ from .test_execution import (
     run_test_duplicate_postings,
     run_test_unusual_amount_by_vendor,
 )
+from .result_schema import (
+    RESULT_SCHEMA,
+    RESULT_SCHEMA_EXTENDED_FIELDS,
+    RESULT_SCHEMA_FIELD_TYPES,
+    RESULT_SCHEMA_REQUIRED_FIELDS,
+    RESULT_SCHEMA_VERSION,
+    get_result_schema,
+    get_result_schema_required_fields,
+)
+from .result_schema_validator import RESULT_DF_REQUIRED_COLUMNS, validate_result_schema
+from .entity_key import (
+    ENTITY_KEY_ASSIGN_SEPARATOR,
+    ENTITY_KEY_SEPARATOR,
+    build_entity_key,
+    parse_entity_key,
+)
+from .result_writer import (
+    sort_result_rows_stable,
+    write_test_result_jsonl,
+    write_test_result_parquet,
+    write_test_results_by_test_id,
+)
+from .drilldown_keys import (
+    DRILLDOWN_MIN_KEYS_BY_TEST_ID,
+    get_drilldown_min_keys_by_test_id,
+    get_minimum_keys_for_test_id,
+    validate_minimum_keys_for_test_id,
+)
+from .drilldown_templates import (
+    DRILLDOWN_QUERY_ID_BY_TEST_ID,
+    build_drilldown_template_ref,
+    get_drilldown_query_id_for_test_id,
+)
+from .drilldown import drilldown
 from .test_runner import TestRunner
 
 __all__ = [
@@ -27,11 +61,36 @@ __all__ = [
     "get_test_spec_required_fields",
     "SUPPORTED_TESTSPEC_SUFFIXES",
     "STANDARD_TEST_RESULT_SCHEMA_VERSION",
+    "RESULT_SCHEMA",
+    "RESULT_SCHEMA_EXTENDED_FIELDS",
+    "RESULT_SCHEMA_FIELD_TYPES",
+    "RESULT_SCHEMA_REQUIRED_FIELDS",
+    "RESULT_SCHEMA_VERSION",
+    "RESULT_DF_REQUIRED_COLUMNS",
+    "ENTITY_KEY_ASSIGN_SEPARATOR",
+    "ENTITY_KEY_SEPARATOR",
+    "DRILLDOWN_MIN_KEYS_BY_TEST_ID",
+    "DRILLDOWN_QUERY_ID_BY_TEST_ID",
     "TestSpecValidationError",
     "build_standard_test_result",
+    "build_drilldown_template_ref",
+    "build_entity_key",
+    "drilldown",
+    "get_result_schema",
+    "get_result_schema_required_fields",
     "load_test_specs_from_catalog",
+    "get_drilldown_min_keys_by_test_id",
+    "get_drilldown_query_id_for_test_id",
+    "get_minimum_keys_for_test_id",
+    "sort_result_rows_stable",
+    "validate_minimum_keys_for_test_id",
+    "write_test_result_jsonl",
+    "write_test_result_parquet",
+    "write_test_results_by_test_id",
+    "parse_entity_key",
     "run_test_duplicate_postings",
     "run_test_unusual_amount_by_vendor",
     "TestRunner",
+    "validate_result_schema",
     "validate_test_spec",
 ]

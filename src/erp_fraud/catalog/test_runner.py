@@ -12,6 +12,7 @@ from typing import Any
 
 from ..storage.duckdb_store import DEFAULT_DUCKDB_PATH
 from ..storage.paths import ruta_run
+from .result_schema import RESULT_SCHEMA_VERSION
 from .test_execution import run_test_duplicate_postings, run_test_unusual_amount_by_vendor
 from .test_spec_loader import load_test_specs_from_catalog
 
@@ -50,7 +51,7 @@ class TestRunner:
         if tb_tail is None:
             tb_tail = traceback.format_exc().strip().splitlines()[-5:]
         return {
-            "result_schema_version": "1.0.0",
+            "result_schema_version": RESULT_SCHEMA_VERSION,
             "generated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "test_id": test_id,
             "test_version": str(test_spec.get("version", "")),
@@ -77,7 +78,7 @@ class TestRunner:
         timeout_ms: int,
     ) -> dict[str, Any]:
         return {
-            "result_schema_version": "1.0.0",
+            "result_schema_version": RESULT_SCHEMA_VERSION,
             "generated_at_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat(),
             "test_id": str(test_spec.get("id", "")),
             "test_version": str(test_spec.get("version", "")),
