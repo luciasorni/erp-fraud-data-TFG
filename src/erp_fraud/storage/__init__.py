@@ -34,6 +34,20 @@ from .json_logging import DEFAULT_INGEST_LOG_FILENAME, IngestJsonLogger
 from .run_metadata import build_run_metadata, write_run_metadata_json
 from .reporting import write_or_update_report_markdown_with_data_validation
 from .reporting import write_or_update_report_markdown_with_drilldown_instructions
+from .reporting import build_report_markdown_template, write_report_markdown_template
+from .reporting import (
+    build_report_markdown_from_report_json_payload,
+    render_report_markdown_to_html,
+    write_report_markdown_from_report_json,
+)
+from .report_json import (
+    REPORT_JSON_VERSION,
+    build_default_report_artifact_paths,
+    build_report_json_payload,
+    validate_report_artifact_paths_exist,
+    validate_report_json_file_artifact_links,
+    write_report_json,
+)
 
 __all__ = [
     "DEFAULT_INGEST_LOG_FILENAME",
@@ -60,11 +74,22 @@ __all__ = [
     "is_critical_check",
     "normalize_data_dictionary_entry_min_fields",
     "run_technical_validation_before_tests",
+    "REPORT_JSON_VERSION",
+    "build_report_markdown_template",
+    "build_report_markdown_from_report_json_payload",
+    "render_report_markdown_to_html",
     "ValidationRule",
+    "build_report_json_payload",
+    "build_default_report_artifact_paths",
+    "validate_report_artifact_paths_exist",
+    "validate_report_json_file_artifact_links",
     "ruta_run",
+    "write_report_json",
     "write_run_metadata_json",
     "write_or_update_report_markdown_with_data_validation",
     "write_or_update_report_markdown_with_drilldown_instructions",
+    "write_report_markdown_from_report_json",
+    "write_report_markdown_template",
     "write_data_validation_report_json",
 ]
 

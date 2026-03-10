@@ -8,6 +8,69 @@
 
 ## Comandos útiles
 
+Ejecución end-to-end (RF10):
+
+```bash
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip
+```
+
+Atajo con Make:
+
+```bash
+make run INPUT_ZIP=erp_fraud_data.zip
+```
+
+Variantes frecuentes:
+
+```bash
+# Carpeta de salidas personalizada + run_id explícito
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --out-dir run_results \
+  --run-id rf10-demo
+
+# Ejecutar subset de tests + top-k override
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --select-tests TST-DUPLICATE-POSTINGS,TST-UNUSUAL-AMOUNT-BY-VENDOR \
+  --top-k 20
+
+# Parametrizar por fichero config (json/yaml)
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --config config/run_config.yaml
+```
+
+Calidad rápida:
+
+```bash
+make test
+make test-rf08
+```
+
+## Entorno limpio (RF10-06)
+
+Prueba recomendada en máquina con red:
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install --upgrade pip
+./.venv/bin/pip install -r requirements.txt
+./.venv/bin/python -m src.erp_fraud.cli.main run --help
+make test-rf08 PYTHON=./.venv/bin/python
+```
+
+Pitfalls observados en esta ejecución:
+
+- `ModuleNotFoundError: duckdb` en venv limpio sin dependencias.
+- sin conectividad de red, `pip install` no puede descargar paquetes desde PyPI.
+
+Mitigación local:
+
+- usar el entorno del proyecto ya preparado:
+  - `/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --help`
+  - `make test-rf08`
+
 Validar diccionario:
 
 ```bash
@@ -51,6 +114,24 @@ Ejecutar tests RF05:
 
 ```bash
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
+```
+
+Ejecutar tests RF06:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
+```
+
+Ejecutar tests RF07:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf07_ranking.py
+```
+
+Ejecutar tests RF08:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
 ```
 
 ## Validación técnica (RF02b)
@@ -133,3 +214,11 @@ Notas:
 - DB local generada en `erp.duckdb`
 - Ejecución de tests: `run_results/<run_id>/test_runs.json`
 - Logs por test: `run_results/<run_id>/test_runner_logs.jsonl`
+- Ranking agregado (RF07): `run_results/<run_id>/ranking.json` y opcional `ranking.parquet`
+- Reporte RF08:
+  - `run_results/<run_id>/report.json`
+  - `run_results/<run_id>/report.md`
+  - `run_results/<run_id>/report.html` (opcional)
+  - validación de links vía `artifact_paths` en `report.json`
+- Estructura de run RF10:
+  - `run_results/<run_id>/run_structure.json`

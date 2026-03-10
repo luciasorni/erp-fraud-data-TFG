@@ -52,6 +52,20 @@ from .drilldown_templates import (
     get_drilldown_query_id_for_test_id,
 )
 from .drilldown import drilldown
+from .scoring import (
+    compute_score_test,
+    extract_metric_value,
+    load_weights_config,
+    resolve_ranking_top_k,
+    resolve_test_weight,
+)
+from .ranking import aggregate_findings_by_entity
+from .ranking_writer import (
+    sort_ranking_rows_stable,
+    write_ranking_json,
+    write_ranking_outputs,
+    write_ranking_parquet,
+)
 from .test_runner import TestRunner
 
 __all__ = [
@@ -76,6 +90,16 @@ __all__ = [
     "build_drilldown_template_ref",
     "build_entity_key",
     "drilldown",
+    "compute_score_test",
+    "extract_metric_value",
+    "load_weights_config",
+    "resolve_ranking_top_k",
+    "resolve_test_weight",
+    "aggregate_findings_by_entity",
+    "sort_ranking_rows_stable",
+    "write_ranking_json",
+    "write_ranking_outputs",
+    "write_ranking_parquet",
     "get_result_schema",
     "get_result_schema_required_fields",
     "load_test_specs_from_catalog",

@@ -11,6 +11,9 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf04.md`
 - `docs/rf05.md`
 - `docs/rf06.md`
+- `docs/rf07.md`
+- `docs/rf08.md`
+- `docs/rf10.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
 
@@ -185,6 +188,116 @@ python3 -m src.erp_fraud.cli.main drilldown \
   --entity-key "betrag=10296.0|kreditor=V1024"
 ```
 
+## Agregador y Ranking (RF07)
+
+Se añadió scoring y ranking reproducible de hallazgos multi-test:
+
+- Config de pesos: `config/weights.yaml`
+  - `defaults.severity_weights`
+  - `overrides.by_test_id`
+  - `ranking.top_k`
+- Scoring: `src/erp_fraud/catalog/scoring.py`
+  - `score_test = weight * metric_value`
+- Agregación por entidad: `src/erp_fraud/catalog/ranking.py`
+- Persistencia de ranking: `src/erp_fraud/catalog/ranking_writer.py`
+  - `ranking.json`
+  - `ranking.parquet` (opcional)
+
+Reglas de reproducibilidad:
+
+- orden estable por `score_total` desc + `entity_key` asc
+- empate resuelto de forma determinista
+- recorte opcional por `top_k`
+
+## Reporte MVP (RF08)
+
+Se añadió generación de reporte estructurado y legible:
+
+- `report.json`:
+  - contrato estable con `metadata`, `summary`, `ranking`, `test_runs`, `artifact_paths`, `errors`
+  - rutas automáticas a evidencias (outputs por test + `data_dictionary` + `schema_summary`)
+- `report.md`:
+  - generado desde `report.json` con secciones fijas
+- `report.html`:
+  - render opcional desde Markdown (con fallback seguro)
+
+Componentes:
+
+- `src/erp_fraud/storage/report_json.py`
+- `src/erp_fraud/storage/reporting.py`
+
+Validación de links:
+
+- `validate_report_json_file_artifact_links(...)` detecta artefactos no existentes en `artifact_paths`.
+
+## Comando Único (RF10)
+
+Flujo completo en un solo comando:
+
+```bash
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --input-zip erp_fraud_data.zip
+```
+
+Atajo equivalente con Make:
+
+```bash
+make run INPUT_ZIP=erp_fraud_data.zip
+```
+
+Pipeline ejecutado:
+
+1. Ingesta de zip y carga a DuckDB
+2. Validación técnica de datos
+3. Ejecución de tests de catálogo
+4. Ranking agregado
+5. Generación de reporte (`json`, `md`, `html`)
+
+Opciones útiles:
+
+- `--out-dir <ruta>`: carpeta raíz de runs (default: `run_results`)
+- `--run-id <id>`: ID de run explícito
+- `--select-tests TST-A,TST-B`: ejecutar subset
+- `--top-k <n>`: override de top-k
+- `--config <file.json|file.yaml>`: parámetros de run
+
+Dónde ver resultados:
+
+- `run_results/<run_id>/report.json`
+- `run_results/<run_id>/report.md`
+- `run_results/<run_id>/report.html`
+- `run_results/<run_id>/ranking.json`
+- `run_results/<run_id>/test_runs.json`
+
+Drilldown desde un hallazgo:
+
+```bash
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main drilldown \
+  --run-id <run_id> \
+  --test-id <TEST_ID> \
+  --entity-key "<ENTITY_KEY>" \
+  --save-default
+```
+
+Atajos de calidad:
+
+```bash
+make test
+make test-rf08
+```
+
+Verificación mínima de RF10:
+
+```bash
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --help
+make test-rf08
+```
+
+Dependencias mínimas (si preparas un venv con red):
+
+```bash
+./.venv/bin/pip install -r requirements.txt
+```
+
 ## Cómo verificarlo (actual)
 
 Ejecutar tests unitarios de la base de ingesta/storage:
@@ -197,6 +310,8 @@ Ejecutar tests unitarios de la base de ingesta/storage:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf07_ranking.py
+/opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
 ```
 
 Resultado esperado:
@@ -207,7 +322,9 @@ Resultado esperado:
 - RF03: `4 passed` (puede variar si se amplían tests)
 - RF04: `6 passed` (puede variar si se amplían tests)
 - RF05: `6 passed` (puede variar si se amplían tests)
-- RF06: `11 passed` (puede variar si se amplían tests)
+- RF06: `6 passed` (puede variar si se amplían tests)
+- RF07: `6 passed` (puede variar si se amplían tests)
+- RF08: `6 passed` (puede variar si se amplían tests)
 
 ## Notas
 

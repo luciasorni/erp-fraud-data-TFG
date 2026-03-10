@@ -449,7 +449,7 @@ backlog:
     title: Implementar generador de reporte MD a partir de report.json
     estimate_hours: 1.2
   - id: RF08-04
-    title: Implementar opcional render MD→HTML (si decides) y guardarlo en run_results
+    title: Implementar opcional render MD→HTML y guardarlo en run_results
     estimate_hours: 1.0
   - id: RF08-05
     title: Incluir enlaces/rutas a outputs por test y a data_dictionary/schema_summary

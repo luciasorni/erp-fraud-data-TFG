@@ -1,0 +1,36 @@
+# RF07-01 - Formato de pesos para agregación/ranking
+#
+# Objetivo:
+# - Definir pesos base por severidad
+# - Permitir override por test_id del catálogo
+#
+# Nota:
+# - Este fichero solo define configuración (no ejecuta scoring por sí mismo).
+
+schema_version: "1.0"
+
+ranking:
+  # Número máximo de entidades a incluir en la salida final de ranking.
+  top_k: 20
+
+defaults:
+  # Peso por severidad del hallazgo/test.
+  severity_weights:
+    low: 1.0
+    medium: 2.0
+    high: 3.0
+    critical: 5.0
+
+  # Peso usado si una severidad no está informada/reconocida.
+  fallback_weight: 1.0
+
+overrides:
+  # Override por test_id (tiene prioridad sobre defaults.severity_weights)
+  # test_id debe existir en tests/catalog/.
+  by_test_id:
+    TST-DUPLICATE-POSTINGS:
+      weight: 2.5
+      reason: "Riesgo directo de pagos duplicados en P2P."
+    TST-UNUSUAL-AMOUNT-BY-VENDOR:
+      weight: 1.8
+      reason: "Importes atípicos: señal útil con mayor tasa de revisión manual."
