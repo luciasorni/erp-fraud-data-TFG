@@ -131,6 +131,39 @@ def _validate_logic(logic: Any, path: Path) -> None:
             raise TestSpecValidationError(f"{path}: 'logic.{optional_key}' debe ser string si se informa")
 
 
+def _validate_expected_output(expected_output: Any, path: Path) -> None:
+    if not isinstance(expected_output, dict):
+        raise TestSpecValidationError(f"{path}: 'expected_output' debe ser objeto")
+    primary_entity = expected_output.get("primary_entity")
+    if not isinstance(primary_entity, str) or not primary_entity.strip():
+        raise TestSpecValidationError(
+            f"{path}: 'expected_output.primary_entity' debe ser string no vacío"
+        )
+    finding_fields = expected_output.get("finding_fields")
+    if not isinstance(finding_fields, list) or len(finding_fields) == 0:
+        raise TestSpecValidationError(
+            f"{path}: 'expected_output.finding_fields' debe ser lista no vacía"
+        )
+    for idx, field in enumerate(finding_fields):
+        if not isinstance(field, str) or not field.strip():
+            raise TestSpecValidationError(
+                f"{path}: 'expected_output.finding_fields[{idx}]' debe ser string no vacío"
+            )
+    notes = expected_output.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        raise TestSpecValidationError(f"{path}: 'expected_output.notes' debe ser string si se informa")
+
+
+def _validate_evidence_columns(evidence_columns: Any, path: Path) -> None:
+    if not isinstance(evidence_columns, list) or len(evidence_columns) == 0:
+        raise TestSpecValidationError(f"{path}: 'evidence_columns' debe ser lista no vacía")
+    for idx, column in enumerate(evidence_columns):
+        if not isinstance(column, str) or not column.strip():
+            raise TestSpecValidationError(
+                f"{path}: 'evidence_columns[{idx}]' debe ser string no vacío"
+            )
+
+
 def validate_test_spec(spec: dict[str, Any], *, source_path: str | Path = "<memory>") -> dict[str, Any]:
     """Valida un TestSpec y devuelve el mismo objeto si es válido."""
     path = Path(source_path)
@@ -149,13 +182,15 @@ def validate_test_spec(spec: dict[str, Any], *, source_path: str | Path = "<memo
         raise TestSpecValidationError(f"{path}: 'version' debe ser string no vacío")
     _validate_pattern(version, r"^[0-9]+\.[0-9]+\.[0-9]+$", "version", path)
 
-    for field in ("name", "fraud_type", "description"):
+    for field in ("name", "fraud_type", "process_step", "description"):
         value = spec.get(field)
         if not isinstance(value, str) or not value.strip():
             raise TestSpecValidationError(f"{path}: '{field}' debe ser string no vacío")
 
     _validate_source(spec.get("source"), path)
     _validate_data_requirements(spec.get("data_requirements"), path)
+    _validate_expected_output(spec.get("expected_output"), path)
+    _validate_evidence_columns(spec.get("evidence_columns"), path)
     _validate_logic(spec.get("logic"), path)
 
     enabled = spec.get("enabled")

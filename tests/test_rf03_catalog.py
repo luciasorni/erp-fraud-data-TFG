@@ -24,6 +24,10 @@ def test_catalog_loads_two_valid_specs() -> None:
     specs = load_test_specs_from_catalog("tests/catalog", validate_schema=True)
     ids = sorted(str(spec.get("id")) for spec in specs)
     assert ids == ["TST-DUPLICATE-POSTINGS", "TST-UNUSUAL-AMOUNT-BY-VENDOR"]
+    for spec in specs:
+        assert isinstance(spec.get("process_step"), str)
+        assert isinstance(spec.get("expected_output"), dict)
+        assert isinstance(spec.get("evidence_columns"), list)
 
 
 def test_validate_test_spec_rejects_inconsistent_required_columns_exact() -> None:
@@ -32,6 +36,7 @@ def test_validate_test_spec_rejects_inconsistent_required_columns_exact() -> Non
         "version": "1.0.0",
         "name": "Bad exact columns",
         "fraud_type": "quality",
+        "process_step": "invoice_posting",
         "description": "Invalid spec for testing",
         "source": {"catalog": "acfe_coso", "reference": "dummy"},
         "data_requirements": {
@@ -43,9 +48,28 @@ def test_validate_test_spec_rejects_inconsistent_required_columns_exact() -> Non
                 }
             ]
         },
+        "expected_output": {"primary_entity": "invoice_line", "finding_fields": ["kreditor"]},
+        "evidence_columns": ["Kreditor"],
         "logic": {"implementation_type": "sql"},
     }
     with pytest.raises(CatalogSpecValidationError, match="required_columns_exact"):
+        validate_test_spec(bad_spec)
+
+
+def test_validate_test_spec_rejects_missing_new_required_fields() -> None:
+    bad_spec = {
+        "id": "TST-MISSING-NEW-FIELDS",
+        "version": "1.0.0",
+        "name": "Missing process metadata",
+        "fraud_type": "quality",
+        "description": "Invalid spec for testing",
+        "source": {"catalog": "acfe_coso", "reference": "dummy"},
+        "data_requirements": {
+            "tables": [{"table": "fraud_1", "required_columns": ["A"]}],
+        },
+        "logic": {"implementation_type": "sql"},
+    }
+    with pytest.raises(CatalogSpecValidationError, match="faltan campos obligatorios"):
         validate_test_spec(bad_spec)
 
 

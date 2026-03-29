@@ -15,8 +15,11 @@ TEST_SPEC_SCHEMA: dict[str, object] = {
         "version",
         "name",
         "fraud_type",
+        "process_step",
         "description",
         "source",
+        "expected_output",
+        "evidence_columns",
         "data_requirements",
         "logic",
     ],
@@ -25,6 +28,7 @@ TEST_SPEC_SCHEMA: dict[str, object] = {
         "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
         "name": {"type": "string", "minLength": 1},
         "fraud_type": {"type": "string", "minLength": 1},
+        "process_step": {"type": "string", "minLength": 1},
         "description": {"type": "string", "minLength": 1},
         "source": {
             "type": "object",
@@ -61,6 +65,24 @@ TEST_SPEC_SCHEMA: dict[str, object] = {
                     },
                 }
             },
+        },
+        "expected_output": {
+            "type": "object",
+            "required": ["primary_entity", "finding_fields"],
+            "properties": {
+                "primary_entity": {"type": "string", "minLength": 1},
+                "finding_fields": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {"type": "string", "minLength": 1},
+                },
+                "notes": {"type": "string"},
+            },
+        },
+        "evidence_columns": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
         },
         "logic": {
             "type": "object",

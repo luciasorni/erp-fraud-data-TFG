@@ -18,14 +18,16 @@ Todos los `TestSpec` deben incluir estos campos:
    Nombre corto legible.
 4. `fraud_type` (`string`)  
    Tipo de fraude o riesgo principal (por ejemplo: `duplicate_payment`).
-5. `description` (`string`)  
+5. `process_step` (`string`)  
+   Paso del proceso P2P al que aplica el control (por ejemplo: `invoice_posting`).
+6. `description` (`string`)  
    Qué detecta el test y su intención.
-6. `source` (`object`)  
+7. `source` (`object`)  
    Metadatos de procedencia del test:
    - `catalog` (`string`) obligatorio
    - `reference` (`string`) obligatorio
    - `url` (`string`) opcional
-7. `data_requirements` (`object`)  
+8. `data_requirements` (`object`)  
    Requisitos de datos para ejecutar el test:
    - `tables` (`array`) obligatorio
    - cada elemento debe incluir:
@@ -33,7 +35,14 @@ Todos los `TestSpec` deben incluir estos campos:
      - `required_columns` (`array[string]`)
      - `required_columns_exact` (`array[string]`) opcional pero recomendado  
        Si se informa, debe contener exactamente los mismos campos que `required_columns`.
-8. `logic` (`object`)  
+9. `expected_output` (`object`)  
+   Contrato esperado de salida del test:
+   - `primary_entity` (`string`) obligatorio
+   - `finding_fields` (`array[string]`) obligatorio
+   - `notes` (`string`) opcional
+10. `evidence_columns` (`array[string]`)  
+   Columnas de evidencia mínimas que debe exponer el hallazgo.
+11. `logic` (`object`)  
    Descripción técnica de implementación:
    - `implementation_type` (`string`) obligatorio (`sql` o `python`)
    - `description` (`string`) opcional
@@ -53,6 +62,7 @@ id: TST-DUPLICATE-INVOICE
 version: 1.0.0
 name: Duplicate invoice amount+vendor+date
 fraud_type: duplicate_payment
+process_step: invoice_posting
 description: Detecta potenciales pagos duplicados por proveedor, importe y fecha.
 source:
   catalog: acfe_coso
@@ -69,6 +79,17 @@ data_requirements:
         - Vendor_Number
         - Amount_Applied
         - Posting_Date
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - vendor_number
+    - amount_applied
+    - posting_date
+  notes: Salida a nivel de línea de factura.
+evidence_columns:
+  - Vendor_Number
+  - Amount_Applied
+  - Posting_Date
 logic:
   implementation_type: sql
   description: Agrupar por vendor+amount+posting_date y filtrar count > 1.

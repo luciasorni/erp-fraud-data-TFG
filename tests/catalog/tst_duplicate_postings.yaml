@@ -2,6 +2,7 @@ id: TST-DUPLICATE-POSTINGS
 version: 1.0.0
 name: Duplicate postings by vendor and amount
 fraud_type: duplicate_payment
+process_step: invoice_posting
 description: Detecta asientos potencialmente duplicados por proveedor, documento y importe.
 source:
   catalog: acfe_coso
@@ -20,6 +21,20 @@ data_requirements:
         - Belegnummer
         - Position
         - Betrag
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - position
+    - betrag
+    - duplicate_count
+  notes: Cada fila representa un grupo con potencial duplicado (count > 1).
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Position
+  - Betrag
 logic:
   implementation_type: sql
   description: Agrupar por proveedor, documento, posición e importe y filtrar grupos con COUNT > 1.

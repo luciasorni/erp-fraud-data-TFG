@@ -2,6 +2,7 @@ id: TST-UNUSUAL-AMOUNT-BY-VENDOR
 version: 1.0.0
 name: Unusual amount by vendor
 fraud_type: amount_anomaly
+process_step: invoice_posting
 description: Detecta importes atípicos por proveedor para priorizar revisión manual.
 source:
   catalog: acfe_coso
@@ -18,6 +19,21 @@ data_requirements:
         - Kreditor
         - Betrag
         - Transaktionsart
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - transaktionsart
+    - betrag
+    - n_rows
+    - mean_betrag
+    - std_betrag
+    - z_score
+  notes: Devuelve transacciones con z-score por encima del umbral definido.
+evidence_columns:
+  - Kreditor
+  - Betrag
+  - Transaktionsart
 logic:
   implementation_type: sql
   description: Calcular distribución por proveedor y marcar importes fuera de umbral estadístico.
