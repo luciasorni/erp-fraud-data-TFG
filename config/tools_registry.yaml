@@ -1,0 +1,179 @@
+version: 1.0.0
+default_timeout_ms: 5000
+
+tools:
+  DuckDBQuery:
+    tool_id: DuckDBQuery
+    enabled: true
+    description: >
+      Ejecuta consultas SQL solo mediante plantillas registradas (query_template_id)
+      y parámetros tipados. No permite SQL libre.
+    inputs:
+      type: object
+      required:
+        - query_template_id
+        - params
+      properties:
+        query_template_id:
+          type: string
+          min_length: 1
+          description: Identificador de plantilla SQL aprobada.
+        params:
+          type: object
+          description: Parámetros nombrados para la plantilla.
+    outputs:
+      type: object
+      required:
+        - rows
+        - columns
+        - row_count
+      properties:
+        rows:
+          type: array
+        columns:
+          type: array
+          items:
+            type: string
+        row_count:
+          type: integer
+    limits:
+      timeout_ms: 5000
+      max_rows: 5000
+      allow_sql_free_text: false
+      allow_only_registered_templates: true
+
+  Schema:
+    tool_id: Schema
+    enabled: true
+    description: >
+      Devuelve metadatos de esquema y diccionario de datos para validación de
+      columnas, tablas y tipos.
+    inputs:
+      type: object
+      required:
+        - source
+      properties:
+        source:
+          type: string
+          enum:
+            - schema_summary
+            - data_dictionary
+        table:
+          type: string
+        column:
+          type: string
+    outputs:
+      type: object
+      required:
+        - source
+        - payload
+      properties:
+        source:
+          type: string
+        payload:
+          type: object
+    limits:
+      timeout_ms: 2000
+      max_payload_kb: 1024
+
+  TestCatalog:
+    tool_id: TestCatalog
+    enabled: true
+    description: >
+      Lee TestSpecs versionados y permite buscar tests válidos por id/tags/fraud_type.
+    inputs:
+      type: object
+      properties:
+        test_id:
+          type: string
+        fraud_type:
+          type: string
+        tag:
+          type: string
+        include_disabled:
+          type: boolean
+          default: false
+    outputs:
+      type: object
+      required:
+        - tests
+        - count
+      properties:
+        tests:
+          type: array
+        count:
+          type: integer
+    limits:
+      timeout_ms: 2000
+      max_tests_returned: 200
+
+  KBSearch:
+    tool_id: KBSearch
+    enabled: false
+    description: >
+      Búsqueda opcional en base de conocimiento local (documentación/reportes).
+      Deshabilitada por defecto en MVP.
+    inputs:
+      type: object
+      required:
+        - query
+      properties:
+        query:
+          type: string
+          min_length: 3
+        top_k:
+          type: integer
+          default: 5
+    outputs:
+      type: object
+      required:
+        - hits
+        - count
+      properties:
+        hits:
+          type: array
+        count:
+          type: integer
+    limits:
+      timeout_ms: 3000
+      max_top_k: 20
+
+  RunStore:
+    tool_id: RunStore
+    enabled: true
+    description: >
+      Lee/escribe artefactos del run actual (metadatos, test_runs, ranking, report)
+      en rutas permitidas.
+    inputs:
+      type: object
+      required:
+        - operation
+      properties:
+        operation:
+          type: string
+          enum:
+            - read
+            - write
+            - list
+        path:
+          type: string
+          description: Ruta relativa dentro de run_results/<run_id>/.
+        payload:
+          type: object
+    outputs:
+      type: object
+      required:
+        - operation
+        - status
+      properties:
+        operation:
+          type: string
+        status:
+          type: string
+        path:
+          type: string
+    limits:
+      timeout_ms: 3000
+      allowed_path_prefixes:
+        - run_results/
+      allow_outside_run_results: false

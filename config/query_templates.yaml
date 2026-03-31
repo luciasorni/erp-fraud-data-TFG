@@ -1,0 +1,37 @@
+version: 1.0.0
+
+templates:
+  q_duplicate_postings_groups_v1:
+    description: Grupos potencialmente duplicados por proveedor/documento/posición/importe.
+    sql: |
+      SELECT
+        CAST("Kreditor" AS VARCHAR) AS kreditor,
+        CAST("Belegnummer" AS VARCHAR) AS belegnummer,
+        CAST("Position" AS VARCHAR) AS position,
+        CAST("Betrag" AS DOUBLE) AS betrag,
+        COUNT(*) AS duplicate_count
+      FROM "main"."fraud_1"
+      GROUP BY 1,2,3,4
+      HAVING COUNT(*) > ?
+      ORDER BY duplicate_count DESC, kreditor, belegnummer, position
+    required_params:
+      - min_duplicate_count
+    max_rows: 5000
+
+  q_vendor_amount_above_v1:
+    description: Filtra transacciones por proveedor e importe mínimo.
+    sql: |
+      SELECT
+        CAST("Kreditor" AS VARCHAR) AS kreditor,
+        CAST("Belegnummer" AS VARCHAR) AS belegnummer,
+        CAST("Position" AS VARCHAR) AS position,
+        CAST("Betrag" AS DOUBLE) AS betrag,
+        CAST("Transaktionsart" AS VARCHAR) AS transaktionsart
+      FROM "main"."fraud_1"
+      WHERE CAST("Kreditor" AS VARCHAR) = ?
+        AND CAST("Betrag" AS DOUBLE) >= ?
+      ORDER BY betrag DESC, belegnummer, position
+    required_params:
+      - kreditor
+      - min_amount
+    max_rows: 2000

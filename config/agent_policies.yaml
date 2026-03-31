@@ -1,0 +1,120 @@
+version: 1.0.0
+default_policy:
+  mode: deny_by_default
+  max_tool_calls: 10
+  max_total_time_ms: 30000
+  on_denied_tool: fail
+  on_schema_guard_error: fail
+
+agents:
+  test_executor:
+    description: Ejecuta tests del catálogo sobre DuckDB sin SQL libre.
+    allowed_tools:
+      - DuckDBQuery
+      - TestCatalog
+      - Schema
+      - RunStore
+    denied_tools:
+      - KBSearch
+    limits:
+      max_tool_calls: 20
+      max_total_time_ms: 60000
+      max_calls_per_tool:
+        DuckDBQuery: 12
+        TestCatalog: 4
+        Schema: 4
+        RunStore: 8
+    constraints:
+      allow_sql_free_text: false
+      require_registered_query_templates: true
+      require_schema_guard_validation: true
+
+  scorer_classifier:
+    description: Agrega hallazgos y calcula score/tipología sin tocar datos crudos.
+    allowed_tools:
+      - RunStore
+      - Schema
+      - TestCatalog
+    denied_tools:
+      - DuckDBQuery
+      - KBSearch
+    limits:
+      max_tool_calls: 12
+      max_total_time_ms: 30000
+      max_calls_per_tool:
+        RunStore: 8
+        Schema: 3
+        TestCatalog: 2
+    constraints:
+      require_schema_guard_validation: true
+
+  expert_recommender:
+    description: Propone siguientes tests del catálogo, no ejecuta queries.
+    allowed_tools:
+      - TestCatalog
+      - Schema
+      - RunStore
+    denied_tools:
+      - DuckDBQuery
+    limits:
+      max_tool_calls: 10
+      max_total_time_ms: 20000
+      max_calls_per_tool:
+        TestCatalog: 5
+        Schema: 3
+        RunStore: 4
+    constraints:
+      allow_kbsearch_if_enabled: true
+      recommendations_only: true
+      require_schema_guard_validation: true
+
+  explainer:
+    description: Redacta explicación con evidencias existentes del run.
+    allowed_tools:
+      - Schema
+      - RunStore
+    denied_tools:
+      - DuckDBQuery
+      - TestCatalog
+      - KBSearch
+    limits:
+      max_tool_calls: 8
+      max_total_time_ms: 20000
+      max_calls_per_tool:
+        Schema: 4
+        RunStore: 4
+    constraints:
+      require_schema_guard_validation: true
+      must_cite_existing_columns_and_keys: true
+
+  exporter:
+    description: Exporta artefactos CSV/JSON/MD a rutas controladas del run.
+    allowed_tools:
+      - RunStore
+    denied_tools:
+      - DuckDBQuery
+      - Schema
+      - TestCatalog
+      - KBSearch
+    limits:
+      max_tool_calls: 8
+      max_total_time_ms: 15000
+      max_calls_per_tool:
+        RunStore: 8
+    constraints:
+      write_only_inside_run_results: true
+
+nodes:
+  run_tests:
+    agent_id: test_executor
+  score:
+    agent_id: scorer_classifier
+  expert:
+    agent_id: expert_recommender
+  explain:
+    agent_id: explainer
+  export:
+    agent_id: exporter
+
+features:
+  enable_kbsearch: false
