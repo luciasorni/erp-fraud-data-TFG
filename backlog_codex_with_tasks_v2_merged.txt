@@ -1,22 +1,13 @@
-generated_at: '2026-03-05T00:00:00'
-project: ERP Fraud Analytics (P2P/O2C) — Backlog (Multi-agente) v2
-merge_sources:
-- backlog_codex_with_tasks.txt
-- provided_backlog_v2_user_input_2026-03-05
-backlog:
+requirements:
 - id: RF00
-  title: Alcance, no-goals y entregables por sprint
-  user_story: RF00 — Alcance, no-goals y entregables por sprint
-  name_v2: RF00 — Alcance, no-goals y entregables por sprint
-  description: '[Arquitectura] Documento de alcance: 1 frase evaluable, objetivos/no-objetivos y entregables por sprint (demo,
+  name: RF00 — Alcance, no-goals y entregables por sprint
+  descripcion: '[Arquitectura] Documento de alcance: 1 frase evaluable, objetivos/no-objetivos y entregables por sprint (demo,
     repo, docs, métricas).'
-  acceptance_criteria: 'Existe docs/scope.md con: 1 frase evaluable, lista de no-goals (p.ej. sin RAG entero, sin generación
+  criterio_validacion: 'Existe docs/scope.md con: 1 frase evaluable, lista de no-goals (p.ej. sin RAG entero, sin generación
     automática de tests), entregables por sprint y criterios de éxito. Está referenciado en README.'
-  priority: Must
-  risk: Bajo
-  estimate_hours: 3
-  phase: Fase0
-  commit_date: ''
+  estimador: 3
+  prioridad: Must
+  riesgo: Bajo
   tasks:
   - id: RF00-01
     title: Escribir 1 frase evaluable del TFG (producto final) y validarla con el tutor (en scope.md)
@@ -37,21 +28,27 @@ backlog:
   - id: RF00-06
     title: Añadir checklist de revisión de alcance (cada sprint comprobar que no se mete scope prohibido)
     estimate_hours: 0.5
+  - id: RF00-07
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF00-08
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF00-09
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
 - id: RF00b
-  title: Mapa de proceso + matriz Hipótesis↔Test↔Evidencia
-  user_story: RF00b — Mapa de proceso + matriz Hipótesis↔Test↔Evidencia
-  name_v2: RF00b — Mapa de proceso + matriz Hipótesis↔Test↔Evidencia
-  description: '[Arquitectura] Mapea P2P (facturas) y deriva hipótesis y tests; mantiene una matriz trazable hipótesis→tests→columnas-evidencia→fraud_type.'
-  acceptance_criteria: Existe docs/p2p_process.md (diagrama) y docs/hypothesis_matrix.csv|md. Cada TestSpec referencia hypothesis_id
+  name: RF00b — Mapa de proceso + matriz Hipótesis↔Test↔Evidencia
+  descripcion: '[Arquitectura] Mapea P2P (facturas) y deriva hipótesis y tests; mantiene una matriz trazable hipótesis→tests→columnas-evidencia→fraud_type.'
+  criterio_validacion: Existe docs/p2p_process.md (diagrama) y docs/hypothesis_matrix.csv|md. Cada TestSpec referencia hypothesis_id
     y evidence_columns válidas. El reporte enlaza la matriz.
-  priority: Must
-  risk: Medio
-  estimate_hours: 5
-  phase: Fase0
-  commit_date: ''
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF00b-01
-    title: 'Crear diagrama P2P (Mermaid) centrado en facturas: PO→GR→Invoice→Payment (mínimo)'
+    title: 'Diagrama P2P centrado en facturas: PO→GR→Invoice→Payment (mínimo)'
     estimate_hours: 1.0
   - id: RF00b-02
     title: Listar “desviaciones” observables con el dataset (qué campos/joins las evidencian)
@@ -71,26 +68,34 @@ backlog:
   - id: RF00b-07
     title: Enlazar la matriz y el diagrama en el reporte final (report.md/html)
     estimate_hours: 0.6
+  - id: RF00b-08
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF00b-09
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF00b-10
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
 - id: RF01
-  title: Carga de datos P2P en DuckDB (ingesta reproducible)
-  user_story: RF01 — Carga de datos P2P en DuckDB (ingesta reproducible)
-  description: Importa datasets P2P a DuckDB desde zip. Genera dataset_hash, schema_summary y metadatos de run.
-  acceptance_criteria: 'Dado un zip válido, al ejecutar el comando único se crea/actualiza erp.duckdb y se generan: run_metadata.json
+  name: RF01 — Carga de datos P2P en DuckDB (ingesta reproducible)
+  descripcion: '[Fase 1] Importa datasets P2P a DuckDB desde zip. Genera dataset_hash, schema_summary y metadatos de run.'
+  criterio_validacion: 'Dado un zip válido, al ejecutar el comando único se crea/actualiza erp.duckdb y se generan: run_metadata.json
     (run_id, dataset_hash), schema_summary.json (tablas/columnas/tipos) y logs por tabla sin intervención manual.'
-  priority: Must
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase1
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF01-01
     title: 'Crear estructura de proyecto: src/erp_fraud/ingest, src/erp_fraud/storage, src/erp_fraud/cli'
-    estimate_hours: 1.5
+    estimate_hours: 0.5
   - id: RF01-02
     title: Definir constante RUTA_SALIDA y convención de carpetas run_results/<run_id>/
-    estimate_hours: 0.8
+    estimate_hours: 0.5
   - id: RF01-03
     title: 'Implementar lectura del zip: localizar carpeta joint_datasets dentro del zip y listar ficheros'
-    estimate_hours: 1.2
+    estimate_hours: 1.0
   - id: RF01-04
     title: Implementar validación de existencia de ficheros esperados (fallo controlado si falta alguno)
     estimate_hours: 1.0
@@ -131,21 +136,21 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF01-17
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF01-18
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF02
-  title: Inventario de datos y data dictionary mínimo
-  user_story: RF02 — Inventario de datos y data dictionary mínimo
-  description: Genera y mantiene un diccionario mínimo de datos usados por los tests (campos, tipo, descripción, ejemplos).
-  acceptance_criteria: Existe data_dictionary.(json|md) con todos los campos requeridos por los tests; el validador falla
+  name: RF02 — Inventario de datos y data dictionary mínimo
+  descripcion: '[Fase 1] Genera y mantiene un diccionario mínimo de datos usados por los tests (campos, tipo, descripción,
+    ejemplos).'
+  criterio_validacion: Existe data_dictionary.(json|md) con todos los campos requeridos por los tests; el validador falla
     si un test referencia un campo no documentado.
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF02-01
     title: 'Definir formato del diccionario: data_dictionary.json (máquina) + data_dictionary.md (humano)'
@@ -175,22 +180,21 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF02-10
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF02-11
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF02b
-  title: Validación técnica del dataset (robustez)
-  user_story: RF02b — Validación técnica del dataset (robustez)
-  description: Ejecuta validaciones técnicas antes de los tests (columnas requeridas, parseos, nulos, rangos básicos) y genera
-    reporte.
-  acceptance_criteria: Si falta una columna requerida o hay errores de parseo críticos, el run se marca ERROR y se genera
+  name: RF02b — Validación técnica del dataset (robustez)
+  descripcion: '[Fase 1] Ejecuta validaciones técnicas antes de los tests (columnas requeridas, parseos, nulos, rangos básicos)
+    y genera reporte.'
+  criterio_validacion: Si falta una columna requerida o hay errores de parseo críticos, el run se marca ERROR y se genera
     data_validation_report.json; si solo hay avisos (nulos/rangos), el run continúa y el reporte los lista.
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF02b-01
     title: Definir qué es 'crítico' vs 'warning' en validación técnica (p.ej. missing columns => crítico)
@@ -223,21 +227,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF02b-11
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF02b-12
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF03
-  title: Catálogo de tests inicial (>=2) versionado
-  user_story: RF03 — Catálogo de tests inicial (>=2) versionado
-  description: Define un catálogo de tests (YAML/JSON) con 2 tests iniciales y sus requisitos de datos y lógica.
-  acceptance_criteria: Hay 2 TestSpec válidos (id, version, fraud_type, data_requirements). Ambos se ejecutan y producen salida
+  name: RF03 — Catálogo de tests inicial (>=2) versionado
+  descripcion: '[Fase 1] Define un catálogo de tests (YAML/JSON) con 2 tests iniciales y sus requisitos de datos y lógica.'
+  criterio_validacion: Hay 2 TestSpec válidos (id, version, fraud_type, data_requirements). Ambos se ejecutan y producen salida
     estándar (aunque sea vacía).
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF03-01
     title: Definir esquema TestSpec (campos obligatorios, tipos) y documentarlo en docs/tests.md
@@ -263,25 +266,28 @@ backlog:
   - id: RF03-08
     title: Añadir versión por test y changelog de catálogo (tests/CHANGELOG.md)
     estimate_hours: 0.8
-  - id: RF03-09
+  - id: RF03-12
+    title: Actualizar los 2 TestSpec YAML para incluir process_step + expected_output + evidence_columns y ejecutar la validación
+      del catálogo (fallar si falta algo)
+    estimate_hours: 0.8
+  - id: RF03-13
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: RF03-10
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+  - id: RF03-14
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: RF03-11
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+  - id: RF03-15
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF04
-  title: Motor de ejecución seguro (lista blanca, tiempos, errores)
-  user_story: RF04 — Motor de ejecución seguro (lista blanca, tiempos, errores)
-  description: Ejecuta solo tests del catálogo, mide tiempos por test, captura errores y sigue con el resto.
-  acceptance_criteria: No es posible ejecutar SQL libre. Si un test falla, el run continúa y test_runs.json registra status,
+  name: RF04 — Motor de ejecución seguro (lista blanca, tiempos, errores)
+  descripcion: '[Fase 1] Ejecuta solo tests del catálogo, mide tiempos por test, captura errores y sigue con el resto.'
+  criterio_validacion: No es posible ejecutar SQL libre. Si un test falla, el run continúa y test_runs.json registra status,
     error_summary y duration_ms por test.
-  priority: Must
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase1
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF04-01
     title: Crear clase TestRunner con método run(test_spec) y run_all(selected_tests)
@@ -308,22 +314,21 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF04-09
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF04-10
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF05
-  title: Salida estándar por test con evidencias
-  user_story: RF05 — Salida estándar por test con evidencias
-  description: Estandariza el formato de resultados por test (entity_key, keys, métricas y columnas-evidencia) y lo persiste
-    por test.
-  acceptance_criteria: Cada test produce un fichero por run con esquema validado (sin columnas faltantes) y con evidence_columns
+  name: RF05 — Salida estándar por test con evidencias
+  descripcion: '[Fase 1] Estandariza el formato de resultados por test (entity_key, keys, métricas y columnas-evidencia) y
+    lo persiste por test.'
+  criterio_validacion: Cada test produce un fichero por run con esquema validado (sin columnas faltantes) y con evidence_columns
     referenciando columnas reales. Falla si el esquema no se cumple.
-  priority: Must
-  risk: Alto
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF05-01
     title: Definir ResultSchema (campos obligatorios y tipos) en un módulo común
@@ -347,21 +352,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF05-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF05-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF06
-  title: Trazabilidad y drilldown bidireccional
-  user_story: RF06 — Trazabilidad y drilldown bidireccional
-  description: Permite reconstruir el origen de un hallazgo (filas y contexto) a partir del reporte.
-  acceptance_criteria: Para un hallazgo del ranking, el comando drilldown devuelve filas origen en DuckDB usando solo plantillas
+  name: RF06 — Trazabilidad y drilldown bidireccional
+  descripcion: '[Fase 1] Permite reconstruir el origen de un hallazgo (filas y contexto) a partir del reporte.'
+  criterio_validacion: Para un hallazgo del ranking, el comando drilldown devuelve filas origen en DuckDB usando solo plantillas
     seguras y claves almacenadas en keys.
-  priority: Must
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase1
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF06-01
     title: Definir 'keys mínimas' por entidad (qué identificadores guardamos para drilldown)
@@ -388,21 +392,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF06-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF06-10
-    title: Actualizar documentación (README/docs) con ejemplo completo de drilldown
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF07
-  title: Agregador y ranking (top sospechosos)
-  user_story: RF07 — Agregador y ranking (top sospechosos)
-  description: Agrega hallazgos de múltiples tests y produce un ranking configurado por pesos.
-  acceptance_criteria: Se genera ranking con score_total y lista de tests disparados por entity_key. Los pesos se configuran
+  name: RF07 — Agregador y ranking (top sospechosos)
+  descripcion: '[Fase 1] Agrega hallazgos de múltiples tests y produce un ranking configurado por pesos.'
+  criterio_validacion: Se genera ranking con score_total y lista de tests disparados por entity_key. Los pesos se configuran
     en weights.yaml y cambian el ranking de forma reproducible.
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF07-01
     title: Definir formato weights.yaml con pesos por severidad y override por test_id
@@ -423,21 +426,23 @@ backlog:
     title: Añadir pruebas unitarias del agregador (mismos inputs => mismo ranking)
     estimate_hours: 1.2
   - id: RF07-07
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
   - id: RF07-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF07-09
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF08
-  title: Reporte MVP (JSON + MD/HTML)
-  user_story: RF08 — Reporte MVP (JSON + MD/HTML)
-  description: Genera reporte final legible (MD/HTML) y uno estructurado (JSON) con enlaces a evidencias.
-  acceptance_criteria: 'Se generan report.json y report.md/html con: resumen, tests OK/ERROR, top-k, anexos por test, rutas
+  name: RF08 — Reporte MVP (JSON + MD/HTML)
+  descripcion: '[Fase 1] Genera reporte final legible (MD/HTML) y uno estructurado (JSON) con enlaces a evidencias.'
+  criterio_validacion: 'Se generan report.json y report.md/html con: resumen, tests OK/ERROR, top-k, anexos por test, rutas
     a outputs y metadatos (run_id, dataset_hash).'
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF08-01
     title: Definir estructura report.json (metadatos + resumen + ranking + rutas + errores)
@@ -449,7 +454,7 @@ backlog:
     title: Implementar generador de reporte MD a partir de report.json
     estimate_hours: 1.2
   - id: RF08-04
-    title: Implementar opcional render MD→HTML y guardarlo en run_results
+    title: Implementar opcional render MD→HTML (si decido) y guardarlo en run_results
     estimate_hours: 1.0
   - id: RF08-05
     title: Incluir enlaces/rutas a outputs por test y a data_dictionary/schema_summary
@@ -464,21 +469,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF08-09
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF08-10
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF09
-  title: Pruebas de software (unit + integración) con pytest
-  user_story: RF09 — Pruebas de software (unit + integración) con pytest
-  description: Batería de pruebas automatizadas para asegurar estabilidad del pipeline.
-  acceptance_criteria: pytest pasa con unit tests de loaders/validadores y un smoke test end-to-end sobre un mini dataset/fixture;
+  name: RF09 — Pruebas de software (unit + integración) con pytest
+  descripcion: '[Fase 1] Batería de pruebas automatizadas para asegurar estabilidad del pipeline.'
+  criterio_validacion: pytest pasa con unit tests de loaders/validadores y un smoke test end-to-end sobre un mini dataset/fixture;
     el smoke genera outputs y reporte.
-  priority: Must
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase1
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF09-01
     title: Crear dataset mínimo de fixtures (zip pequeño) para pruebas end-to-end
@@ -508,18 +512,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF09-10
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF09-11
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF10
-  title: Comando único reproducible + documentación de ejecución
-  user_story: RF10 — Comando único reproducible + documentación de ejecución
-  description: Un único comando ejecuta el pipeline completo y README explica instalación/uso.
-  acceptance_criteria: README permite ejecutar el pipeline desde cero. El comando run produce siempre la misma estructura
+  name: RF10 — Comando único reproducible + documentación de ejecución
+  descripcion: '[Fase 1] Un único comando ejecuta el pipeline completo y README explica instalación/uso.'
+  criterio_validacion: README permite ejecutar el pipeline desde cero. El comando run produce siempre la misma estructura
     de carpetas y artefactos para el mismo dataset_hash.
-  priority: Must
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase1
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: RF10-01
     title: Implementar CLI principal 'erp_fraud run' que encadene ingesta→validación→tests→agregación→reporte
@@ -540,21 +546,23 @@ backlog:
     title: Probar desde cero en un entorno limpio (venv nuevo) y documentar cualquier pitfall
     estimate_hours: 1.5
   - id: RF10-07
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
   - id: RF10-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF10-09
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF11
-  title: Modelo canónico mínimo P2P/O2C
-  user_story: RF11 — Modelo canónico mínimo P2P/O2C
-  description: Define modelo canónico y entidades mínimas para P2P/O2C con campos y claves.
-  acceptance_criteria: Existe canonical_schema.(yaml|json) y documento explicativo. Un mapper convierte el dataset P2P a tablas
+  name: RF11 — Modelo canónico mínimo P2P/O2C
+  descripcion: '[Fase 2] Define modelo canónico y entidades mínimas para P2P/O2C con campos y claves.'
+  criterio_validacion: Existe canonical_schema.(yaml|json) y documento explicativo. Un mapper convierte el dataset P2P a tablas
     canónicas y pasa validación.
-  priority: Should
-  risk: Medio
-  estimate_points: 8.0
-  phase: Fase2
+  estimador: 8
+  prioridad: Should
+  riesgo: Medio
   tasks:
   - id: RF11-01
     title: 'Definir entidades canónicas (P2P/O2C): invoice, payment, vendor, employee, customer (mínimas)'
@@ -578,21 +586,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF11-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF11-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF12
-  title: Mapping configurable por empresa (mapping.yaml)
-  user_story: RF12 — Mapping configurable por empresa (mapping.yaml)
-  description: Permite ajustar nombres de columnas/tablas y castings por empresa sin tocar código.
-  acceptance_criteria: Con mapping.yaml alternativo, el pipeline carga y ejecuta tests siempre que se satisfagan campos obligatorios;
+  name: RF12 — Mapping configurable por empresa (mapping.yaml)
+  descripcion: '[Fase 2] Permite ajustar nombres de columnas/tablas y castings por empresa sin tocar código.'
+  criterio_validacion: Con mapping.yaml alternativo, el pipeline carga y ejecuta tests siempre que se satisfagan campos obligatorios;
     el validador informa faltantes.
-  priority: Should
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase2
+  estimador: 8
+  prioridad: Should
+  riesgo: Alto
   tasks:
   - id: RF12-01
     title: Definir formato mapping.yaml (tabla_origen→tabla_canónica, columna_origen→columna_canónica, casts)
@@ -613,21 +620,20 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF12-07
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF12-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF13
-  title: Catálogo ampliado (10–20 tests) con referencias ACFE
-  user_story: RF13 — Catálogo ampliado (10–20 tests) con referencias ACFE
-  description: Ampliación del catálogo con tests ACFE y documentación mínima por test.
-  acceptance_criteria: Hay 10–20 tests implementados, cada uno con acfe_reference, fraud_type, data_requirements y versión;
+  name: RF13 — Catálogo ampliado (10–20 tests) con referencias ACFE
+  descripcion: '[Fase 2] Ampliación del catálogo con tests ACFE y documentación mínima por test.'
+  criterio_validacion: Hay 10–20 tests implementados, cada uno con acfe_reference, fraud_type, data_requirements y versión;
     todos ejecutables y con salida estándar.
-  priority: Should
-  risk: Alto
-  estimate_points: 13.0
-  phase: Fase2
+  estimador: 13
+  prioridad: Should
+  riesgo: Alto
   tasks:
   - id: RF13-01
     title: Seleccionar lista de 10–20 tests (priorizados por viabilidad con el dataset) y documentarla
@@ -647,265 +653,443 @@ backlog:
   - id: RF13-06
     title: 'Añadir pruebas: al menos 1 unit test por familia de tests (validación de esquema)'
     estimate_hours: 2.0
-  - id: RF13-07
+  - id: RF13-10
+    title: 'Añadir validación automatizada del catálogo: todo TestSpec debe incluir fraud_type + process_step + expected_output
+      + evidence_columns; y evidence_columns deben existir en schema_summary (si falla, abortar)'
+    estimate_hours: 1.0
+  - id: RF13-11
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: RF13-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+  - id: RF13-12
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: RF13-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+  - id: RF13-13
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF14
-  title: Orquestación en grafo (LangGraph)
-  user_story: RF14 — Orquestación en grafo (LangGraph)
-  description: Orquesta el pipeline con nodos claros (load/select/run/aggregate/report) y estado trazable.
-  acceptance_criteria: El grafo ejecuta el pipeline y registra trazas por nodo (inputs/outputs/resumen). Reintentos/timeouts
-    configurables por nodo.
-  priority: Should
-  risk: Medio
-  estimate_points: 8.0
-  phase: Fase2
+  name: RF14 — Grafo multiagente en LangGraph (hipótesis → tests → explicación → scoring)
+  descripcion: '[Multiagente] Implementar el grafo en LangGraph con nodos/roles separados: ingest (no LLM), index KB (no LLM),
+    planificador de hipótesis (LLM+RAG), planificador de tests (LLM), ejecutor de tests (DuckDB), experto explicador (LLM),
+    scoring (LLM), persistencia.'
+  criterio_validacion: 'Existe grafo ejecutable end-to-end que produce: hypotheses.json, selected_tests.json, test_runs.json,
+    findings por test, explanation.md y score.json. Cada nodo queda trazado y su output se valida por esquema (sin inventar
+    tablas/columnas/test_id).'
+  estimador: 10
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF14-01
-    title: 'Definir estado del grafo (State): paths, config, tests_selected, results, errors, timings'
-    estimate_hours: 1.2
+    title: 'Definir GraphState (Pydantic/dataclass): schema, kb_status, hypotheses, selected_tests, findings, explanations,
+      scores, run_metadata'
+    estimate_hours: 1.5
   - id: RF14-02
-    title: 'Implementar nodos: load_data, validate_data, select_tests, run_tests, aggregate, report'
-    estimate_hours: 2.0
+    title: 'Crear estructura src/erp_fraud/graph/ con archivos: state.py, nodes.py, graph.py'
+    estimate_hours: 1.0
   - id: RF14-03
-    title: 'Implementar trazas por nodo: start/end, inputs/resumen de outputs (sin volcar datos masivos)'
-    estimate_hours: 1.2
+    title: 'Implementar nodo ingest_node (no LLM): llama a ingesta y guarda schema_summary en estado'
+    estimate_hours: 1.0
   - id: RF14-04
-    title: Configurar retries/timeouts por nodo (configurable) y manejo de fallos
+    title: 'Implementar nodo kb_index_node (no LLM): asegura que KB está indexada (RF15e) o la reconstruye si cambió hash'
     estimate_hours: 1.5
   - id: RF14-05
-    title: Integrar grafo con CLI run (flag --orchestrator graph|linear)
-    estimate_hours: 1.0
-  - id: RF14-06
-    title: 'Añadir prueba de integración: grafo produce mismos artefactos que el modo lineal'
+    title: 'Implementar nodo hypothesis_planner_node (LLM+RAG): genera lista de hipótesis estructuradas'
     estimate_hours: 2.0
+  - id: RF14-06
+    title: 'Implementar nodo test_planner_node (LLM): selecciona test_ids del catálogo (allowlist) para cada hipótesis'
+    estimate_hours: 1.5
   - id: RF14-07
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    title: 'Implementar nodo executor_node (no LLM): ejecuta test_ids en DuckDB y produce findings por test'
     estimate_hours: 1.5
   - id: RF14-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: 'Implementar nodo expert_explainer_node (LLM): explica resultados por tipología con guardrails'
+    estimate_hours: 1.5
   - id: RF14-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: 'Implementar nodo scoring_node (LLM): calcula probabilidades y genera score.json (RF18)'
+    estimate_hours: 1.5
+  - id: RF14-10
+    title: 'Implementar nodo persist_node: guarda outputs en run_results/<run_id>/ y escribe índices (manifest)'
+    estimate_hours: 1.0
+  - id: RF14-11
+    title: Conectar nodos con LangGraph (edges + conditional branches si falla validación)
+    estimate_hours: 2.0
+  - id: RF14-12
+    title: Añadir timeouts/retries por nodo (configurable) y registrar status por nodo en run_metadata
+    estimate_hours: 1.0
+  - id: RF14-13
+    title: 'Integration test: ejecutar grafo completo con fixture pequeño y LLM stub (respuestas deterministic)'
+    estimate_hours: 2.5
+  - id: RF14-14
+    title: 'Docs: docs/langgraph_architecture.md con diagrama del grafo y contratos de I/O por nodo'
+    estimate_hours: 1.2
+  - id: RF14-15
+    title: Escribir/actualizar tests de integración (pytest) para este requisito
+    estimate_hours: 2.0
+  - id: RF14-16
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF14-17
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+- id: RF14b
+  name: RF14b — Trazabilidad y evaluación con LangSmith (experimentos y comparativa de modelos)
+  descripcion: '[Multiagente/Observabilidad] Instrumentar LangGraph con LangSmith: trazas por nodo/agente, versionado de prompts,
+    datasets de evaluación y experimentos para probar distintos modelos (planificador y scoring).'
+  criterio_validacion: Cada ejecución se ve en LangSmith con árbol de llamadas. Existe dataset de evaluación y al menos 2
+    corridas comparativas con modelos distintos. Evals automáticos detectan alucinaciones (columnas/test_id inexistentes)
+    y miden correspondencia fraude (coherencia entre tests disparados y tipo final).
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
+  tasks:
+  - id: RF14b-01
+    title: Crear proyecto en LangSmith (nombre, tags) y guardar variables de entorno (LANGSMITH_API_KEY, PROJECT)
+    estimate_hours: 0.8
+  - id: RF14b-02
+    title: 'Instrumentar LangGraph: habilitar tracing para cada nodo (inputs/outputs resumidos)'
+    estimate_hours: 1.2
+  - id: RF14b-03
+    title: Versionar prompts (carpeta prompts/) y registrar prompt_hash en run_metadata
+    estimate_hours: 1.0
+  - id: RF14b-04
+    title: Registrar model_config (modelo, temperatura, max_tokens) por agente en run_metadata
+    estimate_hours: 0.8
+  - id: RF14b-05
+    title: 'Crear evaluadores automáticos: (a) schema/allowlist compliance, (b) ''no inventar columnas'', (c) citas KB presentes'
+    estimate_hours: 2.5
+  - id: RF14b-06
+    title: 'Definir métrica ''correspondencia de fraude'': coherencia entre fraud_type de tests disparados y label final del
+      scoring'
+    estimate_hours: 1.5
+  - id: RF14b-07
+    title: 'Crear dataset de evaluación en LangSmith (inputs: snapshot de findings + hipótesis + KB snippets)'
+    estimate_hours: 1.5
+  - id: RF14b-08
+    title: Ejecutar 2 experimentos con modelos distintos (planificador y scoring) y comparar outputs
+    estimate_hours: 2.0
+  - id: RF14b-09
+    title: Guardar informe de experimento (docs/langsmith_experiments.md) con capturas y conclusiones
+    estimate_hours: 1.2
+  - id: RF14b-10
+    title: 'Docs: cómo reproducir trazas localmente y en cloud (variables, comandos)'
+    estimate_hours: 1.0
+  - id: RF14b-11
+    title: Escribir/actualizar tests de integración (pytest) para este requisito
+    estimate_hours: 2.0
+  - id: RF14b-12
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF14b-13
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+- id: RF14c
+  name: RF14c — Productivización en cloud + trigger automático de re-ejecución (AWS + artefact hashing)
+  descripcion: '[Productivización AWS] Ejecutar el pipeline multiagente como un job en cloud: imagen Docker en ECR, ejecución
+    en ECS Fargate (run-task), inputs/outputs en S3 (runs/<run_id>/), logs en CloudWatch, secretos en Secrets Manager y permisos
+    IAM. Re-ejecutar automáticamente cuando cambien artefactos (catálogos/prompts/KB) usando artifact_hash + trigger (S3/EventBridge/Lambda).
+    Persistir/reutilizar índice Chroma (kb_index en S3) para RAG.'
+  criterio_validacion: 'Existe un despliegue mínimo en AWS: se puede lanzar un run con ''ecs run-task'' y genera outputs en
+    S3 + logs en CloudWatch + trazas en LangSmith. Un trigger (S3/EventBridge+Lambda) relanza el pipeline solo si artifact_hash
+    cambia (actualiza last_hash en S3). El índice Chroma se restaura/persiste desde S3. Documentación paso a paso (docs/cloud_aws.md)
+    + runbook de troubleshooting.'
+  estimador: 13
+  prioridad: Should
+  riesgo: Alto
+  tasks:
+  - id: RF14c-01
+    title: 'Definir arquitectura AWS mínima ''job'': ECR (imagen), ECS Fargate (run-task), S3 (inputs/outputs/state), CloudWatch
+      Logs, Secrets Manager, IAM roles'
+    estimate_hours: 1.5
+  - id: RF14c-02
+    title: Elegir región AWS y naming estándar (prefijo proyecto) para recursos; crear documento docs/aws_naming.md
+    estimate_hours: 0.6
+  - id: RF14c-03
+    title: 'Preparar credenciales locales: instalar AWS CLI, configurar perfil, validar con ''aws sts get-caller-identity'''
+    estimate_hours: 0.6
+  - id: RF14c-04
+    title: 'Definir estructura S3 (carpetas): inputs/datasets/, inputs/docs/, artifacts/prompts/, artifacts/catalogs/, state/,
+      runs/<run_id>/'
+    estimate_hours: 0.8
+  - id: RF14c-05
+    title: Crear buckets S3 (o uno con prefijos) y aplicar versioning + lifecycle (retención runs) + cifrado (SSE-S3)
+    estimate_hours: 1.2
+  - id: RF14c-06
+    title: 'Implementar en código ''S3 IO layer'': descargar inputs al inicio (dataset zip + docs) y subir outputs (run_results)
+      al final'
+    estimate_hours: 2.0
+  - id: RF14c-07
+    title: 'Añadir configuración por ENV: S3_INPUT_URI, S3_OUTPUT_URI, S3_STATE_URI, AWS_REGION, RUN_MODE=cloud/local'
+    estimate_hours: 0.8
+  - id: RF14c-08
+    title: Implementar cálculo de artifact_hash (catálogo tests/datos, prompts, KB docs, mapping) y guardarlo en run_metadata.json
+    estimate_hours: 1.2
+  - id: RF14c-09
+    title: 'Implementar ''state store'' en S3: escribir/leer last_artifact_hash.json en s3://.../state/ (idempotente)'
+    estimate_hours: 1.2
+  - id: RF14c-10
+    title: 'Containerizar pipeline (Dockerfile): base slim + dependencias + entrypoint; build local; smoke test con RUN_MODE=local'
+    estimate_hours: 1.8
+  - id: RF14c-11
+    title: Crear repositorio ECR y script de build+push con tag por git_sha; documentar en docs/aws_ecr.md
+    estimate_hours: 1.5
+  - id: RF14c-12
+    title: '(Opcional recomendado) GitHub Action: on push main → build/push a ECR y publicar imagen; guardar outputs del build'
+    estimate_hours: 2.0
+  - id: RF14c-13
+    title: Crear CloudWatch Log Group para el job y definir formato de logs estructurados; probar que aparecen logs
+    estimate_hours: 0.8
+  - id: RF14c-14
+    title: Crear Secrets Manager secrets (OPENAI_API_KEY, LANGSMITH_API_KEY, etc.) y documentar cómo rotarlos
+    estimate_hours: 1.2
+  - id: RF14c-15
+    title: 'Crear IAM: (a) ECS execution role (pull ECR + logs), (b) task role (S3 read/write + SecretsManager read)'
+    estimate_hours: 2.0
+  - id: RF14c-16
+    title: Crear ECS Cluster (Fargate) y elegir red (usar VPC default + subnets) + security group (egress only)
+    estimate_hours: 1.2
+  - id: RF14c-17
+    title: 'Crear Task Definition Fargate: cpu/mem, env vars, secrets, logConfiguration, ephemeralStorage (si hace falta),
+      command ''python -m ... run'''
+    estimate_hours: 2.2
+  - id: RF14c-18
+    title: Escribir/actualizar tests de integración (pytest) para este requisito
+    estimate_hours: 2.0
+  - id: RF14c-19
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF14c-20
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF15
-  title: Agente redactor con guardrails (solo lectura)
-  user_story: RF15 — Agente redactor con guardrails (solo lectura)
-  description: Genera narrativa del reporte usando SOLO outputs y diccionario, con validaciones anti-alucinación.
-  acceptance_criteria: 'El agente no puede inventar columnas/IDs: si menciona algo inexistente, se rechaza y reintenta. El
-    reporte final referencia evidencias reales.'
-  priority: Should
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase2
+  name: RF15 — LLM experto en tests + explicaciones (guardrails anti-alucinación)
+  descripcion: '[Multiagente] Agente LLM que: (a) interpreta resultados de tests y (b) genera explicaciones auditor-style
+    citando test_ids, evidence_columns y referencias ACFE. No ejecuta SQL ni inventa datos.'
+  criterio_validacion: Si el LLM menciona columnas/test_id no existentes, se rechaza y reintenta. La explicación final solo
+    referencia outputs reales (findings) y citas de KB. Se guarda explanation.md y explanation.json estructurado.
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF15-01
-    title: 'Definir contrato de inputs del agente: solo report.json + diccionario + samples'
-    estimate_hours: 1.0
-  - id: RF15-02
-    title: Escribir prompt base + guardrails (no inventar, citar keys/columnas existentes)
-    estimate_hours: 1.2
-  - id: RF15-03
-    title: 'Implementar validador post-proceso: detectar menciones a columnas/IDs inexistentes'
+    title: Definir ExplanationSchema (resumen, evidencias, tests, tipología, paso P2P afectado, referencias ACFE)
     estimate_hours: 1.5
+  - id: RF15-02
+    title: 'Escribir prompt explainer.md con reglas: NO inventar columnas, citar test_id/keys/evidence_columns, usar KBSearchTool'
+    estimate_hours: 1.5
+  - id: RF15-03
+    title: Implementar generación de explicación por entidad (top-k del ranking) y por run (resumen)
+    estimate_hours: 2.0
   - id: RF15-04
-    title: 'Implementar loop de corrección: si falla validador, reintentar con feedback controlado'
-    estimate_hours: 1.2
+    title: 'Implementar validador de referencias: check contra catálogo + schema_summary + outputs de findings'
+    estimate_hours: 2.0
   - id: RF15-05
-    title: Registrar trazas del agente (prompt hash, versión, decisiones) en run_metadata
-    estimate_hours: 1.0
+    title: 'Implementar loop de autocorrección: si falla validador, reintentar con feedback estructurado'
+    estimate_hours: 1.5
   - id: RF15-06
-    title: Añadir modo 'agent off' (fallback a plantilla determinista) para reproducibilidad
-    estimate_hours: 0.8
+    title: Guardar explanation.md y explanation.json y enlazarlos desde report.md
+    estimate_hours: 1.0
   - id: RF15-07
+    title: Unit tests del validador (menciona columna falsa => falla) + snapshot test de plantilla
+    estimate_hours: 2.0
+  - id: RF15-08
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: RF15-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
   - id: RF15-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF15-10
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF15b
-  title: Registro de tools y permisos por agente (guardrails)
-  user_story: RF15b — Registro de tools y permisos por agente (guardrails)
-  name_v2: RF15b — Registro de tools y permisos por agente (guardrails)
-  description: '[Agentes] Define catálogo de tools disponibles y permisos por agente/nodo. Evita consultas/acciones fuera
-    de lista blanca.'
-  acceptance_criteria: Existe tools_registry.yaml y agent_policies.yaml. En runtime, un nodo no puede ejecutar una tool no
-    autorizada. Hay tests que verifican denegación. Logs muestran tool_calls por nodo.
-  priority: Must
-  risk: Alto
-  estimate_hours: 5
-  phase: Fase2
-  commit_date: ''
+  name: RF15b — Tools registry + políticas por agente ("si no está en origen, no está")
+  descripcion: '[Agentes] Definir tools disponibles (DuckDBQueryTool, SchemaTool, TestCatalogTool, KBSearchTool, RunStoreTool)
+    y políticas de permisos por agente/nodo. Validar outputs para impedir inventar columnas/IDs.'
+  criterio_validacion: Existe tools_registry.yaml y agent_policies.yaml. En runtime, si un agente intenta usar una tool no
+    permitida o referenciar columna/test inexistente, el validador falla y se registra. Hay unit tests por tool.
+  estimador: 8
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF15b-01
-    title: Definir tools_registry.yaml (tool_id, descripción, input_schema, límites, ejemplos)
-    estimate_hours: 1.0
+    title: 'Definir tools_registry.yaml (tool_id, inputs, outputs, límites) para: DuckDBQuery, Schema, TestCatalog, KBSearch,
+      RunStore'
+    estimate_hours: 1.5
   - id: RF15b-02
-    title: Definir agent_policies.yaml (node/agent -> tools permitidas + restricciones)
+    title: 'Definir agent_policies.yaml (por nodo/agente: tools permitidas, límites, max_calls, etc.)'
     estimate_hours: 1.0
   - id: RF15b-03
-    title: 'Implementar wrapper tool duckdb_query_template: solo permite query_id predefinido + params validados'
-    estimate_hours: 1.8
-  - id: RF15b-04
-    title: 'Implementar wrapper tool schema_reader: expone schema_summary y data_dictionary (solo lectura)'
-    estimate_hours: 0.8
-  - id: RF15b-05
-    title: 'Implementar wrapper tool report_writer: escribe artefactos (json/md/html/csv) en carpeta del run'
-    estimate_hours: 0.8
-  - id: RF15b-06
-    title: 'Implementar middleware/guard de permisos: antes de ejecutar una tool, verificar policy del nodo'
+    title: 'Implementar PolicyEnforcer: intercepta llamadas a tools y bloquea si no están permitidas'
     estimate_hours: 1.5
+  - id: RF15b-04
+    title: 'Implementar SchemaGuard: valida que cualquier referencia (tabla/columna/test_id) existe en schema_summary/catálogo'
+    estimate_hours: 2.0
+  - id: RF15b-05
+    title: 'Implementar allowlist de queries: ejecutar solo query_template_id parametrizado (no SQL libre)'
+    estimate_hours: 1.5
+  - id: RF15b-06
+    title: 'Crear unit tests por tool (mocks): inputs inválidos, outputs esperados, errores controlados'
+    estimate_hours: 2.5
   - id: RF15b-07
-    title: 'Añadir logging estructurado de tool_calls: node_id, tool_id, params_hash, status, duration_ms'
-    estimate_hours: 1.0
+    title: Crear unit tests del PolicyEnforcer (bloquea tool no permitida) y SchemaGuard (detecta alucinación)
+    estimate_hours: 2.0
   - id: RF15b-08
-    title: 'Tests: intentar ejecutar tool no permitida desde un nodo -> debe fallar con error controlado'
+    title: Añadir logging estructurado de tool calls (tool_id, agent_id, params_hash, duration_ms, status)
     estimate_hours: 1.0
   - id: RF15b-09
-    title: Documentar en README/docs el modelo de tools+permisos y ejemplos de denegación
-    estimate_hours: 0.7
+    title: 'Docs: docs/tools_and_policies.md (tabla tools x agentes, ejemplos de bloqueo)'
+    estimate_hours: 1.2
   - id: RF15b-10
-    title: Declarar tool web_search/time_weather en tools_registry como opcional (deshabilitada por defecto) para demostrar
-      concepto de tools
-    estimate_hours: 0.6
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
   - id: RF15b-11
-    title: Añadir config flag enable_web_tools=false por defecto + prueba de que no se invoca si está desactivado
-    estimate_hours: 0.6
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF15b-12
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
 - id: RF15c
-  title: Multi-agente en LangGraph (Experto, Ejecutor, Scorer/Tipología, Explicador, Exportador)
-  user_story: RF15c — Multi-agente en LangGraph (Experto, Ejecutor, Scorer/Tipología, Explicador, Exportador)
-  name_v2: RF15c — Multi-agente en LangGraph (Experto, Ejecutor, Scorer/Tipología, Explicador, Exportador)
-  description: '[Agentes] Implementa roles como nodos: (1) ejecutor determinista de tests en DuckDB, (2) scorer+clasificador
-    de tipología, (3) experto LLM que sugiere siguientes tests (sin ejecutarlos), (4) explicador LLM, (5) exportador CSV para
-    UI.'
-  acceptance_criteria: 'El grafo produce: test_runs, ranking, fraud_type_predicho, recomendaciones de tests (solo sugeridas)
-    y explicación con evidencias. No se ejecutan tests fuera del catálogo ni follow-ups sin aprobación humana.'
-  priority: Must
-  risk: Alto
-  estimate_hours: 8
-  phase: Fase2
-  commit_date: ''
+  name: 'RF15c — Multiagente: Planificador (RAG) + Experto tests + Scoring (LLM) + Ejecutor (DuckDB)'
+  descripcion: '[Agentes] Implementar roles y prompts: (1) Planificador genera hipótesis con RAG (ACFE + docs + catálogo),
+    (2) Experto selecciona tests del catálogo y explica resultados, (3) ScoringAgent estima probabilidad por tipología, (4)
+    Ejecutor corre tests en DuckDB (sin LLM).'
+  criterio_validacion: Planificador produce hipótesis estructuradas con fuentes (chunks). Selección de tests es solo allowlist
+    (test_id del catálogo). Scoring devuelve probabilidades por fraude con explicación basada en findings + ACFE. Todo validado
+    contra schema_summary y catálogo (cero alucinaciones).
+  estimador: 13
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF15c-01
-    title: 'Definir GraphState extendido: test_runs, findings, ranking, fraud_type_predicho, recomendaciones, export_paths'
-    estimate_hours: 1.0
+    title: 'Definir salidas estructuradas: HypothesisSchema, TestSelectionSchema, ExplanationSchema, ScoreSchema (Pydantic)'
+    estimate_hours: 2.0
   - id: RF15c-02
-    title: 'Implementar nodo TestExecutor (no LLM): ejecuta tests seleccionados del catálogo (lista blanca) y guarda outputs'
+    title: 'Crear prompts por agente en prompts/: hypothesis_planner.md, test_planner.md, explainer.md, scoring.md'
     estimate_hours: 2.0
   - id: RF15c-03
-    title: 'Implementar nodo Scorer/Classifier (no LLM): combina tests -> score_total + fraud_type_predicho + razones'
-    estimate_hours: 1.8
+    title: 'HypothesisPlanner: implementar llamada LLM + KBSearchTool (top_k) + DataCatalogTool; generar hipótesis con sources'
+    estimate_hours: 2.5
   - id: RF15c-04
-    title: 'Implementar nodo Expert (LLM): lee resumen+diccionario y propone “siguientes tests del catálogo” (NO ejecuta)'
-    estimate_hours: 1.8
+    title: 'Validar hipótesis: fraud_type y process_step válidos; evidence_requirements compatibles con schema_summary'
+    estimate_hours: 1.5
   - id: RF15c-05
-    title: 'Implementar control de autonomía: por defecto solo recomendaciones; opción --approve-followups para ejecutar tras
-      confirmación humana'
-    estimate_hours: 1.2
-  - id: RF15c-06
-    title: 'Implementar nodo Explainer (LLM): genera explicación estilo auditor citando keys/columnas reales (con validador
-      anti-alucinación)'
+    title: 'TestPlanner: dado catálogo (TestCatalogTool) + hipótesis, seleccionar SOLO test_ids existentes (allowlist)'
     estimate_hours: 2.0
+  - id: RF15c-06
+    title: 'Validar selección: cada test_id existe, y sus required_columns están en schema_summary (si no, descartar)'
+    estimate_hours: 1.5
   - id: RF15c-07
-    title: 'Implementar nodo Exporter (no LLM): prepara CSVs/artefactos para UI y los registra en el state'
-    estimate_hours: 1.2
+    title: 'TestExecutor: ejecutar tests en DuckDB (sin LLM) y producir findings (ResultSchema) por test'
+    estimate_hours: 2.0
   - id: RF15c-08
-    title: 'Ajustar RF14 grafo: insertar nodos scorer/expert/explainer/exporter en el flujo (orden: run_tests→score→expert→explain→export)'
-    estimate_hours: 1.2
+    title: 'ExpertExplainer: LLM interpreta findings; debe citar test_id, keys y evidence_columns; añade referencia ACFE via
+      KBSearchTool'
+    estimate_hours: 2.0
   - id: RF15c-09
-    title: 'Integración: ejecutar grafo completo y verificar que produce todos los artefactos + que no hay llamadas fuera
-      de tools permitidas'
+    title: 'Validador anti-alucinación de explicaciones: fallar si menciona columnas/keys/test no existentes; reintentar con
+      feedback'
     estimate_hours: 2.0
   - id: RF15c-10
-    title: Documentar el diagrama de agentes (roles, inputs/outputs, tools permitidas) en docs/agents.md
+    title: 'ScoringAgent: LLM calcula probabilidades por fraud_type usando hypotheses + findings + ACFE; output ScoreSchema'
+    estimate_hours: 2.0
+  - id: RF15c-11
+    title: 'Validador scoring: comprobar que evidence_summary referencia findings reales y que fraud_type_probs suma ~1'
+    estimate_hours: 1.5
+  - id: RF15c-12
+    title: 'Persistencia: guardar hypotheses.json, selected_tests.json, explanations.json/md, score.json en run_results'
     estimate_hours: 1.0
-- id: RF15d
-  title: Exportación para dashboard/interfaz (CSV) sin LLM
-  user_story: RF15d — Exportación para dashboard/interfaz (CSV) sin LLM
-  name_v2: RF15d — Exportación para dashboard/interfaz (CSV) sin LLM
-  description: '[Agentes/UI] Genera exports CSV estables para consumir en una UI o Power BI (ranking, hallazgos, drilldown
-    sample, estado de tests).'
-  acceptance_criteria: Se generan CSVs en run_results/<run_id>/exports/ con esquema estable y encoding correcto. El reporte
-    enlaza los CSVs y un usuario puede cargar ranking.csv en Power BI sin tocar nada.
-  priority: Should
-  risk: Medio
-  estimate_hours: 5
-  phase: Fase2
-  commit_date: ''
-  tasks:
-  - id: RF15d-01
-    title: 'Definir esquema estable de exports: ranking.csv, findings.csv, test_runs.csv, drilldown_sample.csv'
+  - id: RF15c-13
+    title: Integration test del multiagente con LLM stub + KB stub + DuckDB fixture (sin red) para CI
+    estimate_hours: 3.0
+  - id: RF15c-14
+    title: E2E test con modelo real (manual) y captura de trazas en LangSmith (evidencia de tutor)
+    estimate_hours: 1.5
+  - id: RF15c-15
+    title: 'Docs: docs/agents.md con: roles, tools permitidas, prompts, esquemas y ejemplo de ejecución'
+    estimate_hours: 1.5
+  - id: RF15c-16
+    title: Escribir/actualizar tests de integración (pytest) para este requisito
+    estimate_hours: 2.0
+  - id: RF15c-17
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: RF15d-02
-    title: Implementar generador ranking.csv desde ranking/parquet/json (encoding UTF-8, separador, quoting)
+  - id: RF15c-18
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
-  - id: RF15d-03
-    title: Implementar generador findings.csv (una fila por hallazgo) con columnas evidencia resumidas
-    estimate_hours: 1.2
-  - id: RF15d-04
-    title: Implementar generador test_runs.csv con status/duración/error_summary por test
-    estimate_hours: 0.8
-  - id: RF15d-05
-    title: Implementar export opcional drilldown_sample.csv (top N filas por hallazgo seleccionado)
-    estimate_hours: 1.0
-  - id: RF15d-06
-    title: Añadir validadores de esquema para CSVs (columnas esperadas, tipos básicos) y tests unitarios
-    estimate_hours: 1.2
-  - id: RF15d-07
-    title: Incluir enlaces a exports en report.md/html y ejemplo de carga en Power BI (pasos)
-    estimate_hours: 0.8
 - id: RF15e
-  title: Memoria vectorial / similitud de transacciones (PoC opcional)
-  user_story: RF15e — Memoria vectorial / similitud de transacciones (PoC opcional)
-  name_v2: RF15e — Memoria vectorial / similitud de transacciones (PoC opcional)
-  description: '[Agentes] PoC de memoria: indexa transacciones/alertas y permite buscar similares (si hay texto/campos aptos),
-    para apoyar al experto.'
-  acceptance_criteria: Si se habilita el PoC, existe index persistente y comando similarity-search que devuelve top-k con
-    claves trazables. Si no hay campos aptos, el sistema lo documenta y deshabilita la feature.
-  priority: Could
-  risk: Medio
-  estimate_hours: 5
-  phase: Fase2
-  commit_date: ''
+  name: 'RF15e — RAG/KB en ChromaDB: indexar ACFE + docs + catálogo (con incremental rebuild)'
+  descripcion: '[RAG] Crear base de conocimiento en vector store (ChromaDB): indexa documento ACFE, docs del proyecto, test_cards,
+    data_dictionary y otros archivos. Permite búsqueda (kb_search) y se reindexa si cambia el hash de los documentos.'
+  criterio_validacion: Existe índice persistente ChromaDB. Comando kb-rebuild crea/actualiza índice; kb-search devuelve chunks
+    con metadata (source, page/section). Planificador usa estos chunks y los cita en hypotheses.
+  estimador: 10
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF15e-01
-    title: Determinar campos indexables (texto o concatenación de campos) y definir lista blanca
+    title: 'Reunir fuentes a indexar: ACFE (PDF), docs del proyecto, data_dictionary, test_cards, mapping/taxonomy'
     estimate_hours: 0.8
   - id: RF15e-02
-    title: 'Si hay texto: implementar indexado ligero (TF-IDF) sobre campos permitidos; si no, documentar y deshabilitar'
-    estimate_hours: 1.5
+    title: Implementar extractor de texto para PDF (ACFE) y para md/txt; guardar texto normalizado
+    estimate_hours: 2.0
   - id: RF15e-03
-    title: Persistir el índice por run o global (carpeta vector_store/) con versionado
-    estimate_hours: 1.0
+    title: Definir chunking strategy (tamaño, solape) y metadata (source, page/section, hash)
+    estimate_hours: 1.2
   - id: RF15e-04
-    title: Implementar comando similarity-search --entity_key que devuelve top-k similares con claves trazables
+    title: Inicializar ChromaDB persistente (ruta kb/chroma) y colección por tipo de doc
     estimate_hours: 1.5
   - id: RF15e-05
-    title: 'Integrar opcionalmente con Expert node: si habilitado, anexar “casos similares” al análisis'
-    estimate_hours: 1.2
+    title: 'Implementar build_index(): recorre ficheros, calcula hash, crea/actualiza embeddings y upsert en Chroma'
+    estimate_hours: 2.5
   - id: RF15e-06
-    title: 'Tests y docs: reproducibilidad del índice y límites (no ground truth)'
+    title: 'Implementar incremental rebuild: si hash del fichero no cambia, no re-embed; si cambia, reindexar'
+    estimate_hours: 2.0
+  - id: RF15e-07
+    title: Implementar KBSearchTool(query, top_k, filters) que devuelve chunks + metadata + score
+    estimate_hours: 1.5
+  - id: RF15e-08
+    title: 'Unit tests: index vacío → build, rebuild sin cambios, rebuild con cambio, search devuelve metadata'
+    estimate_hours: 3.0
+  - id: RF15e-09
+    title: Integrar build_index en pipeline (RF14) y en trigger (RF14c) para reindex automático
+    estimate_hours: 1.2
+  - id: RF15e-10
+    title: 'Docs: docs/rag_kb.md con cómo añadir docs, reconstruir índice y ejemplos de búsqueda'
+    estimate_hours: 1.2
+  - id: RF15e-11
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF15e-12
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF15e-13
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF16
-  title: Persistencia y comparación de runs
-  user_story: RF16 — Persistencia y comparación de runs
-  description: Guarda histórico de ejecuciones y permite comparar resultados entre runs.
-  acceptance_criteria: Existe storage de runs (tabla o carpeta) con run_id, dataset_hash y versiones. Comandos list-runs y
+  name: RF16 — Persistencia y comparación de runs
+  descripcion: '[Fase 2] Guarda histórico de ejecuciones y permite comparar resultados entre runs.'
+  criterio_validacion: Existe storage de runs (tabla o carpeta) con run_id, dataset_hash y versiones. Comandos list-runs y
     compare-runs producen diffs de ranking/tests.
-  priority: Should
-  risk: Medio
-  estimate_points: 8.0
-  phase: Fase2
+  estimador: 8
+  prioridad: Should
+  riesgo: Medio
   tasks:
+  - id: RF16-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF16-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF16-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: RF16-01
     title: 'Definir almacenamiento de runs: carpeta persistente o tabla DuckDB ''runs'' + ''test_results'''
     estimate_hours: 1.2
@@ -925,21 +1109,30 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF16-07
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF16-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF17
-  title: Taxonomía de fraude (fraud_type) y mapping
-  user_story: RF17 — Taxonomía de fraude (fraud_type) y mapping
-  description: Define taxonomía y relaciona cada test con tipos de fraude.
-  acceptance_criteria: Existe taxonomy.yaml y cada TestSpec incluye fraud_type válido. El reporte agrupa hallazgos por taxonomía.
-  priority: Should
-  risk: Medio
-  estimate_points: 5.0
-  phase: Fase3
+  name: RF17 — Taxonomía de fraude (fraud_type) y mapping
+  descripcion: '[Fase 3] Define taxonomía y relaciona cada test con tipos de fraude.'
+  criterio_validacion: Existe taxonomy.yaml y cada TestSpec incluye fraud_type válido. El reporte agrupa hallazgos por taxonomía.
+  estimador: 5
+  prioridad: Should
+  riesgo: Medio
   tasks:
+  - id: RF17-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF17-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF17-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: RF17-01
     title: Diseñar taxonomía mínima (yaml) y documentar definiciones
     estimate_hours: 1.2
@@ -956,57 +1149,81 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF17-06
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF17-07
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF18
-  title: Scoring configurable
-  user_story: RF18 — Scoring configurable
-  description: Sistema de scoring configurable por pesos/reglas, con transparencia de cómo se calcula.
-  acceptance_criteria: El score_total se calcula con fórmula documentada y configuración versionada. Cambios de configuración
-    quedan trazados en run_metadata.
-  priority: Should
-  risk: Medio
-  estimate_points: 8.0
-  phase: Fase3
+  name: RF18 — Scoring por LLM (probabilidad por tipología) + comparación de modelos
+  descripcion: '[Multiagente] ScoringAgent (LLM) calcula probabilidad de fraude por tipología usando hipótesis + resultados
+    + contexto ACFE. Debe ser reproducible (mismo input) y validado (sin inventar evidencias). Permite probar diferentes modelos.'
+  criterio_validacion: 'Genera score.json con: fraud_type_probs, final_label, confidence, evidence_summary, model_used. Validador
+    comprueba que references a test_ids/keys/columns existen. Se pueden ejecutar al menos 2 modelos y comparar en LangSmith.'
+  estimador: 13
+  prioridad: Must
+  riesgo: Alto
   tasks:
   - id: RF18-01
-    title: Definir fórmula de scoring (documentada) y entradas configurables
-    estimate_hours: 1.2
-  - id: RF18-02
-    title: Implementar config score.yaml con pesos/reglas y versionarlo
-    estimate_hours: 1.0
-  - id: RF18-03
-    title: 'Registrar en run_metadata: hash del score.yaml usado'
-    estimate_hours: 0.6
-  - id: RF18-04
-    title: 'Implementar ''what-if'': ejecutar agregación con score.yaml alternativo (sin re-ejecutar tests)'
+    title: Definir ScoreSchema (fraud_type_probs, final_label, confidence, evidence_summary, model_used)
     estimate_hours: 1.5
+  - id: RF18-02
+    title: 'Escribir prompt scoring.md: entrada = hypotheses + findings + acfe_snippets; salida = ScoreSchema'
+    estimate_hours: 1.5
+  - id: RF18-03
+    title: 'Implementar ScoringAgent: llama LLM y parsea output a ScoreSchema'
+    estimate_hours: 1.5
+  - id: RF18-04
+    title: 'Implementar validación: probs ~1, final_label dentro de taxonomía, referencias a tests/evidencias existen'
+    estimate_hours: 2.0
   - id: RF18-05
-    title: 'Añadir pruebas unitarias: misma config => mismo score; config distinta => score cambia'
+    title: Implementar autocorrección por validación fallida (retry con feedback)
     estimate_hours: 1.5
   - id: RF18-06
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
-    estimate_hours: 1.5
+    title: Permitir ejecutar scoring con modelos distintos via config (models.yaml) sin tocar código
+    estimate_hours: 1.2
   - id: RF18-07
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Registrar model_used, prompt_hash y score_hash en run_metadata
     estimate_hours: 1.0
   - id: RF18-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: 'Comparación: generar score_compare.json cuando se ejecutan 2 modelos (deltas por fraud_type)'
+    estimate_hours: 1.5
+  - id: RF18-09
+    title: 'Integrar experimentos en LangSmith (RF14b): ejecutar batch y guardar resultados'
+    estimate_hours: 2.0
+  - id: RF18-10
+    title: 'Docs: docs/scoring.md con explicación de metodología y limitaciones'
+    estimate_hours: 1.0
+  - id: RF18-11
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF18-12
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF18-13
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF19
-  title: Evaluación cuantitativa + baseline
-  user_story: RF19 — Evaluación cuantitativa + baseline
-  description: Define evaluación (top-k, precision/recall si hay labels) y un baseline comparable.
-  acceptance_criteria: Se genera evaluation_report.(json|md) con métricas y baseline. Se puede reproducir la evaluación por
+  name: RF19 — Evaluación cuantitativa + baseline
+  descripcion: '[Fase 3] Define evaluación (top-k, precision/recall si hay labels) y un baseline comparable.'
+  criterio_validacion: Se genera evaluation_report.(json|md) con métricas y baseline. Se puede reproducir la evaluación por
     run_id.
-  priority: Should
-  risk: Alto
-  estimate_points: 8.0
-  phase: Fase3
+  estimador: 8
+  prioridad: Should
+  riesgo: Alto
   tasks:
+  - id: RF19-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF19-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF19-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: RF19-01
     title: Definir formato de labels si existen (csv/json) y cómo se asocian a entity_key
     estimate_hours: 1.0
@@ -1029,179 +1246,233 @@ backlog:
     title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
   - id: RF19-08
-    title: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
   - id: RF19-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: NFR01
-  title: Reproducibilidad y determinismo
-  user_story: NFR01 — Reproducibilidad y determinismo
-  description: '[NFR] Mismo dataset_hash + misma versión de código/tests => mismos outputs (ordenados) y mismo ranking.'
-  acceptance_criteria: Con el mismo input y versiones, report.json es idéntico salvo timestamps; outputs por test están ordenados
+  name: NFR01 — Reproducibilidad y determinismo
+  descripcion: '[NFR] Mismo dataset_hash + misma versión de código/tests => mismos outputs (ordenados) y mismo ranking.'
+  criterio_validacion: Con el mismo input y versiones, report.json es idéntico salvo timestamps; outputs por test están ordenados
     y hashables.
-  priority: Must
-  risk: Alto
-  estimate_points: 5.0
-  phase: null
+  estimador: 5
+  prioridad: Must
+  riesgo: Alto
   tasks:
-  - id: null
-    title: 'NFR01-01: Ordenar outputs determinísticamente (sort estable) antes de escribir a disco'
-    estimate_hours: 1.2
-  - id: null
-    title: 'NFR01-02: Eliminar fuentes de no determinismo: seeds, orden de diccionarios, timestamps en JSON (aislar)'
-    estimate_hours: 1.2
-  - id: null
-    title: 'NFR01-03: Implementar función normalize_json_for_hash() y guardar hash de report.json sin timestamp'
-    estimate_hours: 1.2
-  - id: null
-    title: 'NFR01-04: Añadir prueba: dos runs con mismo input producen mismo hash de outputs (salvo timestamp)'
-    estimate_hours: 2.0
-  - id: null
-    title: 'NFR01-05: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito'
+  - id: NFR01-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR01-06: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo'
+  - id: NFR01-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR01-07: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)'
+  - id: NFR01-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+  - id: NFR01-01
+    title: Ordenar outputs determinísticamente (sort estable) antes de escribir a disco
+    estimate_hours: 1.2
+  - id: NFR01-02
+    title: 'Eliminar fuentes de no determinismo: seeds, orden de diccionarios, timestamps en JSON (aislar)'
+    estimate_hours: 1.2
+  - id: NFR01-03
+    title: Implementar función normalize_json_for_hash() y guardar hash de report.json sin timestamp
+    estimate_hours: 1.2
+  - id: NFR01-04
+    title: 'Añadir prueba: dos runs con mismo input producen mismo hash de outputs (salvo timestamp)'
+    estimate_hours: 2.0
+  - id: NFR01-05
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: NFR01-06
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: NFR01-07
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: NFR02
-  title: Trazabilidad completa (artefactos y metadatos)
-  user_story: NFR02 — Trazabilidad completa (artefactos y metadatos)
-  description: '[NFR] Todo hallazgo debe ser trazable a datos origen y a la configuración/versiones usadas.'
-  acceptance_criteria: El reporte enlaza a evidencias y guarda keys para drilldown; run_metadata registra versiones, config
+  name: NFR02 — Trazabilidad completa (artefactos y metadatos)
+  descripcion: '[NFR] Todo hallazgo debe ser trazable a datos origen y a la configuración/versiones usadas.'
+  criterio_validacion: El reporte enlaza a evidencias y guarda keys para drilldown; run_metadata registra versiones, config
     y rutas.
-  priority: Must
-  risk: Alto
-  estimate_points: 5.0
-  phase: null
+  estimador: 5
+  prioridad: Must
+  riesgo: Alto
   tasks:
-  - id: null
-    title: 'NFR02-01: Asegurar que cada hallazgo guarda keys suficientes para drilldown'
-    estimate_hours: 0.8
-  - id: null
-    title: 'NFR02-02: Añadir a report.json referencias a rutas de evidencias por test y ranking'
-    estimate_hours: 0.8
-  - id: null
-    title: 'NFR02-03: Guardar versionado: git hash (si existe), versiones de TestSpec, config hashes'
-    estimate_hours: 1.0
-  - id: null
-    title: 'NFR02-04: Añadir ''manifest.json'' por run con listado de artefactos generados y sus hashes'
+  - id: NFR02-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR02-05: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito'
-    estimate_hours: 1.5
-  - id: null
-    title: 'NFR02-06: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo'
+  - id: NFR02-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR02-07: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)'
+  - id: NFR02-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+  - id: NFR02-01
+    title: Asegurar que cada hallazgo guarda keys suficientes para drilldown
+    estimate_hours: 0.8
+  - id: NFR02-02
+    title: Añadir a report.json referencias a rutas de evidencias por test y ranking
+    estimate_hours: 0.8
+  - id: NFR02-03
+    title: 'Guardar versionado: git hash (si existe), versiones de TestSpec, config hashes'
+    estimate_hours: 1.0
+  - id: NFR02-04
+    title: Añadir 'manifest.json' por run con listado de artefactos generados y sus hashes
+    estimate_hours: 1.5
+  - id: NFR02-05
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: NFR02-06
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: NFR02-07
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: NFR03
-  title: 'Seguridad: lista blanca y no ejecución arbitraria'
-  user_story: 'NFR03 — Seguridad: lista blanca y no ejecución arbitraria'
-  description: '[NFR] No se ejecuta código/SQL fuera del catálogo; plantillas parametrizadas seguras.'
-  acceptance_criteria: No existe endpoint o CLI que acepte SQL libre; el runner solo ejecuta test_ids del catálogo y valida
+  name: 'NFR03 — Seguridad: lista blanca y no ejecución arbitraria'
+  descripcion: '[NFR] No se ejecuta código/SQL fuera del catálogo; plantillas parametrizadas seguras.'
+  criterio_validacion: No existe endpoint o CLI que acepte SQL libre; el runner solo ejecuta test_ids del catálogo y valida
     plantillas.
-  priority: Must
-  risk: Alto
-  estimate_points: 5.0
-  phase: null
+  estimador: 5
+  prioridad: Must
+  riesgo: Alto
   tasks:
-  - id: null
-    title: 'NFR03-01: Bloquear ejecución de SQL/plantillas no registradas (allowlist) en el runner'
-    estimate_hours: 1.0
-  - id: null
-    title: 'NFR03-02: Sanitizar parámetros de plantillas (solo valores, no trozos de SQL) y usar parámetros DuckDB'
+  - id: NFR03-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR03-03: Añadir tests de seguridad: intentar ejecutar test_id inexistente => error controlado'
+  - id: NFR03-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR03-04: Documentar claramente el modelo de amenazas (qué se previene y qué no)'
+  - id: NFR03-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR03-05: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito'
+  - id: NFR03-01
+    title: Bloquear ejecución de SQL/plantillas no registradas (allowlist) en el runner
+    estimate_hours: 1.0
+  - id: NFR03-02
+    title: Sanitizar parámetros de plantillas (solo valores, no trozos de SQL) y usar parámetros DuckDB
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR03-06: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo'
+  - id: NFR03-03
+    title: 'Añadir tests de seguridad: intentar ejecutar test_id inexistente => error controlado'
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR03-07: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)'
+  - id: NFR03-04
+    title: Documentar claramente el modelo de amenazas (qué se previene y qué no)
+    estimate_hours: 1.0
+  - id: NFR03-05
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: NFR03-06
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: NFR03-07
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: NFR04
-  title: Documentación (usuario + técnica)
-  user_story: NFR04 — Documentación (usuario + técnica)
-  description: '[NFR] Documentación suficiente para ejecutar, entender arquitectura y extender tests.'
-  acceptance_criteria: README + docs/arquitectura.md + docs/tests.md actualizados; un tercero puede ejecutar y añadir un test
+  name: NFR04 — Documentación (usuario + técnica)
+  descripcion: '[NFR] Documentación suficiente para ejecutar, entender arquitectura y extender tests.'
+  criterio_validacion: README + docs/arquitectura.md + docs/tests.md actualizados; un tercero puede ejecutar y añadir un test
     siguiendo guía.
-  priority: Must
-  risk: Medio
-  estimate_points: 3.0
-  phase: null
+  estimador: 3
+  prioridad: Must
+  riesgo: Medio
   tasks:
-  - id: null
-    title: 'NFR04-01: Crear docs/arquitectura.md (componentes, flujo, artefactos, decisiones)'
+  - id: NFR04-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR04-02: Crear docs/tests.md (cómo añadir un test nuevo end-to-end)'
-    estimate_hours: 1.5
-  - id: null
-    title: 'NFR04-03: Crear docs/configuracion.md (mapping/weights/score y dónde se aplican)'
-    estimate_hours: 1.2
-  - id: null
-    title: 'NFR04-04: Añadir sección ''Troubleshooting'' en README con errores típicos'
-    estimate_hours: 0.8
-  - id: null
-    title: 'NFR04-05: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo'
+  - id: NFR04-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR04-06: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)'
+  - id: NFR04-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+  - id: NFR04-01
+    title: Crear docs/arquitectura.md (componentes, flujo, artefactos, decisiones)
+    estimate_hours: 1.5
+  - id: NFR04-02
+    title: Crear docs/tests.md (cómo añadir un test nuevo end-to-end)
+    estimate_hours: 1.5
+  - id: NFR04-03
+    title: Crear docs/configuracion.md (mapping/weights/score y dónde se aplican)
+    estimate_hours: 1.2
+  - id: NFR04-04
+    title: Añadir sección 'Troubleshooting' en README con errores típicos
+    estimate_hours: 0.8
+  - id: NFR04-05
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: NFR04-06
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: NFR05
-  title: Observabilidad (logs estructurados y métricas básicas)
-  user_story: NFR05 — Observabilidad (logs estructurados y métricas básicas)
-  description: '[NFR] Logs y métricas de tiempos/errores por fase y por test.'
-  acceptance_criteria: Se generan logs estructurados y un performance_summary.json con duración por fase/test, errores y recuentos.
-  priority: Must
-  risk: Medio
-  estimate_points: 3.0
-  phase: null
+  name: NFR05 — Observabilidad (logs estructurados y métricas básicas)
+  descripcion: '[NFR] Logs y métricas de tiempos/errores por fase y por test.'
+  criterio_validacion: Se generan logs estructurados y un performance_summary.json con duración por fase/test, errores y recuentos.
+  estimador: 3
+  prioridad: Must
+  riesgo: Medio
   tasks:
-  - id: null
-    title: 'NFR05-01: Definir formato de logs estructurados (campos: run_id, phase, test_id, level, msg, ms)'
-    estimate_hours: 1.0
-  - id: null
-    title: 'NFR05-02: Implementar performance_summary.json con tiempos por fase/test y recuentos'
-    estimate_hours: 1.2
-  - id: null
-    title: 'NFR05-03: Añadir logs de error con contexto suficiente (sin volcar datos sensibles)'
-    estimate_hours: 0.8
-  - id: null
-    title: 'NFR05-04: Añadir opción --log-level y --log-json en CLI'
-    estimate_hours: 0.8
-  - id: null
-    title: 'NFR05-05: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito'
+  - id: NFR05-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
     estimate_hours: 1.5
-  - id: null
-    title: 'NFR05-06: Actualizar documentación (README/docs) describiendo el comportamiento y cómo verificarlo'
+  - id: NFR05-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
     estimate_hours: 1.0
-  - id: null
-    title: 'NFR05-07: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)'
+  - id: NFR05-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
+  - id: NFR05-01
+    title: 'Definir formato de logs estructurados (campos: run_id, phase, test_id, level, msg, ms)'
+    estimate_hours: 1.0
+  - id: NFR05-02
+    title: Implementar performance_summary.json con tiempos por fase/test y recuentos
+    estimate_hours: 1.2
+  - id: NFR05-03
+    title: Añadir logs de error con contexto suficiente (sin volcar datos sensibles)
+    estimate_hours: 0.8
+  - id: NFR05-04
+    title: Añadir opción --log-level y --log-json en CLI
+    estimate_hours: 0.8
+  - id: NFR05-05
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: NFR05-06
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: NFR05-07
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: AG01
-  title: Metodología Agile (backlog, sprints, DoD/DoR)
-  user_story: AG01 — Metodología Agile (backlog, sprints, DoD/DoR)
-  description: '[Agile] Define y aplica un marco Agile mínimo: backlog refinado, sprints, Definition of Ready/Done, ceremonias
+  name: AG01 — Metodología Agile (backlog, sprints, DoD/DoR)
+  descripcion: '[Agile] Define y aplica un marco Agile mínimo: backlog refinado, sprints, Definition of Ready/Done, ceremonias
     y tablero.'
-  acceptance_criteria: Existe un documento agile.md con DoR/DoD, calendario de ceremonias y reglas de priorización. La hoja
+  criterio_validacion: Existe un documento agile.md con DoR/DoD, calendario de ceremonias y reglas de priorización. La hoja
     PLANNING refleja tareas por sprint y estado.
-  priority: Must
-  risk: Bajo
-  estimate_points: 3.0
-  phase: null
+  estimador: 3
+  prioridad: Must
+  riesgo: Bajo
   tasks:
+  - id: AG01-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: AG01-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: AG01-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: AG01-01
     title: 'Crear agile.md con: DoR, DoD, definición de ''User Story'', y reglas de priorización (MoSCoW)'
     estimate_hours: 1.2
@@ -1221,19 +1492,28 @@ backlog:
     title: Definir política de control de cambios (cómo añadir/quitar requisitos) y versionado del backlog
     estimate_hours: 1.0
   - id: AG01-07
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: AG02
-  title: Gestión de riesgos y roadmap
-  user_story: AG02 — Gestión de riesgos y roadmap
-  description: '[Agile] Matriz de riesgos y roadmap por fases con hitos y entregables.'
-  acceptance_criteria: Existe risks.md (riesgo, impacto, mitigación) y roadmap.md (hitos por fase). Riesgos altos tienen mitigación
+  name: AG02 — Gestión de riesgos y roadmap
+  descripcion: '[Agile] Matriz de riesgos y roadmap por fases con hitos y entregables.'
+  criterio_validacion: Existe risks.md (riesgo, impacto, mitigación) y roadmap.md (hitos por fase). Riesgos altos tienen mitigación
     y tareas asociadas en PLANNING.
-  priority: Should
-  risk: Medio
-  estimate_points: 3.0
-  phase: null
+  estimador: 3
+  prioridad: Should
+  riesgo: Medio
   tasks:
+  - id: AG02-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: AG02-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: AG02-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: AG02-01
     title: 'Crear risks.md con tabla: riesgo, probabilidad, impacto, severidad, mitigación, owner'
     estimate_hours: 1.2
@@ -1247,45 +1527,90 @@ backlog:
     title: Revisar riesgos semanalmente (anotar fecha y cambios) y mantener histórico
     estimate_hours: 0.8
   - id: AG02-05
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (logs/reportes)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: AG03
-  title: Workflow AlphaCodium/Codex con aprobación humana (sin autonomía)
-  user_story: AG03 — Workflow AlphaCodium/Codex con aprobación humana (sin autonomía)
-  name_v2: AG03 — Workflow AlphaCodium/Codex con aprobación humana (sin autonomía)
-  description: '[Agile/Metodología] Define cómo se usa Codex/AlphaCodium para generar/refinar código y tests, con checklist
-    humana antes de integrar.'
-  acceptance_criteria: Existe docs/codex_workflow.md + prompts/ con ejemplos. Cada PR/cambio sigue checklist (pytest, validación
-    esquema, no SQL libre). Se adjunta evidencia de 2–3 iteraciones (prompt→diff→validación).
-  priority: Must
-  risk: Medio
-  estimate_hours: 3
-  phase: null
-  commit_date: ''
+  name: AG03 — Workflow AlphaCodium/Codex para construir el grafo y prompts (con aprobación humana)
+  descripcion: '[AlphaCodium] Adoptar AlphaCodium como metodología y patrón de orquestación para agentes: cada nodo LLM usa
+    un bucle Plan→Draft→Validate→Repair (con validadores) y se versionan prompts. Se guardan evidencias de iteraciones (prompt→output→errores→fix)
+    para defensa y trazabilidad.'
+  criterio_validacion: 'Para hypothesis_planner, test_planner, explainer y scoring existe un alpha_loop() con max_iter que:
+    genera salida estructurada, la valida (SchemaGuard/allowlist/citas KB), y reintenta si falla. Se guardan artefactos de
+    iteración por run. CI ejecuta prompt unit tests + integration test del grafo.'
+  estimador: 5
+  prioridad: Must
+  riesgo: Medio
   tasks:
   - id: AG03-01
-    title: Definir qué genera Codex (plantillas SQL, esqueletos, unit tests) y qué NO (no auto-ejecución, no SQL libre)
-    estimate_hours: 0.8
+    title: 'Crear docs/codex_workflow.md con reglas: qué se permite generar, qué se revisa a mano, checklist de aceptación'
+    estimate_hours: 1.2
   - id: AG03-02
-    title: 'Crear checklist de aceptación humana: pasa pytest, valida contra schema_summary, respeta lista blanca, logs ok'
-    estimate_hours: 0.8
+    title: 'Definir plantilla de prompt para AlphaCodium: objetivo, constraints (allowlist, no inventar columnas), output
+      esperado'
+    estimate_hours: 1.2
   - id: AG03-03
-    title: Crear carpeta prompts/ con 2–3 prompts “golden” (generar test, generar unit test, refactor) y outputs esperados
+    title: Crear carpeta prompts/ con versionado y naming convention (agent_name__v001.md)
     estimate_hours: 0.8
   - id: AG03-04
-    title: Documentar 2–3 iteraciones reales (prompt→diff→validación) como evidencia en docs/codex_workflow.md
-    estimate_hours: 0.8
+    title: 'Definir checklist PR: pasa unit tests, pasa integration test, no cambia outputs sin justificar, actualiza docs'
+    estimate_hours: 1.0
+  - id: AG03-05
+    title: 'Integrar en CI: ejecutar pytest + lint + schema validation + (opcional) dry-run del grafo con stubs'
+    estimate_hours: 2.0
+  - id: AG03-06
+    title: 'Definir cómo registrar evidencias de iteraciones con Codex (ejemplos: prompt→diff→validación)'
+    estimate_hours: 1.2
+  - id: AG03-07
+    title: Definir 'AlphaCodium Loop' (Plan→Draft→Validate→Repair) como estándar para nodos LLM (hypothesis/test/explain/score)
+    estimate_hours: 1.0
+  - id: AG03-08
+    title: 'Implementar alpha_loop() reusable: recibe prompt + input + validators; reintenta con feedback hasta max_iter;
+      guarda intentos'
+    estimate_hours: 2.0
+  - id: AG03-09
+    title: 'Integrar alpha_loop en nodos LLM: hypothesis_planner_node, test_planner_node, expert_explainer_node, scoring_node'
+    estimate_hours: 2.0
+  - id: AG03-10
+    title: 'Guardar artefactos AlphaCodium por run: prompts usados, outputs intermedios, errores de validación y fixes (run_results/<run_id>/alphacodium/...)'
+    estimate_hours: 1.5
+  - id: AG03-11
+    title: 'Prompt unit tests (snapshot): fixtures → output cumple schema, cita fuentes KB, no inventa columnas/tests; ejecutar
+      en CI'
+    estimate_hours: 2.5
+  - id: AG03-12
+    title: 'Evidencias para memoria/defensa: 2–3 iteraciones reales documentadas (prompt→diff→validación→resultado) usando
+      AlphaCodium'
+    estimate_hours: 1.5
+  - id: AG03-13
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: AG03-14
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: AG03-15
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
 - id: RF20
-  title: API de servicio (FastAPI) — opcional
-  user_story: RF20 — API de servicio (FastAPI) — opcional
-  description: '[Opcional] Exponer endpoints para ejecutar runs, listar tests y hacer drilldown sin ejecutar SQL libre.'
-  acceptance_criteria: 'Existe un servicio FastAPI con endpoints: /health, /tests, /run, /runs/{id}/report, /runs/{id}/drilldown.
+  name: RF20 — API de servicio (FastAPI) — opcional
+  descripcion: '[Opcional] Exponer endpoints para ejecutar runs, listar tests y hacer drilldown sin ejecutar SQL libre.'
+  criterio_validacion: 'Existe un servicio FastAPI con endpoints: /health, /tests, /run, /runs/{id}/report, /runs/{id}/drilldown.
     Solo acepta test_ids allowlist y devuelve artefactos del run.'
-  priority: Could
-  risk: Medio
-  estimate_points: 8.0
-  phase: null
+  estimador: 8
+  prioridad: Could
+  riesgo: Medio
   tasks:
+  - id: RF20-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF20-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF20-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: RF20-01
     title: 'Definir contrato de API: endpoints, request/response schemas (OpenAPI) y límites'
     estimate_hours: 1.5
@@ -1314,20 +1639,29 @@ backlog:
     title: Documentar uso de API y ejemplos curl
     estimate_hours: 1.0
   - id: RF20-10
-    title: Verificar criterios de aceptación y guardar evidencia (capturas/logs)
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
 - id: RF21
-  title: Extensión RAG/KB local — opcional (solo diseño o PoC mínimo)
-  user_story: RF21 — Extensión RAG/KB local — opcional (solo diseño o PoC mínimo)
-  description: '[Opcional] Extensión para añadir una base de conocimiento local para explicaciones; fuera del core del TFG
+  name: RF21 — Extensión RAG/KB local — opcional (solo diseño o PoC mínimo)
+  descripcion: '[Opcional] Extensión para añadir una base de conocimiento local para explicaciones; fuera del core del TFG
     si no hay tiempo.'
-  acceptance_criteria: Existe un documento de diseño (docs/rag_extension.md) y, si hay PoC, indexa reportes y permite recuperar
+  criterio_validacion: Existe un documento de diseño (docs/rag_extension.md) y, si hay PoC, indexa reportes y permite recuperar
     fragmentos citables sin inventar datos.
-  priority: Won't
-  risk: Bajo
-  estimate_points: 5.0
-  phase: null
+  estimador: 5
+  prioridad: Won't
+  riesgo: Bajo
   tasks:
+  - id: RF21-01
+    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    estimate_hours: 1.5
+  - id: RF21-02
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
+    estimate_hours: 1.0
+  - id: RF21-03
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
+    estimate_hours: 1.0
   - id: RF21-01
     title: 'Escribir docs/rag_extension.md: objetivo, no-objetivos, arquitectura, riesgos de alucinación, guardrails'
     estimate_hours: 2.0
@@ -1347,5 +1681,6 @@ backlog:
     title: Documentar cómo ejecutar PoC y sus limitaciones
     estimate_hours: 1.0
   - id: RF21-07
-    title: Verificar criterios de aceptación (doc + PoC si aplica) y guardar evidencia
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes)
     estimate_hours: 1.0
