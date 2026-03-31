@@ -39,6 +39,19 @@ Variantes frecuentes:
 # Parametrizar por fichero config (json/yaml)
 /opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
   --config config/run_config.yaml
+
+# Ejecutar run sin rebuild de KB (RF15e)
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --no-kb-index
+
+# Ejecutar run con configs KB explícitas
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --kb-index-enabled \
+  --kb-sources-config config/kb_sources.yaml \
+  --kb-chunking-config config/kb_chunking.yaml \
+  --kb-chroma-config config/kb_chroma.yaml
 ```
 
 Calidad rápida:
@@ -249,4 +262,7 @@ Notas:
   - `run_results/<run_id>/report.html` (opcional)
   - validación de links vía `artifact_paths` en `report.json`
 - Estructura de run RF10:
-  - `run_results/<run_id>/run_structure.json`
+- `run_results/<run_id>/run_structure.json`
+- artefactos KB (RF15e, si indexado activado):
+  - `run_results/<run_id>/kb_index_manifest.json`
+  - `run_results/<run_id>/kb_index_state.json`

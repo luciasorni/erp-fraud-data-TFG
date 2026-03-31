@@ -124,6 +124,9 @@ tools:
         top_k:
           type: integer
           default: 5
+        filters:
+          type: object
+          description: Filtros exactos por metadata (ej. source_id/doc_type/source_path).
     outputs:
       type: object
       required:

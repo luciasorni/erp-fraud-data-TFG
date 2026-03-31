@@ -15,6 +15,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf08.md`
 - `docs/rf10.md`
 - `docs/rf15b.md`
+- `docs/rf15e.md`
+- `docs/rag_kb.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
 - `docs/tools_and_policies.md`
@@ -255,6 +257,20 @@ Pipeline ejecutado:
 3. Ejecución de tests de catálogo
 4. Ranking agregado
 5. Generación de reporte (`json`, `md`, `html`)
+
+## RAG / KB Local (RF15e)
+
+Se añadió un índice local en Chroma para fuentes ACFE + documentación del proyecto, con rebuild incremental por hash.
+
+- Guía: `docs/rag_kb.md`
+- Estado de implementación: `docs/rf15e.md`
+- Módulos:
+  - `src/erp_fraud/agents/kb_sources.py`
+  - `src/erp_fraud/agents/kb_text_extractor.py`
+  - `src/erp_fraud/agents/kb_chunking.py`
+  - `src/erp_fraud/agents/kb_chroma.py`
+  - `src/erp_fraud/agents/kb_index.py`
+  - `src/erp_fraud/agents/kb_search.py`
 
 Opciones útiles:
 

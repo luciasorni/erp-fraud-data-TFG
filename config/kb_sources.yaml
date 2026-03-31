@@ -1,0 +1,82 @@
+version: 1.0.0
+
+# RF15e-01: Fuentes candidatas para indexado RAG/KB.
+# - required=true  => si falta, debe reportarse como missing crítico para el build del índice.
+# - required=false => fuente opcional (se indexa solo si existe).
+sources:
+  - source_id: acfe_data_analysis_slides_pdf
+    enabled: true
+    required: true
+    type: file
+    path: docs/external/data_analysis_slides_for_pdf.pdf
+    tags: [acfe, external, reference]
+
+  - source_id: acfe_data_analytics_tests_pdf
+    enabled: true
+    required: true
+    type: file
+    path: docs/external/data_analytics_tests.pdf
+    tags: [acfe, external, reference]
+
+  - source_id: acfe_red_flags_pdf
+    enabled: true
+    required: true
+    type: file
+    path: docs/external/red_flags_final.pdf
+    tags: [acfe, external, reference]
+
+  - source_id: project_docs_markdown
+    enabled: true
+    required: true
+    type: glob
+    path: docs/*.md
+    tags: [project_docs, markdown]
+
+  - source_id: data_dictionary_json
+    enabled: true
+    required: true
+    type: file
+    path: data_dictionary.json
+    tags: [data_dictionary, structured]
+
+  - source_id: data_dictionary_markdown
+    enabled: true
+    required: false
+    type: file
+    path: data_dictionary.md
+    tags: [data_dictionary, markdown]
+
+  - source_id: test_catalog_yaml
+    enabled: true
+    required: true
+    type: glob
+    path: tests/catalog/*.yaml
+    tags: [test_catalog, yaml]
+
+  - source_id: fraud_test_changelog
+    enabled: true
+    required: false
+    type: file
+    path: tests/CHANGELOG.md
+    tags: [test_catalog, changelog]
+
+  - source_id: mapping_configs
+    enabled: true
+    required: false
+    type: glob
+    path: mappings/*.yaml
+    tags: [mapping, optional]
+
+  - source_id: taxonomy_configs
+    enabled: true
+    required: false
+    type: glob
+    path: config/taxonomy*.yaml
+    tags: [taxonomy, optional]
+
+  - source_id: test_cards
+    enabled: true
+    required: false
+    type: glob
+    path: docs/test_cards/*.md
+    tags: [test_cards, optional]

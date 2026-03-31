@@ -1,0 +1,11 @@
+version: 1.0.0
+
+chroma:
+  persist_directory: kb/chroma
+  collection_prefix: kb
+  default_doc_types:
+    - pdf
+    - md
+    - txt
+    - yaml
+    - json

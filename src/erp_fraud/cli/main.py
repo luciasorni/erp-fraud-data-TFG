@@ -20,6 +20,7 @@ from ..catalog import (
     write_test_results_by_test_id,
 )
 from ..catalog.test_spec_loader import load_test_specs_from_catalog
+from ..agents.kb_index import build_kb_index
 from ..ingest import (
     calcular_dataset_hash,
     cargar_fichero_tabular_desde_zip,
@@ -53,6 +54,10 @@ DEFAULT_RUN_TABLE_NAME = "fraud_1"
 DEFAULT_RUN_CATALOG = "tests/catalog"
 DEFAULT_RUN_WEIGHTS_CONFIG = "config/weights.yaml"
 DEFAULT_RUN_SAMPLE_TOP_N = 20
+DEFAULT_RUN_KB_ENABLED = True
+DEFAULT_RUN_KB_SOURCES_CONFIG = "config/kb_sources.yaml"
+DEFAULT_RUN_KB_CHUNKING_CONFIG = "config/kb_chunking.yaml"
+DEFAULT_RUN_KB_CHROMA_CONFIG = "config/kb_chroma.yaml"
 
 
 def _run_validate_dictionary(args: argparse.Namespace) -> int:
@@ -232,6 +237,10 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "sample_top_n": int(_pick("sample_top_n", DEFAULT_RUN_SAMPLE_TOP_N)),
         "top_k": _pick("top_k", None),
         "select_tests": _parse_select_tests(_pick("select_tests", None)),
+        "kb_index_enabled": bool(_pick("kb_index_enabled", DEFAULT_RUN_KB_ENABLED)),
+        "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_RUN_KB_SOURCES_CONFIG)),
+        "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_RUN_KB_CHUNKING_CONFIG)),
+        "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_RUN_KB_CHROMA_CONFIG)),
     }
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
@@ -257,6 +266,8 @@ def _build_run_paths(run_dir: Path) -> dict[str, Path]:
         "tests_outputs_dir": run_dir / "tests_outputs",
         "drilldowns_dir": run_dir / "drilldowns",
         "run_structure": run_dir / "run_structure.json",
+        "kb_index_manifest": run_dir / "kb_index_manifest.json",
+        "kb_index_state": run_dir / "kb_index_state.json",
     }
 
 
@@ -369,6 +380,37 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             schema_name=settings["schema_name"],
         )
 
+        kb_index_status: str = "DISABLED"
+        kb_index_error: str | None = None
+        kb_manifest_path: Path | None = None
+        if settings["kb_index_enabled"]:
+            try:
+                kb_manifest = build_kb_index(
+                    kb_sources_config_path=settings["kb_sources_config"],
+                    kb_chunking_config_path=settings["kb_chunking_config"],
+                    kb_chroma_config_path=settings["kb_chroma_config"],
+                    base_dir=".",
+                    output_manifest_path=run_paths["kb_index_manifest"],
+                    index_state_path=run_paths["kb_index_state"],
+                    incremental_rebuild=True,
+                )
+                kb_index_status = "OK"
+                kb_manifest_path = run_paths["kb_index_manifest"]
+                logger.log_event(
+                    level="INFO",
+                    event="kb_index_rebuild",
+                    kb_chunks_indexed=kb_manifest.get("chunks_indexed", 0),
+                    kb_sources_used=len(kb_manifest.get("sources_used", [])),
+                    kb_sources_skipped=len(kb_manifest.get("sources_skipped", [])),
+                )
+            except Exception as kb_exc:
+                kb_index_status = "ERROR"
+                kb_index_error = str(kb_exc)
+                logger.log_warning(
+                    "KB index rebuild falló; se continúa sin bloquear pipeline",
+                    error=kb_index_error,
+                )
+
         test_runner = TestRunner(
             db_path=settings["db_path"],
             schema_name=settings["schema_name"],
@@ -447,6 +489,10 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             "data_validation_report_json": str(validation_outcome.report_path),
             "test_runs_json": str(test_runs_path),
         }
+        if kb_manifest_path is not None and kb_manifest_path.exists():
+            extra_artifacts["kb_index_manifest_json"] = str(kb_manifest_path)
+        if run_paths["kb_index_state"].exists():
+            extra_artifacts["kb_index_state_json"] = str(run_paths["kb_index_state"])
         for key, path in ranking_paths.items():
             extra_artifacts[f"ranking_{key}"] = str(path)
         for test_id, paths in test_output_paths.items():
@@ -478,6 +524,12 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 "out_dir": settings["out_dir"],
                 "select_tests": settings["select_tests"] or [],
                 "table_stats": table_stats,
+                "kb_index_enabled": settings["kb_index_enabled"],
+                "kb_index_status": kb_index_status,
+                "kb_index_error": kb_index_error,
+                "kb_sources_config": settings["kb_sources_config"],
+                "kb_chunking_config": settings["kb_chunking_config"],
+                "kb_chroma_config": settings["kb_chroma_config"],
             },
         )
         report_json_path = write_report_json(
@@ -686,6 +738,34 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help=f"Top N para sample por test (default: {DEFAULT_RUN_SAMPLE_TOP_N})",
+    )
+    run_parser.add_argument(
+        "--kb-index-enabled",
+        dest="kb_index_enabled",
+        action="store_true",
+        default=None,
+        help="Activa reconstrucción automática de índice KB (incremental)",
+    )
+    run_parser.add_argument(
+        "--no-kb-index",
+        dest="kb_index_enabled",
+        action="store_false",
+        help="Desactiva reconstrucción automática de índice KB",
+    )
+    run_parser.add_argument(
+        "--kb-sources-config",
+        default=None,
+        help=f"Config de fuentes KB (default: {DEFAULT_RUN_KB_SOURCES_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--kb-chunking-config",
+        default=None,
+        help=f"Config de chunking KB (default: {DEFAULT_RUN_KB_CHUNKING_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--kb-chroma-config",
+        default=None,
+        help=f"Config de Chroma KB (default: {DEFAULT_RUN_KB_CHROMA_CONFIG})",
     )
     run_parser.set_defaults(handler=_run_pipeline)
     return parser
