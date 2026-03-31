@@ -34,7 +34,9 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 
 - `src/erp_fraud/ingest/`: lectura del zip, validación, carga tabular, normalización y limpieza
 - `src/erp_fraud/storage/`: DuckDB, rutas de salida, schema summary, run metadata y logging JSON
+- `src/erp_fraud/agents/`: guardrails de tools y políticas por agente (RF15b)
 - `tests/`: tests unitarios de la base de ingesta/storage
+- `project/`: planificación y backlog del TFG (`.txt` + `.xlsx`)
 - `run_results/<run_id>/`: salidas y evidencias de cada ejecución (local, no versionado)
 
 ## Qué está implementado (resumen)

@@ -209,3 +209,7 @@ erp_fraud_data.zip
 !erp_fraud_data.zip
 erp.duckdb
 run_results/
+schema_summary.json
+.venv_rf10_clean/
+.venv_rf10_sys/
+~$*.xlsx
