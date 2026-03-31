@@ -14,8 +14,10 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf07.md`
 - `docs/rf08.md`
 - `docs/rf10.md`
+- `docs/rf15b.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
+- `docs/tools_and_policies.md`
 
 ## Alcance actual (Fase 1 - RF01 en progreso)
 
@@ -258,6 +260,34 @@ Opciones útiles:
 - `--run-id <id>`: ID de run explícito
 - `--select-tests TST-A,TST-B`: ejecutar subset
 - `--top-k <n>`: override de top-k
+
+## Tools y Políticas (RF15b)
+
+Se añadió capa de guardrails para flujo multiagente:
+
+- Registro de tools: `config/tools_registry.yaml`
+- Políticas por agente/nodo: `config/agent_policies.yaml`
+- Allowlist de queries parametrizadas: `config/query_templates.yaml`
+- Enforcer runtime: `src/erp_fraud/agents/policy_enforcer.py`
+- Validador anti-alucinación de referencias: `src/erp_fraud/agents/schema_guard.py`
+- Logging de llamadas de tools: `src/erp_fraud/agents/tool_call_logging.py`
+
+Comportamiento esperado:
+
+- Si una tool no está permitida para el agente, se bloquea (`ToolPolicyDeniedError`).
+- Si una referencia de tabla/columna/test no existe, se bloquea (`SchemaGuardValidationError`).
+- Si una query template no está allowlist o los params son inválidos, se bloquea.
+- `enforce_and_call(...)` puede registrar `tool_calls.jsonl` con:
+  `tool_id`, `agent_id`, `params_hash`, `duration_ms`, `status`.
+
+Verificación rápida RF15b:
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q \
+  tests/test_rf15b_tools.py \
+  tests/test_rf15b_policy_and_schema_guard.py \
+  tests/test_rf15b_tool_call_logging.py
+```
 - `--config <file.json|file.yaml>`: parámetros de run
 
 Dónde ver resultados:

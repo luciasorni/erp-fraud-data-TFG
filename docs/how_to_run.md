@@ -134,6 +134,15 @@ Ejecutar tests RF08:
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
 ```
 
+Ejecutar tests RF15b (tools + policies + guardrails):
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q \
+  tests/test_rf15b_tools.py \
+  tests/test_rf15b_policy_and_schema_guard.py \
+  tests/test_rf15b_tool_call_logging.py
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:
@@ -165,6 +174,25 @@ Implementaciones actuales:
 - Persistencia de:
   - `test_runs.json`
   - `test_runner_logs.jsonl`
+
+## Tools y Policies RF15b
+
+- Configuración:
+  - `config/tools_registry.yaml`
+  - `config/agent_policies.yaml`
+  - `config/query_templates.yaml`
+- Componentes:
+  - `PolicyEnforcer` (`src/erp_fraud/agents/policy_enforcer.py`)
+  - `SchemaGuard` (`src/erp_fraud/agents/schema_guard.py`)
+  - `query_allowlist` (`src/erp_fraud/agents/query_allowlist.py`)
+  - `ToolCallLogger` (`src/erp_fraud/agents/tool_call_logging.py`)
+
+Reglas:
+
+- sin SQL libre (solo `query_template_id` allowlist),
+- bloqueo de tool no autorizada por agente,
+- bloqueo de referencia inexistente (`test_id`/tabla/columna),
+- logging JSONL por llamada de tool con `params_hash`, `duration_ms`, `status`.
 
 ## Outputs RF05
 
