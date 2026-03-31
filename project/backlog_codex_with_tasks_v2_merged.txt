@@ -1531,7 +1531,7 @@ requirements:
       logs/reportes)
     estimate_hours: 1.0
 - id: AG03
-  name: AG03 — Workflow AlphaCodium/Codex para construir el grafo y prompts (con aprobación humana)
+  name: AG03 — Workflow AlphaCodium para construir el grafo y prompts (con aprobación humana)
   descripcion: '[AlphaCodium] Adoptar AlphaCodium como metodología y patrón de orquestación para agentes: cada nodo LLM usa
     un bucle Plan→Draft→Validate→Repair (con validadores) y se versionan prompts. Se guardan evidencias de iteraciones (prompt→output→errores→fix)
     para defensa y trazabilidad.'
@@ -1543,7 +1543,7 @@ requirements:
   riesgo: Medio
   tasks:
   - id: AG03-01
-    title: 'Crear docs/codex_workflow.md con reglas: qué se permite generar, qué se revisa a mano, checklist de aceptación'
+    title: 'Crear docs/alphacodium_workflow.md con reglas: qué se permite generar, qué se revisa a mano, checklist de aceptación'
     estimate_hours: 1.2
   - id: AG03-02
     title: 'Definir plantilla de prompt para AlphaCodium: objetivo, constraints (allowlist, no inventar columnas), output
@@ -1559,7 +1559,7 @@ requirements:
     title: 'Integrar en CI: ejecutar pytest + lint + schema validation + (opcional) dry-run del grafo con stubs'
     estimate_hours: 2.0
   - id: AG03-06
-    title: 'Definir cómo registrar evidencias de iteraciones con Codex (ejemplos: prompt→diff→validación)'
+    title: 'Definir cómo registrar evidencias de iteraciones con AlphaCodium (ejemplos: prompt→diff→validación)'
     estimate_hours: 1.2
   - id: AG03-07
     title: Definir 'AlphaCodium Loop' (Plan→Draft→Validate→Repair) como estándar para nodos LLM (hypothesis/test/explain/score)

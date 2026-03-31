@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install ruff
+
+      - name: Lint
+        run: |
+          ruff check src tests scripts
+
+      - name: Validate schemas and configs
+        run: |
+          python scripts/validate_project_schema.py
+
+      - name: Dry-run AlphaCodium stubs
+        run: |
+          python scripts/dry_run_alphacodium_stub.py
+
+      - name: Pytest
+        run: |
+          pytest -q \
+            tests/test_rf03_catalog.py \
+            tests/test_rf04_runner.py \
+            tests/test_rf07_ranking.py \
+            tests/test_rf08_reporting.py \
+            tests/test_rf15b_tools.py \
+            tests/test_rf15b_policy_and_schema_guard.py \
+            tests/test_rf15b_tool_call_logging.py
