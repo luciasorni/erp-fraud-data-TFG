@@ -118,15 +118,38 @@ def _check_no_invented_columns(state: Any) -> dict[str, Any]:
         finding_columns = {
             str(col).strip() for col in finding.get("columns", []) if str(col).strip()
         }
+        # Fallback defensivo: si el test no rellenó `columns`, derivar columnas válidas
+        # desde `rows[].evidence_columns` y claves de `rows[].keys`.
+        if not finding_columns:
+            rows = finding.get("rows", [])
+            if isinstance(rows, list):
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    evidence_cols = row.get("evidence_columns", [])
+                    if isinstance(evidence_cols, list):
+                        finding_columns.update(
+                            str(col).strip() for col in evidence_cols if str(col).strip()
+                        )
+                    keys = row.get("keys", {})
+                    if isinstance(keys, dict):
+                        finding_columns.update(
+                            str(key).strip() for key in keys.keys() if str(key).strip()
+                        )
         referenced_columns = {
             str(col).strip() for col in exp.get("referenced_columns", []) if str(col).strip()
         }
-        if finding_columns:
-            unknown_ref = sorted(referenced_columns - finding_columns)
-            if unknown_ref:
+        if referenced_columns:
+            if not finding_columns:
                 errors.append(
-                    f"explanations[{idx}]: referenced_columns fuera de result.columns: {unknown_ref}"
+                    f"explanations[{idx}]: no hay columnas base para validar referenced_columns"
                 )
+            else:
+                unknown_ref = sorted(referenced_columns - finding_columns)
+                if unknown_ref:
+                    errors.append(
+                        f"explanations[{idx}]: referenced_columns fuera de result.columns: {unknown_ref}"
+                    )
 
         entity_key = str(exp.get("sample_entity_key", "")).strip()
         if entity_key:
