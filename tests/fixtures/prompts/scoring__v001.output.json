@@ -1,0 +1,43 @@
+{
+  "status": "OK",
+  "summary": "Ranking calculado por entidad con pesos configurados y evidencia trazable.",
+  "decisions": [
+    {
+      "id": "kreditor=V1001|belegnummer=B-8891",
+      "reason": "Acumula score por split payments y duplicate postings.",
+      "confidence": 0.91
+    }
+  ],
+  "evidence": [
+    {
+      "test_id": "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+      "table": "main.fraud_1",
+      "columns": [
+        "Kreditor",
+        "Belegnummer",
+        "Betrag"
+      ],
+      "keys": {
+        "Kreditor": "V1001",
+        "Belegnummer": "B-8891"
+      }
+    },
+    {
+      "test_id": "TST-DUPLICATE-POSTINGS",
+      "table": "main.fraud_1",
+      "columns": [
+        "Kreditor",
+        "Belegnummer",
+        "duplicate_count"
+      ],
+      "keys": {
+        "Kreditor": "V1001",
+        "Belegnummer": "B-8891"
+      }
+    }
+  ],
+  "next_actions": [
+    "Publicar ranking top-k y mantener pesos versionados."
+  ],
+  "errors": []
+}

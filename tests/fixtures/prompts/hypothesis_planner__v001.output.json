@@ -1,0 +1,35 @@
+{
+  "status": "OK",
+  "summary": "Se prioriza hipótesis de split payments cerca de umbral de autorización.",
+  "decisions": [
+    {
+      "id": "HYP-001",
+      "reason": "Hay patrón de importes justo por debajo del límite y repetición por proveedor.",
+      "confidence": 0.86
+    }
+  ],
+  "evidence": [
+    {
+      "test_id": "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+      "table": "main.fraud_1",
+      "columns": [
+        "Kreditor",
+        "Belegnummer",
+        "Betrag"
+      ],
+      "keys": {
+        "Kreditor": "V1001"
+      }
+    }
+  ],
+  "kb_citations": [
+    {
+      "source_id": "acfe_data_analytics_tests_pdf",
+      "chunk_id": "acfe-split-payments-01"
+    }
+  ],
+  "next_actions": [
+    "Ejecutar TST-SPLIT-PAYMENTS-NEAR-LIMIT y TST-JUST-BELOW-AUTH-THRESHOLD"
+  ],
+  "errors": []
+}

@@ -10,6 +10,7 @@ from .graph import (
 )
 from .nodes import (
     executor_node,
+    expert_explainer_node,
     explainer_node,
     hypothesis_planner_node,
     ingest_node,
@@ -28,6 +29,7 @@ __all__ = [
     "GraphState",
     "create_initial_graph_state",
     "executor_node",
+    "expert_explainer_node",
     "explainer_node",
     "graph_state_to_dict",
     "hypothesis_planner_node",

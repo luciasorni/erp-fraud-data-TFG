@@ -7,6 +7,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
 
+from ..agents import alpha_loop, alpha_loop_result_to_dict
 from ..agents.kb_index import build_kb_index
 from ..agents.kb_search import KBSearchTool
 from ..agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
@@ -118,6 +119,120 @@ def _tool_runstore_write_stub(*, run_id: str, hypotheses: list[dict[str, Any]]) 
     }
 
 
+def _alphacodium_enabled(state: GraphState) -> bool:
+    metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    return bool(metadata.get("alphacodium_enabled", True))
+
+
+def _run_alpha_loop_for_node(
+    *,
+    state: GraphState,
+    node_id: str,
+    prompt_text: str,
+    input_payload: dict[str, Any],
+    generate_fn: Callable[[str, dict[str, Any], list[str], int], Any],
+    validators: dict[str, Callable[[Any, dict[str, Any]], Any]],
+    max_iter: int = 3,
+) -> Any:
+    metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    alpha_meta = metadata.setdefault("alphacodium", {})
+    if not isinstance(alpha_meta, dict):
+        alpha_meta = {}
+        metadata["alphacodium"] = alpha_meta
+
+    if not _alphacodium_enabled(state) or alpha_loop is None or alpha_loop_result_to_dict is None:
+        output = generate_fn(prompt_text, dict(input_payload), [], 1)
+        alpha_meta[node_id] = {
+            "status": "BYPASSED",
+            "iterations": 1,
+            "artifacts_dir": "",
+        }
+        return output
+
+    loop_result = alpha_loop(
+        run_id=str(state.run_id),
+        node_id=node_id,
+        prompt_text=prompt_text,
+        input_payload=input_payload,
+        generate_fn=generate_fn,
+        validators=validators,
+        max_iter=max_iter,
+    )
+    alpha_meta[node_id] = alpha_loop_result_to_dict(loop_result)
+    if str(loop_result.status).upper() != "OK":
+        raise RuntimeError(f"alpha_loop {node_id} terminó en estado={loop_result.status}")
+    return loop_result.final_output
+
+
+def _validate_hypotheses_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(output, list) or not output:
+        return {"passed": False, "errors": ["hypotheses debe ser lista no vacía"]}
+    errors: list[str] = []
+    for idx, item in enumerate(output):
+        if not isinstance(item, dict):
+            errors.append(f"hypotheses[{idx}] debe ser objeto")
+            continue
+        hypothesis_id = str(item.get("hypothesis_id", "")).strip()
+        title = str(item.get("title", "")).strip()
+        if not hypothesis_id:
+            errors.append(f"hypotheses[{idx}].hypothesis_id vacío")
+        if not title:
+            errors.append(f"hypotheses[{idx}].title vacío")
+    return {"passed": len(errors) == 0, "errors": errors}
+
+
+def _validate_selected_tests_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(output, list):
+        return {"passed": False, "errors": ["selected_tests debe ser lista"]}
+    allowlist = input_payload.get("allowlist_ids", [])
+    allowlist_set = set(str(item).strip() for item in allowlist if str(item).strip())
+    errors: list[str] = []
+    for idx, row in enumerate(output):
+        if not isinstance(row, dict):
+            errors.append(f"selected_tests[{idx}] debe ser objeto")
+            continue
+        hypothesis_id = str(row.get("hypothesis_id", "")).strip()
+        test_id = str(row.get("test_id", "")).strip()
+        if not hypothesis_id:
+            errors.append(f"selected_tests[{idx}].hypothesis_id vacío")
+        if not test_id:
+            errors.append(f"selected_tests[{idx}].test_id vacío")
+        elif allowlist_set and test_id not in allowlist_set:
+            errors.append(f"selected_tests[{idx}].test_id fuera de allowlist: {test_id}")
+    return {"passed": len(errors) == 0, "errors": errors}
+
+
+def _validate_explanations_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(output, list) or not output:
+        return {"passed": False, "errors": ["explanations debe ser lista no vacía"]}
+    findings = input_payload.get("findings", [])
+    try:
+        _validate_explanations_guardrails(
+            explanations=[item for item in output if isinstance(item, dict)],
+            findings=[item for item in findings if isinstance(item, dict)],
+        )
+    except Exception as exc:
+        return {"passed": False, "errors": [str(exc)]}
+    return {"passed": True, "errors": []}
+
+
+def _validate_scores_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(output, list) or not output:
+        return {"passed": False, "errors": ["scores debe ser lista no vacía"]}
+    first = output[0]
+    if not isinstance(first, dict):
+        return {"passed": False, "errors": ["scores[0] debe ser objeto"]}
+    ranking = first.get("ranking", [])
+    if not isinstance(ranking, list):
+        return {"passed": False, "errors": ["scores[0].ranking debe ser lista"]}
+    for idx, row in enumerate(ranking):
+        if not isinstance(row, dict):
+            return {"passed": False, "errors": [f"ranking[{idx}] debe ser objeto"]}
+        if not str(row.get("entity_key", "")).strip():
+            return {"passed": False, "errors": [f"ranking[{idx}].entity_key vacío"]}
+    return {"passed": True, "errors": []}
+
+
 def hypothesis_planner_node(state: GraphState) -> GraphState:
     """Stub con tools RF15b + KBSearch opcional (RF14-05)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
@@ -157,7 +272,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             kb_status = f"ERROR:{type(exc).__name__}"
 
     if not state.hypotheses:
-        state.hypotheses = [
+        default_hypotheses = [
             {
                 "hypothesis_id": "HYP-001",
                 "title": "Split payments near approval thresholds",
@@ -170,6 +285,20 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
                 },
             }
         ]
+        state.hypotheses = _run_alpha_loop_for_node(
+            state=state,
+            node_id="hypothesis_planner",
+            prompt_text="Genera hipótesis iniciales P2P usando catálogo, schema y KB opcional.",
+            input_payload={
+                "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+                "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
+                "kb_search_status": kb_status,
+                "kb_hits_count": kb_hits_count,
+            },
+            generate_fn=lambda _p, _i, _f, _it: list(default_hypotheses),
+            validators={"hypothesis_schema": _validate_hypotheses_output},
+            max_iter=2,
+        )
 
     try:
         runstore_out = enforcer.enforce_and_call(
@@ -375,8 +504,20 @@ def test_planner_node(state: GraphState) -> GraphState:
             }
         )
 
-    state.selected_tests = selected_rows
-    metadata["selected_tests_count"] = len(selected_rows)
+    state.selected_tests = _run_alpha_loop_for_node(
+        state=state,
+        node_id="test_planner",
+        prompt_text="Selecciona tests allowlist del catálogo para cada hipótesis.",
+        input_payload={
+            "allowlist_ids": sorted(allowlist_ids),
+            "hypotheses_count": len(state.hypotheses),
+            "top_n": top_n,
+        },
+        generate_fn=lambda _p, _i, _f, _it: list(selected_rows),
+        validators={"selected_tests_schema": _validate_selected_tests_output},
+        max_iter=2,
+    )
+    metadata["selected_tests_count"] = len(state.selected_tests)
     return state
 
 
@@ -606,15 +747,27 @@ def explainer_node(state: GraphState) -> GraphState:
         return state
 
     explanations = [_build_explanation_from_finding(row) for row in findings]
-    _validate_explanations_guardrails(explanations=explanations, findings=findings)
-    state.explanations = explanations
+    state.explanations = _run_alpha_loop_for_node(
+        state=state,
+        node_id="expert_explainer",
+        prompt_text="Genera explicación auditora con evidencia real sin alucinaciones.",
+        input_payload={"findings": findings},
+        generate_fn=lambda _p, _i, _f, _it: list(explanations),
+        validators={"explanations_guardrails": _validate_explanations_output},
+        max_iter=2,
+    )
     metadata["explainer_status"] = "OK"
-    metadata["explainer_explanations_count"] = len(explanations)
+    metadata["explainer_explanations_count"] = len(state.explanations)
     metadata["explainer_guardrails"] = [
         "test_id debe existir en findings ejecutados",
         "referenced_columns debe ser subconjunto de result.columns",
     ]
     return state
+
+
+def expert_explainer_node(state: GraphState) -> GraphState:
+    """Alias semántico AG03-09 para el nodo LLM explicador."""
+    return explainer_node(state)
 
 
 def scoring_node(state: GraphState) -> GraphState:
@@ -667,7 +820,7 @@ def scoring_node(state: GraphState) -> GraphState:
                 continue
             fraud_type_distribution[key] = fraud_type_distribution.get(key, 0) + 1
 
-    state.scores = [
+    scores_payload = [
         {
             "ranking": top_rows,
             "fraud_type_distribution": dict(sorted(fraud_type_distribution.items(), key=lambda item: item[0])),
@@ -682,6 +835,15 @@ def scoring_node(state: GraphState) -> GraphState:
             "source": "scoring_node",
         }
     ]
+    state.scores = _run_alpha_loop_for_node(
+        state=state,
+        node_id="scoring",
+        prompt_text="Calcula ranking por entidad y distribución por tipología de fraude.",
+        input_payload={"findings_count": len(findings), "top_k": top_k},
+        generate_fn=lambda _p, _i, _f, _it: list(scores_payload),
+        validators={"scores_schema": _validate_scores_output},
+        max_iter=2,
+    )
     metadata["scoring_status"] = "OK"
     metadata["scoring_entities"] = len(ranking_rows)
     metadata["scoring_top_k"] = top_k
@@ -694,6 +856,62 @@ def _write_json(path: Path, payload: Any) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _collect_alphacodium_artifacts(run_dir: Path) -> dict[str, Any]:
+    alpha_dir = run_dir / "alphacodium"
+    if not alpha_dir.exists():
+        return {
+            "base_dir": str(alpha_dir),
+            "exists": False,
+            "nodes": {},
+            "files_total": 0,
+        }
+
+    nodes_payload: dict[str, Any] = {}
+    files_total = 0
+    for node_dir in sorted(alpha_dir.iterdir(), key=lambda p: p.name):
+        if not node_dir.is_dir():
+            continue
+        manifest_path = node_dir / "iterations_manifest.jsonl"
+        iteration_dirs = sorted(
+            [path for path in node_dir.iterdir() if path.is_dir() and path.name.startswith("iteration_")],
+            key=lambda p: p.name,
+        )
+        iterations_payload: list[dict[str, Any]] = []
+        for iteration_dir in iteration_dirs:
+            expected_files = {
+                "prompt": iteration_dir / "prompt.md",
+                "output": iteration_dir / "output.json",
+                "validation": iteration_dir / "validation.json",
+                "fix": iteration_dir / "fix.diff",
+            }
+            row = {
+                "iteration_dir": str(iteration_dir),
+                "prompt_path": str(expected_files["prompt"]) if expected_files["prompt"].exists() else "",
+                "output_path": str(expected_files["output"]) if expected_files["output"].exists() else "",
+                "validation_path": str(expected_files["validation"])
+                if expected_files["validation"].exists()
+                else "",
+                "fix_path": str(expected_files["fix"]) if expected_files["fix"].exists() else "",
+            }
+            files_total += sum(1 for path in expected_files.values() if path.exists())
+            iterations_payload.append(row)
+
+        if manifest_path.exists():
+            files_total += 1
+        nodes_payload[node_dir.name] = {
+            "manifest_path": str(manifest_path) if manifest_path.exists() else "",
+            "iterations": iterations_payload,
+            "iterations_count": len(iterations_payload),
+        }
+
+    return {
+        "base_dir": str(alpha_dir),
+        "exists": True,
+        "nodes": nodes_payload,
+        "files_total": files_total,
+    }
 
 
 def persist_node(state: GraphState) -> GraphState:
@@ -746,6 +964,7 @@ def persist_node(state: GraphState) -> GraphState:
         "run_id": run_id,
         "graph_dir": str(graph_dir),
         "artifacts": {key: str(value) for key, value in sorted(paths.items(), key=lambda item: item[0])},
+        "alphacodium": _collect_alphacodium_artifacts(run_dir),
     }
     _write_json(paths["manifest_json"], manifest)
 
@@ -753,6 +972,7 @@ def persist_node(state: GraphState) -> GraphState:
     metadata["persist_graph_dir"] = str(graph_dir)
     metadata["persist_manifest_path"] = str(paths["manifest_json"])
     metadata["persist_artifacts"] = manifest["artifacts"]
+    metadata["alphacodium_artifacts"] = manifest["alphacodium"]
     return state
 
 
@@ -765,6 +985,7 @@ def run_node_by_id(*, node_id: str, state: GraphState) -> GraphState:
         "test_planner": test_planner_node,
         "executor": executor_node,
         "explainer": explainer_node,
+        "expert_explainer": explainer_node,
         "scoring": scoring_node,
         "persist": persist_node,
     }

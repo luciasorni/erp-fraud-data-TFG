@@ -1,0 +1,25 @@
+{
+  "allowed_test_ids": [
+    "TST-DUPLICATE-POSTINGS",
+    "TST-UNUSUAL-AMOUNT-BY-VENDOR",
+    "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+    "TST-JUST-BELOW-AUTH-THRESHOLD"
+  ],
+  "allowed_tables": {
+    "main.fraud_1": [
+      "Kreditor",
+      "Betrag",
+      "Belegnummer",
+      "Buchungsdatum",
+      "Transaktionsart",
+      "Menge",
+      "Material",
+      "duplicate_count",
+      "z_score"
+    ]
+  },
+  "allowed_kb_source_ids": [
+    "acfe_data_analytics_tests_pdf",
+    "data_analysis_slides_for_pdf"
+  ]
+}

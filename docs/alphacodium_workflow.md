@@ -8,6 +8,32 @@ Definir una forma estándar de trabajar con AlphaCodium con aprobación humana:
 2. Validadores automáticos comprueban seguridad y consistencia.
 3. Revisión humana decide integración.
 
+## Cómo se une AlphaCodium con LangGraph
+
+Unión real en código:
+
+- Grafo: `src/erp_fraud/graph/graph.py`
+- Nodos: `src/erp_fraud/graph/nodes.py`
+- Loop reusable: `src/erp_fraud/agents/alpha_loop.py`
+
+Punto de integración:
+
+- Los nodos LLM (`hypothesis_planner`, `test_planner`, `expert_explainer`, `scoring`) llaman a `_run_alpha_loop_for_node(...)`.
+- `_run_alpha_loop_for_node(...)` ejecuta `alpha_loop(...)` con:
+  - `prompt_text`
+  - `input_payload`
+  - `validators`
+  - `max_iter`
+- Resultado:
+  - si pasa validación: se acepta `final_output`.
+  - si no pasa y agota iteraciones: estado `ERROR`.
+
+Para qué usamos AlphaCodium en este proyecto:
+
+1. Forzar validación antes de aceptar salida LLM.
+2. Evitar invenciones (test_id/columnas/keys fuera de contexto).
+3. Dejar evidencia auditable por iteración en `run_results/<run_id>/alphacodium/...`.
+
 ## Qué puede generar AlphaCodium
 
 - Plantillas de prompts en `prompts/`.
@@ -64,6 +90,18 @@ Marcar todo antes de merge:
 2. Salida de tests ejecutados.
 3. Riesgos conocidos y mitigación.
 4. Si hubo iteraciones con prompt: `prompt -> output -> validación -> fix`.
+
+## Evidencias AG03-12 (memoria/defensa)
+
+Se documentaron 3 iteraciones reales en:
+
+- `docs/ag03_iteraciones_reales.md`
+
+Incluye:
+
+- 1 caso con reparación (`REPAIR` -> `OK`) en `hypothesis_planner`.
+- 2 casos `OK` en primera iteración (`test_planner`, `expert_explainer`).
+- rutas exactas de artefactos en `run_results/<run_id>/alphacodium/...`.
 
 ## Registro de evidencias de iteración (AG03-06)
 
@@ -208,4 +246,138 @@ Checks que ejecuta:
 1. `ruff check src tests scripts`
 2. `python scripts/validate_project_schema.py`
 3. `python scripts/dry_run_alphacodium_stub.py`
-4. `pytest` (suite objetivo RF03/RF04/RF07/RF08/RF15b)
+4. `pytest` (suite RF + AG03, incluyendo):
+   - AG03: `tests/test_ag03_alpha_loop_integration.py`, `tests/test_ag03_alpha_artifacts.py`, `tests/test_ag03_prompt_snapshots.py`
+   - RF14: tests de grafo/nodos/integración
+   - RF15b/RF15e: guardrails/tools/KB
+
+Historial de actualizaciones CI relevantes (sí, se ha ido ampliando por requisitos):
+
+- `04e13c8`: primera base AG03 (workflow + dry-run).
+- `20b6084`: ajuste de tooling/lint para estabilidad.
+- `8b49055`: ampliación por RF13 (tests P1/catálogo).
+- `258f84b`: robustez de CI (`python -m ...` y estabilidad general).
+- Estado actual: CI incluye AG03 + RF14 + RF15b/RF15e en `pytest`.
+
+## AG03-08 - Implementación de `alpha_loop()` reusable
+
+Implementado en:
+
+- `src/erp_fraud/agents/alpha_loop.py`
+
+Capacidades:
+
+- recibe `prompt + input + validators + max_iter`.
+- ejecuta ciclo `Plan -> Draft -> Validate -> Repair`.
+- persiste por iteración:
+  - `prompt.md`
+  - `output.json`
+  - `validation.json`
+  - `fix.diff` (si aplica)
+  - `iterations_manifest.jsonl`
+
+Test relacionado:
+
+- `tests/test_ag03_alpha_artifacts.py`
+
+## AG03-09 - Integración de `alpha_loop` en nodos LLM
+
+Integrado en:
+
+- `hypothesis_planner_node`
+- `test_planner_node`
+- `expert_explainer_node` (alias sobre explainer)
+- `scoring_node`
+
+Código:
+
+- `src/erp_fraud/graph/nodes.py` (`_run_alpha_loop_for_node(...)`)
+
+Test relacionado:
+
+- `tests/test_ag03_alpha_loop_integration.py`
+
+## AG03-10 - Artefactos AlphaCodium por run
+
+Persistencia y registro:
+
+- artefactos por nodo en `run_results/<run_id>/alphacodium/...`
+- resumen agregado en `persist_node` dentro de:
+  - `run_results/<run_id>/graph/manifest.json` (campo `alphacodium`)
+  - `run_metadata["alphacodium_artifacts"]`
+
+Test relacionado:
+
+- `tests/test_ag03_alpha_artifacts.py`
+
+## AG03-11 - Prompt unit tests (snapshot) + CI
+
+Fixtures:
+
+- `tests/fixtures/prompts/context.json`
+- `tests/fixtures/prompts/*.output.json`
+
+Test:
+
+- `tests/test_ag03_prompt_snapshots.py`
+
+Valida:
+
+- schema de salida de prompt.
+- no invención de `test_id`, tablas o columnas.
+- citas KB válidas en nodos que deben citar.
+
+## AG03-13 - Tests unitarios del requisito
+
+Suite específica AG03:
+
+```bash
+python3 -m pytest -q \
+  tests/test_ag03_alpha_loop_integration.py \
+  tests/test_ag03_alpha_artifacts.py \
+  tests/test_ag03_prompt_snapshots.py
+```
+
+Cobertura:
+
+- integración de `alpha_loop` en nodos LLM del grafo.
+- persistencia de artefactos por iteración y registro en `persist_node`.
+- snapshots de prompts con validación de schema, no invención y citas KB.
+
+## AG03-14 - Documentación actualizada
+
+Documentación operativa del workflow y verificación:
+
+- `README.md` (sección AG03 + comando de verificación)
+- `docs/how_to_run.md` (comandos AG03 y rutas de evidencias)
+- `docs/alphacodium_workflow.md`
+- `docs/ag03_iteraciones_reales.md`
+
+## AG03-15 - Verificación y evidencias
+
+Evidencia local de aceptación:
+
+- `run_results/ag03-15-check/pytest_ag03.log`
+- `run_results/ag03-15-check/verification_summary.json`
+
+Nota traza LangSmith:
+
+- en este entorno la traza externa no está configurada; se deja `langsmith_trace_link = N/A`.
+
+## Registro explícito AG03-06 y AG03-07
+
+AG03-06 (registro de evidencias de iteración):
+
+- Definido en sección `Registro de evidencias de iteración (AG03-06)`.
+- Implementado por `alpha_loop(...)` escribiendo:
+  - `prompt.md`
+  - `output.json`
+  - `validation.json`
+  - `fix.diff` (si aplica)
+  - `iterations_manifest.jsonl`
+
+AG03-07 (estándar Plan->Draft->Validate->Repair):
+
+- Definido en sección `AlphaCodium Loop estándar (AG03-07)`.
+- Implementado en `src/erp_fraud/agents/alpha_loop.py`.
+- Integrado en nodos LLM del grafo vía `src/erp_fraud/graph/nodes.py`.

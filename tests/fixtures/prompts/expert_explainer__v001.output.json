@@ -1,0 +1,52 @@
+{
+  "status": "OK",
+  "summary": "Se observa riesgo por pagos fraccionados y duplicidad en un subconjunto de proveedores.",
+  "decisions": [
+    {
+      "id": "EXPL-001",
+      "reason": "El hallazgo se apoya en tests ejecutados y columnas de evidencia existentes.",
+      "confidence": 0.88
+    }
+  ],
+  "evidence": [
+    {
+      "test_id": "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+      "table": "main.fraud_1",
+      "columns": [
+        "Kreditor",
+        "Belegnummer",
+        "Betrag"
+      ],
+      "keys": {
+        "Kreditor": "V1001",
+        "Belegnummer": "B-8891"
+      }
+    },
+    {
+      "test_id": "TST-DUPLICATE-POSTINGS",
+      "table": "main.fraud_1",
+      "columns": [
+        "Kreditor",
+        "Belegnummer",
+        "duplicate_count"
+      ],
+      "keys": {
+        "Kreditor": "V1001"
+      }
+    }
+  ],
+  "kb_citations": [
+    {
+      "source_id": "acfe_data_analytics_tests_pdf",
+      "chunk_id": "acfe-duplicate-postings-01"
+    },
+    {
+      "source_id": "data_analysis_slides_for_pdf",
+      "chunk_id": "slides-risk-patterns-02"
+    }
+  ],
+  "next_actions": [
+    "Mantener el proveedor V1001 en top del ranking y revisar trazabilidad con drilldown."
+  ],
+  "errors": []
+}

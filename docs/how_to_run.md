@@ -189,6 +189,15 @@ Ejecutar verificación RF14 (grafo):
   tests/test_rf14_graph_integration.py
 ```
 
+Ejecutar verificación AG03 (AlphaCodium loop + artefactos + snapshots):
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q \
+  tests/test_ag03_alpha_loop_integration.py \
+  tests/test_ag03_alpha_artifacts.py \
+  tests/test_ag03_prompt_snapshots.py
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:
@@ -302,3 +311,6 @@ Notas:
 - evidencias RF14 (cierre):
   - `run_results/rf14-17-check/pytest_rf14.log`
   - `run_results/rf14-17-check/verification_summary.json`
+- evidencias AG03 (cierre):
+  - `run_results/ag03-15-check/pytest_ag03.log`
+  - `run_results/ag03-15-check/verification_summary.json`

@@ -19,6 +19,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf15b.md`
 - `docs/rf15e.md`
 - `docs/langgraph_architecture.md`
+- `docs/alphacodium_workflow.md`
+- `docs/ag03_iteraciones_reales.md`
 - `docs/rag_kb.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
@@ -266,6 +268,30 @@ python3 -m pytest -q \
   tests/test_rf14_persist_node.py \
   tests/test_rf14_graph_routing.py \
   tests/test_rf14_graph_integration.py
+```
+
+## Workflow AlphaCodium (AG03)
+
+Se implementó el loop `Plan -> Draft -> Validate -> Repair` para nodos LLM del grafo:
+
+- `hypothesis_planner`
+- `test_planner`
+- `expert_explainer`
+- `scoring`
+
+Componentes:
+
+- loop reusable: `src/erp_fraud/agents/alpha_loop.py`
+- integración en nodos: `src/erp_fraud/graph/nodes.py`
+- evidencias reales documentadas: `docs/ag03_iteraciones_reales.md`
+
+Verificación AG03:
+
+```bash
+python3 -m pytest -q \
+  tests/test_ag03_alpha_loop_integration.py \
+  tests/test_ag03_alpha_artifacts.py \
+  tests/test_ag03_prompt_snapshots.py
 ```
 
 ## Comando Único (RF10)
