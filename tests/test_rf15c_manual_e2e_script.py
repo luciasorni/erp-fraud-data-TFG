@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any
-
 from scripts.run_rf15c_e2e_manual import (
     build_rf15c_14_evidence_payload,
     resolve_langsmith_snapshot,
@@ -29,4 +26,3 @@ def test_rf15c_14_evidence_payload_contains_required_fields() -> None:
     assert payload["langsmith"]["trace_link"] == "https://smith.langchain.com/public/trace"
     assert payload["llm_mode"] == "stub"
     assert "score_json" in payload["persist_artifacts"]
-

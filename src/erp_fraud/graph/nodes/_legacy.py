@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+# ruff: noqa: F401
+
 import json
 from pathlib import Path
 from time import perf_counter
@@ -1022,4 +1024,3 @@ def run_node_by_id(*, node_id: str, state: GraphState) -> GraphState:
     from .registry import run_node_by_id as _impl
 
     return _impl(node_id=node_id, state=state)
-

@@ -21,7 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.erp_fraud.graph import create_initial_graph_state, run_graph
+from src.erp_fraud.graph import create_initial_graph_state, run_graph  # noqa: E402
 
 RUN_RESULTS_DIR = PROJECT_ROOT / "run_results"
 

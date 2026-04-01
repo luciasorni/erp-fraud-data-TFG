@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401
+# ruff: noqa: F401,F403,F405,F821
 
 from . import _legacy as _legacy
 
