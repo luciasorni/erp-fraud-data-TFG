@@ -104,3 +104,59 @@ def test_rf14_explainer_guardrail_rejects_unknown_cited_keys() -> None:
 
     with pytest.raises(ValueError, match="keys inexistentes"):
         _validate_explanations_guardrails(explanations=explanations, findings=findings)
+
+
+def test_rf15_explainer_guardrail_rejects_test_id_outside_catalog() -> None:
+    findings = [
+        {
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "columns": ["kreditor", "betrag"],
+            "rows": [{"keys": {"kreditor": "V1"}, "evidence_columns": ["kreditor", "betrag"]}],
+        }
+    ]
+    explanations = [
+        {
+            "test_id": "TST-NOT-IN-CATALOG",
+            "cited_test_id": "TST-NOT-IN-CATALOG",
+            "referenced_columns": ["kreditor"],
+            "cited_keys": {"kreditor": "V1"},
+            "cited_evidence_columns": ["kreditor"],
+        }
+    ]
+    with pytest.raises(ValueError, match="fuera de catálogo"):
+        _validate_explanations_guardrails(
+            explanations=explanations,
+            findings=findings,
+            catalog_test_ids={"TST-DUPLICATE-POSTINGS"},
+        )
+
+
+def test_rf15_explainer_guardrail_rejects_keys_outside_schema_summary() -> None:
+    findings = [
+        {
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "columns": ["kreditor", "betrag"],
+            "rows": [
+                {
+                    "keys": {"kreditor": "V1", "fake_key": "X"},
+                    "evidence_columns": ["kreditor", "betrag"],
+                }
+            ],
+        }
+    ]
+    explanations = [
+        {
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "cited_test_id": "TST-DUPLICATE-POSTINGS",
+            "referenced_columns": ["kreditor"],
+            "cited_keys": {"fake_key": "X"},
+            "cited_evidence_columns": ["kreditor"],
+        }
+    ]
+    with pytest.raises(ValueError, match="fuera de schema_summary"):
+        _validate_explanations_guardrails(
+            explanations=explanations,
+            findings=findings,
+            catalog_test_ids={"TST-DUPLICATE-POSTINGS"},
+            schema_columns={"kreditor", "betrag"},
+        )

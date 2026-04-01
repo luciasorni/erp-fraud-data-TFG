@@ -46,7 +46,9 @@ def test_rf15c_persist_node_writes_rf15c_artifacts() -> None:
     graph_dir = Path(out.run_metadata["persist_graph_dir"])
     assert (graph_dir / "hypotheses.json").exists()
     assert (graph_dir / "selected_tests.json").exists()
+    assert (graph_dir / "explanation.json").exists()
     assert (graph_dir / "explanations.json").exists()
+    assert (graph_dir / "explanation.md").exists()
     assert (graph_dir / "explanations.md").exists()
     assert (graph_dir / "score.json").exists()
     assert (graph_dir / "score_compare.json").exists()
@@ -61,4 +63,6 @@ def test_rf15c_persist_node_writes_rf15c_artifacts() -> None:
     assert "score_json" in artifacts
     assert "score_compare_json" in artifacts
     assert "score_experiment_json" in artifacts
+    assert "explanation_json" in artifacts
+    assert "explanation_md" in artifacts
     assert "explanations_md" in artifacts

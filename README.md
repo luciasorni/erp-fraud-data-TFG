@@ -16,6 +16,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf10.md`
 - `docs/rf13.md`
 - `docs/rf14.md`
+- `docs/rf15.md`
+- `docs/rf15_verification.md`
 - `docs/rf15b.md`
 - `docs/rf15c.md`
 - `docs/rf15e.md`
@@ -307,6 +309,33 @@ Documentación principal:
 Nota:
 
 - LangSmith es opcional; el flujo funciona sin LangSmith configurado.
+
+## LLM Experto y Explicaciones RF15
+
+Se añadió la capa de explicación auditable sobre resultados reales del run:
+
+- contrato de salida de explicación (`ExplanationSchema`),
+- prompt con reglas anti-invención (columnas/test_id/keys/evidence_columns),
+- validación cruzada contra catálogo + schema + findings,
+- loop de reparación cuando la validación falla,
+- persistencia y enlace en reporte.
+
+Artefactos por run:
+
+- `run_results/<run_id>/graph/explanation.json`
+- `run_results/<run_id>/graph/explanation.md`
+- alias de compatibilidad:
+  - `run_results/<run_id>/graph/explanations.json`
+  - `run_results/<run_id>/graph/explanations.md`
+
+Reporte:
+
+- `report.md` incluye sección `Explicaciones del agente` con enlaces a artefactos.
+
+Referencia:
+
+- `docs/rf15.md`
+- `docs/rf15_verification.md`
 
 ## Scoring RF18
 

@@ -46,6 +46,14 @@ from .score_schema import (
     get_score_schema,
     get_score_schema_required_fields,
 )
+from .explanation_schema import (
+    EXPLANATION_SCHEMA,
+    EXPLANATION_SCHEMA_FIELD_TYPES,
+    EXPLANATION_SCHEMA_REQUIRED_FIELDS,
+    EXPLANATION_SCHEMA_VERSION,
+    get_explanation_schema,
+    get_explanation_schema_required_fields,
+)
 from .result_schema_validator import RESULT_DF_REQUIRED_COLUMNS, validate_result_schema
 from .entity_key import (
     ENTITY_KEY_ASSIGN_SEPARATOR,
@@ -104,6 +112,10 @@ __all__ = [
     "SCORE_SCHEMA_FIELD_TYPES",
     "SCORE_SCHEMA_REQUIRED_FIELDS",
     "SCORE_SCHEMA_VERSION",
+    "EXPLANATION_SCHEMA",
+    "EXPLANATION_SCHEMA_FIELD_TYPES",
+    "EXPLANATION_SCHEMA_REQUIRED_FIELDS",
+    "EXPLANATION_SCHEMA_VERSION",
     "RESULT_DF_REQUIRED_COLUMNS",
     "ENTITY_KEY_ASSIGN_SEPARATOR",
     "ENTITY_KEY_SEPARATOR",
@@ -133,6 +145,8 @@ __all__ = [
     "get_result_schema_required_fields",
     "get_score_schema",
     "get_score_schema_required_fields",
+    "get_explanation_schema",
+    "get_explanation_schema_required_fields",
     "load_test_specs_from_catalog",
     "get_drilldown_min_keys_by_test_id",
     "get_drilldown_query_id_for_test_id",

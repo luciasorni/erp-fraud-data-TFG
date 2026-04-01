@@ -19,6 +19,7 @@ Prompts iniciales:
 - `hypothesis_planner__v001.md`
 - `test_planner__v001.md`
 - `expert_explainer__v001.md`
+- `explainer__v002.md` (RF15 reglas anti-alucinación + KBSearchTool)
 - `scoring__v001.md`
 - `scoring__v002.md` (RF18 ScoreSchema)
 

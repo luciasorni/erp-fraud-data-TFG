@@ -38,3 +38,9 @@ def test_rf15c_explainer_retries_with_feedback_and_repairs_hallucinations() -> N
     node_meta = alpha_meta.get("expert_explainer", {})
     assert isinstance(node_meta, dict)
     assert int(node_meta.get("iterations", 0)) == 2
+
+    repair_feedback = out.run_metadata.get("explainer_last_repair_feedback", [])
+    assert isinstance(repair_feedback, list) and repair_feedback
+    first = repair_feedback[0]
+    assert isinstance(first, dict)
+    assert "code" in first and "message" in first

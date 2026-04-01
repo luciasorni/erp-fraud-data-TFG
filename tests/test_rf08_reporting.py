@@ -154,6 +154,39 @@ def test_write_report_markdown_from_report_json_red_flags_section_empty_when_no_
     assert "Sin red flags activadas en este run." in content
 
 
+def test_write_report_markdown_from_report_json_includes_explanation_links(tmp_path: Path) -> None:
+    report_json_path = tmp_path / "report_explanations.json"
+    payload = build_report_json_payload(
+        run_id="rf15-06-md",
+        dataset_hash="hash-explanations",
+        artifact_paths={
+            "explanation_json": "run_results/rf15-06-md/graph/explanation.json",
+            "explanation_md": "run_results/rf15-06-md/graph/explanation.md",
+        },
+    )
+    write_report_json(output_path=report_json_path, payload=payload)
+    report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
+    content = report_md_path.read_text(encoding="utf-8")
+    assert "## Explicaciones del agente" in content
+    assert "explanation_json" in content
+    assert "explanation.md" in content
+
+
+def test_write_report_markdown_from_report_json_explanations_section_empty_when_missing_links(
+    tmp_path: Path,
+) -> None:
+    report_json_path = tmp_path / "report_explanations_empty.json"
+    payload = build_report_json_payload(
+        run_id="rf15-06-md-empty",
+        dataset_hash="hash-explanations-empty",
+    )
+    write_report_json(output_path=report_json_path, payload=payload)
+    report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
+    content = report_md_path.read_text(encoding="utf-8")
+    assert "## Explicaciones del agente" in content
+    assert "Sin explicaciones persistidas en este run." in content
+
+
 def test_render_report_markdown_to_html_creates_html(tmp_path: Path) -> None:
     report_md_path = tmp_path / "report.md"
     report_md_path.write_text("# Report\n\n## Resumen\n\n- ok\n", encoding="utf-8")

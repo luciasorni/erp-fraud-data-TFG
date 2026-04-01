@@ -237,6 +237,19 @@ def build_report_markdown_from_report_json_payload(
     else:
         lines.append("- Sin red flags activadas en este run.")
 
+    lines.extend(["", "## Explicaciones del agente", ""])
+    explanation_links: list[tuple[str, str]] = []
+    if isinstance(artifact_paths, dict):
+        for key in ("explanation_json", "explanation_md", "explanations_json", "explanations_md"):
+            value = artifact_paths.get(key)
+            if isinstance(value, str) and value.strip():
+                explanation_links.append((key, value))
+    if explanation_links:
+        for key, value in explanation_links:
+            lines.append(f"- `{_md(key)}`: `{_md(value)}`")
+    else:
+        lines.append("- Sin explicaciones persistidas en este run.")
+
     lines.extend(["", "## Errores", ""])
     failed_runs: list[dict[str, Any]] = []
     if isinstance(test_runs, list):

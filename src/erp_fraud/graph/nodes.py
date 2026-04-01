@@ -591,10 +591,32 @@ def _validate_explanations_output(output: Any, input_payload: dict[str, Any]) ->
     if not isinstance(output, list) or not output:
         return {"passed": False, "errors": ["explanations debe ser lista no vacía"]}
     findings = input_payload.get("findings", [])
+    catalog_ids_raw = input_payload.get("catalog_test_ids", [])
+    schema_columns_raw = input_payload.get("schema_columns", [])
+    catalog_test_ids = (
+        {
+            str(item).strip()
+            for item in catalog_ids_raw
+            if str(item).strip()
+        }
+        if isinstance(catalog_ids_raw, list)
+        else set()
+    )
+    schema_columns = (
+        {
+            str(item).strip()
+            for item in schema_columns_raw
+            if str(item).strip()
+        }
+        if isinstance(schema_columns_raw, list)
+        else set()
+    )
     try:
         _validate_explanations_guardrails(
             explanations=[item for item in output if isinstance(item, dict)],
             findings=[item for item in findings if isinstance(item, dict)],
+            catalog_test_ids=catalog_test_ids,
+            schema_columns=schema_columns,
         )
     except Exception as exc:
         return {"passed": False, "errors": [str(exc)]}
@@ -1347,7 +1369,7 @@ def _normalize_columns(value: Any) -> list[str]:
     return out
 
 
-def _build_explanation_from_finding(result: dict[str, Any]) -> dict[str, Any]:
+def _build_explanation_from_finding(result: dict[str, Any], *, entity_key: str = "") -> dict[str, Any]:
     test_id = str(result.get("test_id", "")).strip()
     finding_count = int(result.get("finding_count", 0) or 0)
     status = str(result.get("status", "UNKNOWN")).strip().upper()
@@ -1357,12 +1379,25 @@ def _build_explanation_from_finding(result: dict[str, Any]) -> dict[str, Any]:
     first_entity_key = ""
     first_keys: dict[str, Any] = {}
     first_evidence_columns: list[str] = []
-    if isinstance(rows, list) and rows and isinstance(rows[0], dict):
-        first_entity_key = str(rows[0].get("entity_key", "")).strip()
-        maybe_keys = rows[0].get("keys")
+    selected_row: dict[str, Any] = {}
+    if isinstance(rows, list):
+        if entity_key:
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                row_entity_key = str(row.get("entity_key", "")).strip()
+                if row_entity_key == entity_key:
+                    selected_row = row
+                    break
+        if not selected_row and rows and isinstance(rows[0], dict):
+            selected_row = rows[0]
+
+    if selected_row:
+        first_entity_key = str(selected_row.get("entity_key", "")).strip()
+        maybe_keys = selected_row.get("keys")
         if isinstance(maybe_keys, dict):
             first_keys = {str(k): str(v) for k, v in maybe_keys.items() if str(k).strip()}
-        maybe_evidence = rows[0].get("evidence_columns")
+        maybe_evidence = selected_row.get("evidence_columns")
         if isinstance(maybe_evidence, list):
             first_evidence_columns = _normalize_columns(maybe_evidence)
 
@@ -1391,11 +1426,60 @@ def _build_explanation_from_finding(result: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_explanations_for_ranked_entities(
+    *,
+    findings: list[dict[str, Any]],
+    ranking: list[dict[str, Any]],
+    top_k: int,
+) -> list[dict[str, Any]]:
+    if top_k <= 0:
+        return []
+    top_entities: list[str] = []
+    for row in ranking[:top_k]:
+        if not isinstance(row, dict):
+            continue
+        entity_key = str(row.get("entity_key", "")).strip()
+        if entity_key:
+            top_entities.append(entity_key)
+    if not top_entities:
+        return []
+
+    explanations: list[dict[str, Any]] = []
+    for entity_key in top_entities:
+        matched = False
+        for finding in findings:
+            if not isinstance(finding, dict):
+                continue
+            rows = finding.get("rows", [])
+            if not isinstance(rows, list):
+                continue
+            if not any(
+                isinstance(row, dict) and str(row.get("entity_key", "")).strip() == entity_key
+                for row in rows
+            ):
+                continue
+            item = _build_explanation_from_finding(finding, entity_key=entity_key)
+            item["summary"] = (
+                f"{item['test_id']} respalda hallazgo para entity_key={entity_key} "
+                f"con evidencia citada del resultado."
+            )
+            explanations.append(item)
+            matched = True
+            break
+        if not matched:
+            continue
+    return explanations
+
+
 def _validate_explanations_guardrails(
     *,
     explanations: list[dict[str, Any]],
     findings: list[dict[str, Any]],
+    catalog_test_ids: set[str] | None = None,
+    schema_columns: set[str] | None = None,
 ) -> None:
+    catalog_allowlist = catalog_test_ids or set()
+    allowed_schema_columns = schema_columns or set()
     findings_by_test: dict[str, dict[str, Any]] = {}
     for row in findings:
         if not isinstance(row, dict):
@@ -1410,6 +1494,8 @@ def _validate_explanations_guardrails(
         test_id = str(item.get("test_id", "")).strip()
         if not test_id:
             raise ValueError(f"explanations[{idx}] inválida: test_id vacío")
+        if catalog_allowlist and test_id not in catalog_allowlist:
+            raise ValueError(f"Guardrail: explicación referencia test_id fuera de catálogo: {test_id}")
         if test_id not in findings_by_test:
             raise ValueError(f"Guardrail: explicación referencia test_id no ejecutado: {test_id}")
         cited_test_id = str(item.get("cited_test_id", "")).strip()
@@ -1438,6 +1524,12 @@ def _validate_explanations_guardrails(
             raise ValueError(
                 f"Guardrail: explicación {test_id} cita keys inexistentes en finding: {unknown_key_names}"
             )
+        if allowed_schema_columns:
+            unknown_schema_keys = [name for name in cited_keys.keys() if name not in allowed_schema_columns]
+            if unknown_schema_keys:
+                raise ValueError(
+                    f"Guardrail: explicación {test_id} cita keys fuera de schema_summary: {unknown_schema_keys}"
+                )
         allowed_evidence = []
         maybe_evidence = first_row.get("evidence_columns", []) if isinstance(first_row, dict) else []
         if isinstance(maybe_evidence, list):
@@ -1505,6 +1597,25 @@ def _sanitize_explanations_against_findings(
         ]
         sanitized.append(row)
     return sanitized
+
+
+def _build_structured_explainer_feedback(errors: list[str]) -> list[dict[str, Any]]:
+    structured: list[dict[str, Any]] = []
+    for raw in errors:
+        err = str(raw).strip()
+        if not err:
+            continue
+        code = "UNKNOWN"
+        if "no ejecutado" in err or "fuera de catálogo" in err:
+            code = "TEST_ID_INVALID"
+        elif "columnas no presentes" in err:
+            code = "REFERENCED_COLUMNS_INVALID"
+        elif "keys inexistentes" in err or "fuera de schema_summary" in err:
+            code = "CITED_KEYS_INVALID"
+        elif "evidence_columns no presentes" in err:
+            code = "EVIDENCE_COLUMNS_INVALID"
+        structured.append({"code": code, "message": err})
+    return structured
 
 
 def _build_acfe_reference_via_kb(
@@ -1576,12 +1687,55 @@ def explainer_node(state: GraphState) -> GraphState:
     kb_top_k = int(metadata.get("explainer_kb_top_k", 2) or 2)
     if kb_top_k <= 0:
         kb_top_k = 2
+    explainer_top_k = int(metadata.get("explainer_top_k", 5) or 5)
+    if explainer_top_k <= 0:
+        explainer_top_k = 5
     kb_chroma_config_path = str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")).strip()
     base_dir = str(metadata.get("base_dir", ".")).strip() or "."
+    catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
+
+    catalog_test_ids: set[str] = set()
+    try:
+        catalog_specs = load_test_specs_from_catalog(catalog_path=catalog_path, validate_schema=True)
+        for spec in catalog_specs:
+            if not isinstance(spec, dict):
+                continue
+            test_id = str(spec.get("id", "")).strip()
+            if test_id:
+                catalog_test_ids.add(test_id)
+    except Exception:
+        catalog_test_ids = set()
+
+    schema_columns: set[str] = set()
+    schema_payload = state.schema if isinstance(state.schema, dict) else {}
+    tables = schema_payload.get("tables", []) if isinstance(schema_payload.get("tables"), list) else []
+    for table in tables:
+        if not isinstance(table, dict):
+            continue
+        columns = table.get("columns", [])
+        if not isinstance(columns, list):
+            continue
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            name = str(col.get("name", col.get("column_name", ""))).strip()
+            if name:
+                schema_columns.add(name)
+
+    ranked_explanations = _build_explanations_for_ranked_entities(
+        findings=findings,
+        ranking=[row for row in state.ranking if isinstance(row, dict)],
+        top_k=explainer_top_k,
+    )
+    seed_explanations = ranked_explanations if ranked_explanations else [
+        _build_explanation_from_finding(row) for row in findings
+    ]
 
     explanations = []
-    for row in findings:
-        item = _build_explanation_from_finding(row)
+    for item in seed_explanations:
+        if not isinstance(item, dict):
+            continue
+        item = dict(item)
         test_id = str(item.get("test_id", "")).strip()
         fraud_type = str(item.get("fraud_type", "")).strip()
         acfe_query = (
@@ -1618,6 +1772,7 @@ def explainer_node(state: GraphState) -> GraphState:
         if repair_feedback:
             findings_payload = input_payload.get("findings", [])
             if isinstance(findings_payload, list):
+                metadata["explainer_last_repair_feedback"] = _build_structured_explainer_feedback(repair_feedback)
                 return _sanitize_explanations_against_findings(
                     explanations=base,
                     findings=[row for row in findings_payload if isinstance(row, dict)],
@@ -1628,13 +1783,29 @@ def explainer_node(state: GraphState) -> GraphState:
         state=state,
         node_id="expert_explainer",
         prompt_text="Genera explicación auditora con evidencia real sin alucinaciones.",
-        input_payload={"findings": findings},
+        input_payload={
+            "findings": findings,
+            "catalog_test_ids": sorted(catalog_test_ids),
+            "schema_columns": sorted(schema_columns),
+        },
         generate_fn=_generate_explanations,
         validators={"explanations_guardrails": _validate_explanations_output},
         max_iter=2,
     )
     metadata["explainer_status"] = "OK"
     metadata["explainer_explanations_count"] = len(state.explanations)
+    metadata["explainer_run_summary"] = {
+        "findings_count": len(findings),
+        "ranking_available": bool(state.ranking),
+        "explainer_top_k": explainer_top_k,
+        "entities_explained": sorted(
+            {
+                str(row.get("sample_entity_key", "")).strip()
+                for row in state.explanations
+                if isinstance(row, dict) and str(row.get("sample_entity_key", "")).strip()
+            }
+        ),
+    }
     metadata["explainer_guardrails"] = [
         "test_id debe existir en findings ejecutados",
         "cited_test_id debe coincidir con test_id",
@@ -1643,6 +1814,8 @@ def explainer_node(state: GraphState) -> GraphState:
         "referenced_columns debe ser subconjunto de result.columns",
     ]
     metadata["explainer_kb_enabled"] = kb_enabled
+    if "explainer_last_repair_feedback" not in metadata:
+        metadata["explainer_last_repair_feedback"] = []
     return state
 
 
@@ -2159,6 +2332,8 @@ def persist_node(state: GraphState) -> GraphState:
         "hypotheses_json": graph_dir / "hypotheses.json",
         "selected_tests_json": graph_dir / "selected_tests.json",
         "findings_json": graph_dir / "findings.json",
+        "explanation_json": graph_dir / "explanation.json",
+        "explanation_md": graph_dir / "explanation.md",
         "explanations_json": graph_dir / "explanations.json",
         "explanations_md": graph_dir / "explanations.md",
         "score_json": graph_dir / "score.json",
@@ -2176,7 +2351,12 @@ def persist_node(state: GraphState) -> GraphState:
     _write_json(paths["hypotheses_json"], state.hypotheses)
     _write_json(paths["selected_tests_json"], state.selected_tests)
     _write_json(paths["findings_json"], state.findings)
+    _write_json(paths["explanation_json"], state.explanations)
     _write_json(paths["explanations_json"], state.explanations)
+    _write_explanations_markdown(
+        paths["explanation_md"],
+        [row for row in state.explanations if isinstance(row, dict)],
+    )
     _write_explanations_markdown(
         paths["explanations_md"],
         [row for row in state.explanations if isinstance(row, dict)],

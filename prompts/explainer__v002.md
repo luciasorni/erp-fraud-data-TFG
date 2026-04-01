@@ -45,7 +45,3 @@ Generar explicaciones auditor-style por entidad y por run usando solo outputs re
   "next_actions": ["string"],
   "errors": ["string"]
 }
-
-# Versioning
-Plantilla estable para ejecución del grafo.
-Versión canónica equivalente: `explainer__v002.md`.

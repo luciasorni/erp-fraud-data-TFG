@@ -246,6 +246,25 @@ Nota:
 
 - LangSmith no es obligatorio para ejecutar RF15c en local; la traza puede quedar en `N/A`.
 
+Verificación RF15 (explainer + guardrails + persistencia + reporte):
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf15_explanation_schema.py \
+  tests/test_rf15_explainer_prompt.py \
+  tests/test_rf15_explainer_entity_and_run_summary.py \
+  tests/test_rf15_validator_and_snapshot.py \
+  tests/test_rf15c_explainer_node.py \
+  tests/test_rf15c_explainer_repair.py \
+  tests/test_rf15c_persist_node.py \
+  tests/test_rf08_reporting.py
+```
+
+Referencia funcional:
+
+- `docs/rf15.md`
+- `docs/rf15_verification.md`
+
 Opcional: adjuntar traza LangSmith manualmente:
 
 ```bash
