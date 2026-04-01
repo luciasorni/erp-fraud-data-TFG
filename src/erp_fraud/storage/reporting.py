@@ -206,6 +206,37 @@ def build_report_markdown_from_report_json_payload(
     else:
         lines.append("- Sin tarjetas de test registradas.")
 
+    lines.extend(["", "## Red Flags activadas", ""])
+    red_flags_activated = metadata_extra.get("red_flags_activated", [])
+    if isinstance(red_flags_activated, list) and red_flags_activated:
+        lines.extend(
+            [
+                "| test_id | red_flag_id | finding_count | evidencia | explicación mínima | sample |",
+                "|---|---|---:|---|---|---|",
+            ]
+        )
+        for row in sorted(
+            [item for item in red_flags_activated if isinstance(item, dict)],
+            key=lambda item: str(item.get("test_id", "")),
+        ):
+            evidence = row.get("evidence_columns", [])
+            evidence_text = (
+                ", ".join(str(item) for item in evidence)
+                if isinstance(evidence, list)
+                else str(evidence)
+            )
+            lines.append(
+                "| "
+                + f"{_md(row.get('test_id', ''))} | "
+                + f"{_md(row.get('red_flag_id', ''))} | "
+                + f"{int(row.get('finding_count', 0) or 0)} | "
+                + f"{_md(evidence_text)} | "
+                + f"{_md(row.get('explanation', ''))} | "
+                + f"{_md(row.get('sample_artifact', ''))} |"
+            )
+    else:
+        lines.append("- Sin red flags activadas en este run.")
+
     lines.extend(["", "## Errores", ""])
     failed_runs: list[dict[str, Any]] = []
     if isinstance(test_runs, list):

@@ -182,10 +182,11 @@ def validate_test_spec(spec: dict[str, Any], *, source_path: str | Path = "<memo
         raise TestSpecValidationError(f"{path}: 'version' debe ser string no vacío")
     _validate_pattern(version, r"^[0-9]+\.[0-9]+\.[0-9]+$", "version", path)
 
-    for field in ("name", "fraud_type", "process_step", "description"):
+    for field in ("name", "fraud_type", "red_flag_id", "process_step", "description"):
         value = spec.get(field)
         if not isinstance(value, str) or not value.strip():
             raise TestSpecValidationError(f"{path}: '{field}' debe ser string no vacío")
+    _validate_pattern(str(spec.get("red_flag_id", "")), r"^RF-[A-Z0-9-]+$", "red_flag_id", path)
 
     _validate_source(spec.get("source"), path)
     _validate_data_requirements(spec.get("data_requirements"), path)

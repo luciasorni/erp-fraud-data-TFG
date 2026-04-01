@@ -2,6 +2,7 @@ id: TST-JUST-BELOW-AUTH-THRESHOLD
 version: 1.0.0
 name: Payments just below authorization thresholds
 fraud_type: authorization_bypass
+red_flag_id: RF-P2P-004
 process_step: invoice_posting
 description: Detecta pagos justo por debajo de umbrales de autorización para priorizar revisión.
 source:

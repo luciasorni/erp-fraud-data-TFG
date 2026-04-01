@@ -2,6 +2,7 @@ id: TST-DUPLICATE-POSTINGS
 version: 1.0.0
 name: Duplicate postings by vendor and amount
 fraud_type: duplicate_payment
+red_flag_id: RF-P2P-001
 process_step: invoice_posting
 description: Detecta asientos potencialmente duplicados por proveedor, documento y importe.
 source:

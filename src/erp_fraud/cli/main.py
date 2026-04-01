@@ -374,6 +374,50 @@ def _build_test_report_cards(
     return sorted(cards, key=lambda row: str(row.get("test_id", "")))
 
 
+def _build_red_flags_activated(
+    *,
+    test_specs: list[dict[str, Any]],
+    test_results: list[dict[str, Any]],
+    test_output_paths: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    """Construye resumen de red flags activadas (RF13-17)."""
+    specs_by_id: dict[str, dict[str, Any]] = {}
+    for spec in test_specs:
+        if not isinstance(spec, dict):
+            continue
+        test_id = str(spec.get("id", "")).strip()
+        if test_id:
+            specs_by_id[test_id] = spec
+
+    activated: list[dict[str, Any]] = []
+    for result in test_results:
+        if not isinstance(result, dict):
+            continue
+        test_id = str(result.get("test_id", "")).strip()
+        if not test_id:
+            continue
+        finding_count = int(result.get("finding_count", 0) or 0)
+        if finding_count <= 0:
+            continue
+        spec = specs_by_id.get(test_id, {})
+        source = spec.get("source", {}) if isinstance(spec.get("source"), dict) else {}
+        activated.append(
+            {
+                "test_id": test_id,
+                "red_flag_id": str(spec.get("red_flag_id", "")),
+                "fraud_type": str(spec.get("fraud_type", "")),
+                "acfe_reference": str(source.get("reference", "")),
+                "finding_count": finding_count,
+                "evidence_columns": list(spec.get("evidence_columns", []))
+                if isinstance(spec.get("evidence_columns"), list)
+                else [],
+                "explanation": str(spec.get("description", "")),
+                "sample_artifact": str(test_output_paths.get(test_id, {}).get("sample_json", "")),
+            }
+        )
+    return sorted(activated, key=lambda row: str(row.get("test_id", "")))
+
+
 def _write_run_structure_manifest(*, run_id: str, run_dir: Path, paths: dict[str, Path]) -> Path:
     payload = {
         "run_id": run_id,
@@ -585,6 +629,11 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             test_specs=executed_specs,
             test_output_paths=test_output_paths,
         )
+        red_flags_activated = _build_red_flags_activated(
+            test_specs=executed_specs,
+            test_results=results,
+            test_output_paths=test_output_paths,
+        )
 
         weights_cfg = load_weights_config(settings["weights_config"])
         if settings["top_k"] is not None:
@@ -654,6 +703,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 "select_tags": settings["select_tags"] or [],
                 "table_stats": table_stats,
                 "test_report_cards": test_report_cards,
+                "red_flags_activated": red_flags_activated,
                 "kb_index_enabled": settings["kb_index_enabled"],
                 "kb_index_status": kb_index_status,
                 "kb_index_error": kb_index_error,

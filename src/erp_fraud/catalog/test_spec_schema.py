@@ -15,6 +15,7 @@ TEST_SPEC_SCHEMA: dict[str, object] = {
         "version",
         "name",
         "fraud_type",
+        "red_flag_id",
         "process_step",
         "description",
         "source",
@@ -28,6 +29,7 @@ TEST_SPEC_SCHEMA: dict[str, object] = {
         "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
         "name": {"type": "string", "minLength": 1},
         "fraud_type": {"type": "string", "minLength": 1},
+        "red_flag_id": {"type": "string", "pattern": "^RF-[A-Z0-9-]+$"},
         "process_step": {"type": "string", "minLength": 1},
         "description": {"type": "string", "minLength": 1},
         "source": {

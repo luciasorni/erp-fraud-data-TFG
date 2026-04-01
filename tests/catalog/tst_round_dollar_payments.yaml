@@ -2,6 +2,7 @@ id: TST-ROUND-DOLLAR-PAYMENTS
 version: 1.0.0
 name: Round-dollar payments by vendor
 fraud_type: suspicious_payment_pattern
+red_flag_id: RF-P2P-003
 process_step: invoice_posting
 description: Detecta pagos con importes redondos para priorizar revisión por posible manipulación.
 source:

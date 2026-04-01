@@ -1,0 +1,109 @@
+version: 1.0.0
+source:
+  document: docs/external/red_flags_final.pdf
+  notes: Catalogo inicial de red flags derivado para el backlog RF13.
+
+red_flags:
+  - red_flag_id: RF-P2P-001
+    name: Duplicate postings by vendor and amount
+    description: Mismo proveedor, documento o posicion con importe repetido; posible duplicado de factura/pago.
+    fraud_type: duplicate_payment
+    acfe_reference: duplicate_payments
+    process_step: invoice_posting
+    related_tests:
+      - TST-DUPLICATE-POSTINGS
+
+  - red_flag_id: RF-P2P-002
+    name: Unusual transaction amount by vendor
+    description: Importe atipico respecto al historico del proveedor (outlier estadistico).
+    fraud_type: amount_anomaly
+    acfe_reference: unusual_transaction_amounts
+    process_step: invoice_posting
+    related_tests:
+      - TST-UNUSUAL-AMOUNT-BY-VENDOR
+
+  - red_flag_id: RF-P2P-003
+    name: Round-dollar payment pattern
+    description: Concentracion de importes enteros/redondos en pagos, patron asociado a manipulación manual.
+    fraud_type: suspicious_payment_pattern
+    acfe_reference: round_dollar_payments
+    process_step: invoice_posting
+    related_tests:
+      - TST-ROUND-DOLLAR-PAYMENTS
+
+  - red_flag_id: RF-P2P-004
+    name: Transactions just below authorization thresholds
+    description: Importes recurrentes justo por debajo de umbrales de aprobacion.
+    fraud_type: authorization_bypass
+    acfe_reference: transactions_just_below_authorization_thresholds
+    process_step: invoice_posting
+    related_tests:
+      - TST-JUST-BELOW-AUTH-THRESHOLD
+
+  - red_flag_id: RF-P2P-005
+    name: Split payments exceeding authorization limits
+    description: Fraccionamiento de lineas o pagos para eludir limites de autorizacion.
+    fraud_type: authorization_bypass
+    acfe_reference: split_payments_exceeding_authorization_limits
+    process_step: invoice_posting
+    related_tests:
+      - TST-SPLIT-PAYMENTS-NEAR-LIMIT
+
+  - red_flag_id: RF-P2P-006
+    name: Little or no sequence between invoice numbers
+    description: Saltos no esperados en numeracion de facturas por proveedor.
+    fraud_type: invoice_number_anomaly
+    acfe_reference: little_or_no_sequence_between_invoice_numbers
+    process_step: invoice_posting
+    related_tests:
+      - TST-INVOICE-SEQUENCE-GAPS
+
+  - red_flag_id: RF-P2P-007
+    name: Negative receipt quantities
+    description: Recepciones o ajustes con cantidad negativa fuera de patrones normales de devolucion.
+    fraud_type: inventory_anomaly
+    acfe_reference: negative_receipt_quantities
+    process_step: goods_receipt
+    related_tests:
+      - TST-NEGATIVE-QUANTITY-RECEIPTS
+
+  - red_flag_id: RF-P2P-008
+    name: Duplicate material items in invoice lines
+    description: Duplicidad de material dentro del mismo contexto de factura/proveedor/posicion.
+    fraud_type: duplicate_entry
+    acfe_reference: duplicate_items_or_serial_numbers
+    process_step: invoice_posting
+    related_tests:
+      - TST-DUPLICATE-MATERIAL-ITEMS
+
+  - red_flag_id: RF-P2P-009
+    name: Higher-than-average inventory costs
+    description: Costes de inventario por encima de su baseline esperado.
+    fraud_type: inventory_cost_outlier
+    acfe_reference: higher_than_average_inventory_costs
+    process_step: invoice_posting
+    related_tests: []
+
+  - red_flag_id: RF-P2P-010
+    name: Transactions posted at unusual times
+    description: Registro de operaciones en horarios atipicos frente al patron normal.
+    fraud_type: timing_anomaly
+    acfe_reference: unusual_posting_times
+    process_step: invoice_posting
+    related_tests: []
+
+  - red_flag_id: RF-P2P-011
+    name: Large even-dollar entries
+    description: Asientos de gran importe y cifra par/redonda que requieren justificacion adicional.
+    fraud_type: suspicious_payment_pattern
+    acfe_reference: large_even_dollar_entries
+    process_step: invoice_posting
+    related_tests: []
+
+  - red_flag_id: RF-P2P-012
+    name: Activity in previously unused accounts
+    description: Movimientos en cuentas contables con poca o nula actividad historica.
+    fraud_type: account_usage_anomaly
+    acfe_reference: unused_account_activity
+    process_step: invoice_posting
+    related_tests: []

@@ -112,6 +112,48 @@ def test_write_report_markdown_from_report_json_includes_test_cards_section(tmp_
     assert "round_dollar_payments" in content
 
 
+def test_write_report_markdown_from_report_json_includes_red_flags_section(tmp_path: Path) -> None:
+    report_json_path = tmp_path / "report_red_flags.json"
+    payload = build_report_json_payload(
+        run_id="rf13-17-md",
+        dataset_hash="hash-red-flags",
+        metadata_extra={
+            "red_flags_activated": [
+                {
+                    "test_id": "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+                    "red_flag_id": "RF-P2P-005",
+                    "finding_count": 3,
+                    "evidence_columns": ["Kreditor", "Belegnummer", "Position", "Betrag"],
+                    "explanation": "Detecta facturas con líneas fraccionadas para superar umbral de autorización agregado.",
+                    "sample_artifact": "run_results/x/tests_outputs/TST-SPLIT-PAYMENTS-NEAR-LIMIT/sample_top20.json",
+                }
+            ]
+        },
+    )
+    write_report_json(output_path=report_json_path, payload=payload)
+    report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
+    content = report_md_path.read_text(encoding="utf-8")
+    assert "## Red Flags activadas" in content
+    assert "RF-P2P-005" in content
+    assert "TST-SPLIT-PAYMENTS-NEAR-LIMIT" in content
+
+
+def test_write_report_markdown_from_report_json_red_flags_section_empty_when_no_findings(
+    tmp_path: Path,
+) -> None:
+    report_json_path = tmp_path / "report_red_flags_empty.json"
+    payload = build_report_json_payload(
+        run_id="rf13-17-empty",
+        dataset_hash="hash-empty",
+        metadata_extra={"red_flags_activated": []},
+    )
+    write_report_json(output_path=report_json_path, payload=payload)
+    report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
+    content = report_md_path.read_text(encoding="utf-8")
+    assert "## Red Flags activadas" in content
+    assert "Sin red flags activadas en este run." in content
+
+
 def test_render_report_markdown_to_html_creates_html(tmp_path: Path) -> None:
     report_md_path = tmp_path / "report.md"
     report_md_path.write_text("# Report\n\n## Resumen\n\n- ok\n", encoding="utf-8")

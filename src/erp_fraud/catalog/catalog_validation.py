@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 
 REQUIRED_TESTSPEC_FIELDS_RF13: tuple[str, ...] = (
     "fraud_type",
+    "red_flag_id",
     "process_step",
     "expected_output",
     "evidence_columns",
@@ -15,6 +17,41 @@ REQUIRED_TESTSPEC_FIELDS_RF13: tuple[str, ...] = (
 
 class CatalogValidationError(ValueError):
     """Error de validación del catálogo de tests."""
+
+
+def _load_red_flags_by_id(red_flags_mapping_path: str | Path) -> dict[str, dict[str, str]]:
+    path = Path(red_flags_mapping_path)
+    if not path.exists():
+        raise CatalogValidationError(f"No existe mapping de red flags: {path}")
+
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:  # pragma: no cover
+        raise CatalogValidationError("No se puede validar red flags sin PyYAML instalado") from exc
+
+    payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise CatalogValidationError(f"Mapping de red flags inválido (objeto esperado): {path}")
+    red_flags = payload.get("red_flags")
+    if not isinstance(red_flags, list) or not red_flags:
+        raise CatalogValidationError(f"Mapping de red flags sin lista válida 'red_flags': {path}")
+
+    out: dict[str, dict[str, str]] = {}
+    for idx, item in enumerate(red_flags):
+        if not isinstance(item, dict):
+            raise CatalogValidationError(f"red_flags[{idx}] inválido: debe ser objeto")
+        red_flag_id = str(item.get("red_flag_id", "")).strip()
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        if not red_flag_id:
+            raise CatalogValidationError(f"red_flags[{idx}] sin red_flag_id")
+        if not fraud_type:
+            raise CatalogValidationError(f"{red_flag_id}: falta fraud_type en mapping")
+        if red_flag_id in out:
+            raise CatalogValidationError(f"red_flag_id duplicado en mapping: {red_flag_id}")
+        out[red_flag_id] = {
+            "fraud_type": fraud_type,
+        }
+    return out
 
 
 def _build_schema_columns_by_table(schema_summary_payload: dict[str, Any]) -> dict[str, set[str]]:
@@ -49,6 +86,7 @@ def validate_catalog_against_schema_summary(
     *,
     test_specs: list[dict[str, Any]],
     schema_summary_payload: dict[str, Any],
+    red_flags_mapping_path: str | Path = "config/red_flags_mapping.yaml",
 ) -> None:
     """Valida campos obligatorios RF13 y evidence_columns contra schema_summary."""
     if not isinstance(test_specs, list):
@@ -57,6 +95,7 @@ def validate_catalog_against_schema_summary(
     columns_by_table = _build_schema_columns_by_table(schema_summary_payload)
     if not columns_by_table:
         raise CatalogValidationError("schema_summary sin tablas/columnas para validar catálogo")
+    red_flags_by_id = _load_red_flags_by_id(red_flags_mapping_path)
 
     errors: list[str] = []
     for spec in test_specs:
@@ -72,6 +111,23 @@ def validate_catalog_against_schema_summary(
         ]
         if missing_fields:
             errors.append(f"{test_id}: faltan campos obligatorios RF13: {missing_fields}")
+            continue
+
+        red_flag_id = str(spec.get("red_flag_id", "")).strip()
+        if not red_flag_id:
+            errors.append(f"{test_id}: red_flag_id vacío o inválido")
+            continue
+        red_flag_info = red_flags_by_id.get(red_flag_id)
+        if red_flag_info is None:
+            errors.append(f"{test_id}: red_flag_id '{red_flag_id}' no existe en mapping")
+            continue
+        spec_fraud_type = str(spec.get("fraud_type", "")).strip().lower()
+        mapping_fraud_type = str(red_flag_info.get("fraud_type", "")).strip().lower()
+        if spec_fraud_type != mapping_fraud_type:
+            errors.append(
+                f"{test_id}: red_flag_id '{red_flag_id}' incoherente con fraud_type "
+                f"(spec='{spec_fraud_type}' mapping='{mapping_fraud_type}')"
+            )
             continue
 
         data_requirements = spec.get("data_requirements", {})

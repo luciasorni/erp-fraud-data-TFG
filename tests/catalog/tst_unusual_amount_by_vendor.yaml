@@ -2,6 +2,7 @@ id: TST-UNUSUAL-AMOUNT-BY-VENDOR
 version: 1.0.0
 name: Unusual amount by vendor
 fraud_type: amount_anomaly
+red_flag_id: RF-P2P-002
 process_step: invoice_posting
 description: Detecta importes atípicos por proveedor para priorizar revisión manual.
 source:

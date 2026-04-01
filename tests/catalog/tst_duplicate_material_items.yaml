@@ -2,6 +2,7 @@ id: TST-DUPLICATE-MATERIAL-ITEMS
 version: 1.0.0
 name: Duplicate material items in same invoice line
 fraud_type: duplicate_entry
+red_flag_id: RF-P2P-008
 process_step: invoice_posting
 description: Detecta duplicidades de material en el mismo proveedor/documento/posición.
 source:

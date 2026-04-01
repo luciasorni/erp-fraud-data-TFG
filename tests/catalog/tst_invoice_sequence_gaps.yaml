@@ -2,6 +2,7 @@ id: TST-INVOICE-SEQUENCE-GAPS
 version: 1.0.0
 name: Invoice sequence gaps by vendor
 fraud_type: invoice_number_anomaly
+red_flag_id: RF-P2P-006
 process_step: invoice_posting
 description: Detecta saltos atípicos en la secuencia de números de factura por proveedor.
 source:

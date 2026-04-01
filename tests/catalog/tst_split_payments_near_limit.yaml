@@ -2,6 +2,7 @@ id: TST-SPLIT-PAYMENTS-NEAR-LIMIT
 version: 1.0.0
 name: Split payments near authorization limit
 fraud_type: authorization_bypass
+red_flag_id: RF-P2P-005
 process_step: invoice_posting
 description: Detecta facturas con líneas fraccionadas para superar umbral de autorización agregado.
 source:

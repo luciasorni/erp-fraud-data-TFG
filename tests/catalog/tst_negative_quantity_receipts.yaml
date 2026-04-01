@@ -2,6 +2,7 @@ id: TST-NEGATIVE-QUANTITY-RECEIPTS
 version: 1.0.0
 name: Negative quantity receipts
 fraud_type: inventory_anomaly
+red_flag_id: RF-P2P-007
 process_step: goods_receipt
 description: Detecta registros con cantidad negativa para revisión de ajustes y devoluciones atípicas.
 source:

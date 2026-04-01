@@ -46,6 +46,7 @@ def test_validate_test_spec_rejects_inconsistent_required_columns_exact() -> Non
         "version": "1.0.0",
         "name": "Bad exact columns",
         "fraud_type": "quality",
+        "red_flag_id": "RF-P2P-999",
         "process_step": "invoice_posting",
         "description": "Invalid spec for testing",
         "source": {"catalog": "acfe_coso", "reference": "dummy"},
