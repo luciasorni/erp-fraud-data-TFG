@@ -113,3 +113,15 @@ Campos mínimos registrados por nodo:
 - `max_tokens`
 - `models_config_path`
 - `source`
+
+## RF14b-05 (estado implementado en código)
+
+Evaluadores automáticos añadidos (post-run) en `run_metadata["rf14b_evaluation"]`:
+
+- `schema_allowlist_compliance`
+  - verifica que `selected_tests` y `findings` solo usan `test_id` del catálogo.
+- `no_invented_columns_or_test_ids`
+  - verifica consistencia explicación↔findings (sin columnas/test_ids inventados).
+- `kb_citations_present`
+  - si `explainer_kb_enabled=true`, exige citas KB (`acfe_reference.hits`) por explicación.
+  - si KB está desactivado, marca `SKIPPED_KB_DISABLED`.

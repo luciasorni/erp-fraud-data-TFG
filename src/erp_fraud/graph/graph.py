@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any
 
 from .nodes import run_node_by_id
+from .evaluators import evaluate_rf14b_automatic
 from .observability import (
     append_error_event,
     append_trace_event,
@@ -278,6 +279,7 @@ def run_graph(
             _mark_graph_abort(state, reason="precondition_failed_before_planning")
             if "persist" in sequence:
                 state = _execute_node_with_policy(state=state, node_id="persist")
+            _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
             return state
         try:
             state = _execute_node_with_policy(state=state, node_id=node_id)
@@ -288,11 +290,13 @@ def run_graph(
                     state = _execute_node_with_policy(state=state, node_id="persist")
                 except Exception:
                     pass
+            _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
             return state
 
     metadata = _meta(state)
     if str(metadata.get("graph_status", "")).strip().upper() != "ABORTED":
         metadata["graph_status"] = "OK"
+    metadata["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
     return state
 
 
