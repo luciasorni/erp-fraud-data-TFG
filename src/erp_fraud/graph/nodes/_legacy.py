@@ -50,6 +50,17 @@ from ..state import GraphState
 from ..observability import append_error_event
 
 GraphNode = Callable[[GraphState], GraphState]
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
+def _resolve_project_path(path_value: str | Path) -> str:
+    raw = str(path_value).strip()
+    if not raw:
+        return ""
+    path = Path(raw)
+    if path.is_absolute():
+        return str(path)
+    return str((PROJECT_ROOT / path).resolve())
 
 
 def _stable_json(value: Any) -> str:
@@ -134,9 +145,9 @@ def _build_graph_policy_enforcer(state: GraphState) -> PolicyEnforcer:
         state.run_metadata.get("graph_tool_log_path", f"run_results/{run_id}/graph_tool_calls.jsonl")
     ).strip()
     return PolicyEnforcer.from_yaml(
-        policy_path="config/agent_policies.yaml",
-        tools_registry_path="config/tools_registry.yaml",
-        tool_call_log_path=tool_log_path,
+        policy_path=_resolve_project_path("config/agent_policies.yaml"),
+        tools_registry_path=_resolve_project_path("config/tools_registry.yaml"),
+        tool_call_log_path=_resolve_project_path(tool_log_path),
     )
 
 
@@ -778,8 +789,12 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
-    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
-    data_dictionary_path = str(metadata.get("data_dictionary_path", "data_dictionary.json")).strip()
+    catalog_path = _resolve_project_path(
+        str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    )
+    data_dictionary_path = _resolve_project_path(
+        str(metadata.get("data_dictionary_path", "data_dictionary.json")).strip() or "data_dictionary.json"
+    )
     kb_search_enabled = bool(metadata.get("kb_search_enabled", False))
     kb_top_k = int(metadata.get("hypothesis_kb_top_k", DEFAULT_HYPOTHESIS_KB_TOP_K) or DEFAULT_HYPOTHESIS_KB_TOP_K)
     if kb_top_k <= 0:
@@ -845,8 +860,13 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     if kb_search_enabled:
         try:
             tool = KBSearchTool(
-                kb_chroma_config_path=str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
-                base_dir=str(metadata.get("base_dir", DEFAULT_BASE_DIR)),
+                kb_chroma_config_path=_resolve_project_path(
+                    str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
+                    or DEFAULT_KB_CHROMA_CONFIG
+                ),
+                base_dir=_resolve_project_path(
+                    str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
+                ),
             )
             kb_out = tool.search(query=kb_query, top_k=kb_top_k)
             hits = kb_out.get("hits", []) if isinstance(kb_out, dict) else []
@@ -909,11 +929,11 @@ def ingest_node(state: GraphState) -> GraphState:
     """Nodo de ingesta no-LLM: carga `schema_summary` en el estado (RF14-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     schema_summary_path = str(metadata.get("schema_summary_path", "")).strip()
-    db_path = str(metadata.get("db_path", DEFAULT_DB_PATH)).strip()
+    db_path = _resolve_project_path(str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH)
     schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
 
     if schema_summary_path:
-        path = Path(schema_summary_path)
+        path = Path(_resolve_project_path(schema_summary_path))
         if not path.exists():
             raise FileNotFoundError(f"schema_summary_path no existe: {path}")
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1050,7 +1070,9 @@ def test_planner_node(state: GraphState) -> GraphState:
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
     node_id = "test_planner"
-    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    catalog_path = _resolve_project_path(
+        str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    )
     top_n = int(metadata.get("test_planner_top_n", DEFAULT_TEST_PLANNER_TOP_N) or DEFAULT_TEST_PLANNER_TOP_N)
     if top_n <= 0:
         top_n = 1
@@ -1270,10 +1292,14 @@ def kb_index_node(state: GraphState) -> GraphState:
 def executor_node(state: GraphState) -> GraphState:
     """Nodo no-LLM: ejecuta tests seleccionados y guarda findings (RF14-07)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
-    db_path = str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH
+    db_path = _resolve_project_path(
+        str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH
+    )
     schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
     table_name = str(metadata.get("table_name", DEFAULT_TABLE_NAME)).strip() or DEFAULT_TABLE_NAME
-    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    catalog_path = _resolve_project_path(
+        str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    )
     timeout_ms = metadata.get("executor_timeout_ms")
     if timeout_ms is None:
         timeout_ms = DEFAULT_EXECUTOR_TIMEOUT_MS
@@ -1305,12 +1331,12 @@ def executor_node(state: GraphState) -> GraphState:
         return state
 
     run_id = str(state.run_id).strip() or "unknown_run"
-    log_path = str(
+    log_path = _resolve_project_path(
         metadata.get(
             "executor_test_runner_log_path",
             f"run_results/{run_id}/graph_executor_test_runner_logs.jsonl",
         )
-    ).strip()
+    )
     results = runner.run_all(
         selected_tests=selected_ids,
         catalog_path=catalog_path,
@@ -1719,9 +1745,13 @@ def explainer_node(state: GraphState) -> GraphState:
     explainer_top_k = int(metadata.get("explainer_top_k", DEFAULT_EXPLAINER_TOP_K) or DEFAULT_EXPLAINER_TOP_K)
     if explainer_top_k <= 0:
         explainer_top_k = DEFAULT_EXPLAINER_TOP_K
-    kb_chroma_config_path = str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
-    base_dir = str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
-    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    kb_chroma_config_path = _resolve_project_path(
+        str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip() or DEFAULT_KB_CHROMA_CONFIG
+    )
+    base_dir = _resolve_project_path(str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR)
+    catalog_path = _resolve_project_path(
+        str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    )
 
     catalog_test_ids: set[str] = set()
     try:
@@ -1857,8 +1887,12 @@ def scoring_node(state: GraphState) -> GraphState:
     """Scoring por entidad/transacción + tipología de fraude (RF14-09)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     findings = [row for row in state.findings if isinstance(row, dict)]
-    weights_config_path = str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip()
-    models_config_path = str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
+    weights_config_path = _resolve_project_path(
+        str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip() or DEFAULT_WEIGHTS_CONFIG
+    )
+    models_config_path = _resolve_project_path(
+        str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
+    )
     scoring_model_profile = str(metadata.get("scoring_model_profile", "")).strip()
     top_k_override = metadata.get("scoring_top_k")
     simulate_invalid_once = bool(metadata.get("scoring_simulate_invalid_once", False))

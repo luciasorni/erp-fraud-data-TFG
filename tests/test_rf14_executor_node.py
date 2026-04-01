@@ -62,7 +62,7 @@ def test_rf14_executor_node_runs_selected_tests(monkeypatch: Any, tmp_path: Path
 
     out = executor_node(state)
 
-    assert calls["init"]["db_path"] == "erp.duckdb"
+    assert Path(calls["init"]["db_path"]).name == "erp.duckdb"
     assert calls["run_all"]["selected_tests"] == ["TST-SPLIT-PAYMENTS-NEAR-LIMIT"]
     assert calls["run_all"]["validate_schema"] is True
     assert calls["run_all"]["timeout_ms"] == 1500
