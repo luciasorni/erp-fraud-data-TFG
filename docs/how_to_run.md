@@ -11,7 +11,7 @@
 Ejecución end-to-end (RF10):
 
 ```bash
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip
 ```
 
@@ -25,34 +25,34 @@ Variantes frecuentes:
 
 ```bash
 # Carpeta de salidas personalizada + run_id explícito
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --out-dir run_results \
   --run-id rf10-demo
 
 # Ejecutar subset de tests + top-k override
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --select-tests TST-DUPLICATE-POSTINGS,TST-UNUSUAL-AMOUNT-BY-VENDOR \
   --top-k 20
 
 # Ejecutar subset por fraud_type/tags (RF13-05)
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --select-fraud-types duplicate_payment,amount_anomaly \
   --select-tags p2p,acfe
 
 # Parametrizar por fichero config (json/yaml)
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --config config/run_config.yaml
 
 # Ejecutar run sin rebuild de KB (RF15e)
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --no-kb-index
 
 # Ejecutar run con configs KB explícitas
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --kb-index-enabled \
   --kb-sources-config config/kb_sources.yaml \
@@ -87,7 +87,7 @@ Pitfalls observados en esta ejecución:
 Mitigación local:
 
 - usar el entorno del proyecto ya preparado:
-  - `/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --help`
+  - `python3 -m src.erp_fraud.cli.main run --help`
   - `make test-rf08`
 
 Validar diccionario:
@@ -102,61 +102,61 @@ python3 -m src.erp_fraud.cli.main validate-dictionary \
 Ejecutar tests RF01:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf01_ingest_storage.py
+python3 -m pytest -q tests/test_rf01_ingest_storage.py
 ```
 
 Ejecutar tests RF02:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
+python3 -m pytest -q tests/test_rf02_data_dictionary.py
 ```
 
 Ejecutar tests RF02b:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
+python3 -m pytest -q tests/test_rf02b_data_validation.py
 ```
 
 Ejecutar tests RF03:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf03_catalog.py
+python3 -m pytest -q tests/test_rf03_catalog.py
 ```
 
 Ejecutar tests RF04:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
+python3 -m pytest -q tests/test_rf04_runner.py
 ```
 
 Ejecutar tests RF05:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
+python3 -m pytest -q tests/test_rf05_result_schema_and_writer.py
 ```
 
 Ejecutar tests RF06:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
+python3 -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
 ```
 
 Ejecutar tests RF07:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf07_ranking.py
+python3 -m pytest -q tests/test_rf07_ranking.py
 ```
 
 Ejecutar tests RF08:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
+python3 -m pytest -q tests/test_rf08_reporting.py
 ```
 
 Ejecutar tests RF13 (catálogo ampliado):
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q \
+python3 -m pytest -q \
   tests/test_rf13_catalog_selection.py \
   tests/test_rf13_families.py \
   tests/test_rf13_catalog_validation.py
@@ -165,7 +165,7 @@ Ejecutar tests RF13 (catálogo ampliado):
 Ejecutar tests RF15b (tools + policies + guardrails):
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q \
+python3 -m pytest -q \
   tests/test_rf15b_tools.py \
   tests/test_rf15b_policy_and_schema_guard.py \
   tests/test_rf15b_tool_call_logging.py
@@ -174,7 +174,7 @@ Ejecutar tests RF15b (tools + policies + guardrails):
 Ejecutar verificación RF14 (grafo):
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q \
+python3 -m pytest -q \
   tests/test_rf14_graph_state.py \
   tests/test_rf14_graph_structure.py \
   tests/test_rf14_ingest_node.py \
@@ -192,7 +192,7 @@ Ejecutar verificación RF14 (grafo):
 Ejecutar verificación AG03 (AlphaCodium loop + artefactos + snapshots):
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q \
+python3 -m pytest -q \
   tests/test_ag03_alpha_loop_integration.py \
   tests/test_ag03_alpha_artifacts.py \
   tests/test_ag03_prompt_snapshots.py

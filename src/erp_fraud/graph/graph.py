@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from time import perf_counter
-import threading
 from typing import Any
 
 from .nodes import run_node_by_id
@@ -104,22 +103,34 @@ def _execute_node_with_policy(
     last_error: Exception | None = None
 
     for attempt in range(1, policy.retries + 2):
-        holder: dict[str, Any] = {}
         started = perf_counter()
+        try:
+            result_state = run_node_by_id(node_id=node_id, state=state)
+        except Exception as exc:
+            elapsed_ms = int((perf_counter() - started) * 1000)
+            last_error = exc
+            if attempt <= policy.retries:
+                _record_node_attempt(
+                    state=state,
+                    node_id=node_id,
+                    attempt=attempt,
+                    duration_ms=elapsed_ms,
+                    status="ERROR_RETRY",
+                    error=f"{type(exc).__name__}: {exc}",
+                )
+                continue
+            _record_node_attempt(
+                state=state,
+                node_id=node_id,
+                attempt=attempt,
+                duration_ms=elapsed_ms,
+                status="ERROR",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            raise exc
 
-        def _target() -> None:
-            try:
-                holder["result"] = run_node_by_id(node_id=node_id, state=state)
-            except Exception as exc:  # pragma: no cover - cubierto en tests de routing
-                holder["error"] = exc
-
-        thread = threading.Thread(target=_target, daemon=True)
-        thread.start()
-        thread.join(timeout=policy.timeout_ms / 1000.0)
         elapsed_ms = int((perf_counter() - started) * 1000)
-
-        timeout_exceeded = thread.is_alive() or elapsed_ms > policy.timeout_ms
-        if timeout_exceeded:
+        if elapsed_ms > policy.timeout_ms:
             timeout_exc = TimeoutError(f"{node_id} excedió timeout_ms={policy.timeout_ms}")
             last_error = timeout_exc
             if attempt <= policy.retries:
@@ -142,30 +153,6 @@ def _execute_node_with_policy(
             )
             raise timeout_exc
 
-        if "error" in holder:
-            exc = holder["error"]
-            last_error = exc
-            if attempt <= policy.retries:
-                _record_node_attempt(
-                    state=state,
-                    node_id=node_id,
-                    attempt=attempt,
-                    duration_ms=elapsed_ms,
-                    status="ERROR_RETRY",
-                    error=f"{type(exc).__name__}: {exc}",
-                )
-                continue
-            _record_node_attempt(
-                state=state,
-                node_id=node_id,
-                attempt=attempt,
-                duration_ms=elapsed_ms,
-                status="ERROR",
-                error=f"{type(exc).__name__}: {exc}",
-            )
-            raise exc
-
-        result_state = holder.get("result", state)
         _record_node_attempt(
             state=result_state,
             node_id=node_id,

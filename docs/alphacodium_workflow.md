@@ -246,10 +246,7 @@ Checks que ejecuta:
 1. `ruff check src tests scripts`
 2. `python scripts/validate_project_schema.py`
 3. `python scripts/dry_run_alphacodium_stub.py`
-4. `pytest` (suite RF + AG03, incluyendo):
-   - AG03: `tests/test_ag03_alpha_loop_integration.py`, `tests/test_ag03_alpha_artifacts.py`, `tests/test_ag03_prompt_snapshots.py`
-   - RF14: tests de grafo/nodos/integración
-   - RF15b/RF15e: guardrails/tools/KB
+4. `python -m pytest -q` (suite completa del repositorio)
 
 Historial de actualizaciones CI relevantes (sí, se ha ido ampliando por requisitos):
 
@@ -257,7 +254,7 @@ Historial de actualizaciones CI relevantes (sí, se ha ido ampliando por requisi
 - `20b6084`: ajuste de tooling/lint para estabilidad.
 - `8b49055`: ampliación por RF13 (tests P1/catálogo).
 - `258f84b`: robustez de CI (`python -m ...` y estabilidad general).
-- Estado actual: CI incluye AG03 + RF14 + RF15b/RF15e en `pytest`.
+- Estado actual: CI ejecuta `python -m pytest -q` (cobertura completa), además de lint + schema validation + dry-run AlphaCodium.
 
 ## AG03-08 - Implementación de `alpha_loop()` reusable
 
