@@ -277,7 +277,11 @@ def test_rf18_scoring_generates_score_compare_for_two_profiles() -> None:
     experiment = out.run_metadata.get("scoring_experiment", {})
     assert isinstance(experiment, dict) and experiment
     assert experiment["status"] == "SKIPPED"
-    assert experiment["reason"] in {"langsmith_not_configured", "missing_score_compare"}
+    assert experiment["reason"] in {
+        "langsmith_not_configured",
+        "missing_score_compare",
+        "langsmith_experiments_disabled",
+    }
 
 
 def test_rf18_scoring_experiment_ready_when_langsmith_env_configured(monkeypatch: Any) -> None:
@@ -291,6 +295,7 @@ def test_rf18_scoring_experiment_ready_when_langsmith_env_configured(monkeypatch
     state.run_metadata["weights_config"] = "config/weights.yaml"
     state.run_metadata["models_config"] = "config/models.yaml"
     state.run_metadata["scoring_compare_profiles"] = ["default", "conservative"]
+    state.run_metadata["enable_langsmith_experiments"] = True
     state.findings = [
         {
             "test_id": "TST-DUPLICATE-POSTINGS",

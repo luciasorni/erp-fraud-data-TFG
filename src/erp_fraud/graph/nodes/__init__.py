@@ -13,7 +13,7 @@ from .executor import executor_node as _executor_node_impl
 from .explainer import (
     explainer_node as _explainer_node_impl,
     expert_explainer_node as _expert_explainer_node_impl,
-    validate_explanations_guardrails as _validate_explanations_guardrails_impl,
+    _validate_explanations_guardrails as _validate_explanations_guardrails_impl,
 )
 from .ingest import ingest_node as _ingest_node_impl
 from .ingest import kb_index_node as _kb_index_node_impl
@@ -21,12 +21,12 @@ from .persist import persist_node as _persist_node_impl
 from .planning import (
     hypothesis_planner_node as _hypothesis_planner_node_impl,
     test_planner_node as _test_planner_node_impl,
-    validate_hypotheses_output as _validate_hypotheses_output_impl,
+    _validate_hypotheses_output as _validate_hypotheses_output_impl,
 )
 from .registry import run_node_by_id as _run_node_by_id_impl
 from .scoring import (
     scoring_node as _scoring_node_impl,
-    validate_scoring_evidence_and_probability_sum as _validate_scoring_evidence_and_probability_sum_impl,
+    _validate_scoring_evidence_and_probability_sum as _validate_scoring_evidence_and_probability_sum_impl,
 )
 
 # Dependencias parcheables en tests (compatibilidad retroactiva).
@@ -39,12 +39,34 @@ _tool_test_catalog = _legacy._tool_test_catalog
 
 
 def _sync_legacy_dependencies() -> None:
+    from . import executor as _executor_module
+    from . import explainer as _explainer_module
+    from . import ingest as _ingest_module
+    from . import persist as _persist_module
+    from . import planning as _planning_module
+    from . import scoring as _scoring_module
+
     _legacy.KBSearchTool = KBSearchTool
     _legacy.TestRunner = TestRunner
     _legacy.build_kb_index = build_kb_index
     _legacy.alpha_loop = alpha_loop
     _legacy.alpha_loop_result_to_dict = alpha_loop_result_to_dict
     _legacy._tool_test_catalog = _tool_test_catalog
+
+    for module in (
+        _planning_module,
+        _ingest_module,
+        _executor_module,
+        _explainer_module,
+        _scoring_module,
+        _persist_module,
+    ):
+        module.KBSearchTool = KBSearchTool
+        module.TestRunner = TestRunner
+        module.build_kb_index = build_kb_index
+        module.alpha_loop = alpha_loop
+        module.alpha_loop_result_to_dict = alpha_loop_result_to_dict
+        module._tool_test_catalog = _tool_test_catalog
 
 
 def ingest_node(state):

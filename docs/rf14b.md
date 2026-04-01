@@ -137,3 +137,117 @@ Métrica de correspondencia fraude (`fraud_correspondence`) añadida dentro de `
 - regla de pase:
   - `final_label` debe estar presente en los `fraud_type` de findings (si existe),
   - `coherence_ratio >= 0.5`.
+
+## RF14b-07 (estado implementado en código)
+
+Dataset de evaluación generado por run:
+
+- Se crea artefacto local:
+  - `run_results/<run_id>/graph/langsmith_eval_dataset.jsonl`
+- Contenido por ejemplo:
+  - `inputs`: `hypotheses`, `findings`, `kb_snippets`
+  - `outputs`: `final_label`, `fraud_type_probs`, `explanations`
+  - `metadata`: `dataset_hash`, `graph_status`, `scoring_model_used`, `scoring_prompt_hash`
+
+Publicación opcional a LangSmith:
+- desactivada por defecto (`enable_langsmith_dataset_publish=false`)
+- si se activa, intenta publicar dataset + examples y registra resultado en:
+  - `run_metadata["langsmith_eval_dataset"]["publish"]`
+
+## RF14b-08 (estado implementado en código)
+
+Ejecución reproducible de 2 experimentos y comparativa de outputs:
+
+- Script:
+  - `scripts/run_rf14b_experiments.py`
+- Test:
+  - `tests/test_rf14b_experiments_script.py`
+
+Qué ejecuta:
+
+1. Experimento Planner
+   - corre dos runs (`hypothesis_planner -> test_planner`) con dos modelos distintos para planner
+   - compara:
+     - `selected_tests`
+     - `hypothesis_ids`
+
+2. Experimento Scoring
+   - corre un run de `scoring` con `scoring_compare_profiles=[baseline,candidate]`
+   - compara:
+     - modelo baseline vs candidato
+     - `final_label`
+     - `confidence_delta`
+     - deltas por `fraud_type` (vía `score_compare`)
+
+Artefactos generados:
+
+- `run_results/<run_id_prefix>-rf14b08/rf14b_experiments.json`
+- `run_results/<run_id_prefix>-rf14b08/rf14b_experiments.md`
+
+Comando:
+
+```bash
+python3 scripts/run_rf14b_experiments.py \
+  --run-id-prefix rf14b-08 \
+  --models-config config/models.yaml \
+  --planner-baseline-model gpt-5.4-mini \
+  --planner-candidate-model gpt-5.4 \
+  --scoring-baseline-profile default \
+  --scoring-candidate-profile conservative
+```
+
+## RF14b-09 (estado implementado en código)
+
+Informe de experimento generado y documentado en:
+
+- `docs/langsmith_experiments.md`
+
+Este informe recoge:
+
+- comando reproducible de RF14b-08
+- artefactos JSON/MD generados
+- resumen de resultados baseline vs candidate para planner y scoring
+- conclusiones para continuar con RF14b-10 (guía de ejecución local/cloud)
+
+## RF14b-10 (estado implementado en código)
+
+Runbook operativo local/cloud:
+
+- `docs/langsmith_tracing_runbook.md`
+
+Incluye:
+
+- variables obligatorias y recomendadas
+- comando de validación de entorno (`validate_required_env.py --profile langsmith`)
+- ejecución local del pipeline y de experimentos RF14b-08
+- checklist de verificación de trazas y troubleshooting
+
+## RF14b-11 (estado implementado en código)
+
+Tests de integración RF14b:
+
+- `tests/test_rf14b_contracts.py`
+- `tests/test_rf14b_env_validation.py`
+- `tests/test_rf14b_evaluators.py`
+- `tests/test_rf14b_langsmith_dataset.py`
+- `tests/test_rf14b_experiments_script.py`
+
+Además, el gate `scripts/run_pre_langsmith_gate.py` se amplió para incluir los tests RF14b.
+
+## RF14b-12 (estado implementado en código)
+
+Documentación actualizada:
+
+- `README.md` (sección RF14b + comandos de experimentos)
+- `docs/how_to_run.md` (comandos de verificación RF14b)
+- `docs/langsmith_experiments.md` (informe de resultados)
+- `docs/langsmith_tracing_runbook.md` (runbook local/cloud)
+
+## RF14b-13 (estado implementado en código)
+
+Verificación ejecutada y evidencia guardada en:
+
+- `docs/rf14b_verification.md`
+- `run_results/rf14b-13-check/verification_summary.json`
+- `run_results/rf14b-13-check-rf14b08/rf14b_experiments.json`
+- `run_results/pre_langsmith_gate.json`

@@ -234,6 +234,35 @@ python3 -m pytest -q \
   tests/test_rf15c_manual_e2e_script.py
 ```
 
+Verificación RF14b (trazabilidad + evaluadores + dataset + experimentos):
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf14b_contracts.py \
+  tests/test_rf14b_env_validation.py \
+  tests/test_rf14b_evaluators.py \
+  tests/test_rf14b_langsmith_dataset.py \
+  tests/test_rf14b_experiments_script.py
+```
+
+Ejecutar experimentos RF14b-08:
+
+```bash
+python3 scripts/run_rf14b_experiments.py \
+  --run-id-prefix rf14b-08 \
+  --models-config config/models.yaml \
+  --planner-baseline-model gpt-5.4-mini \
+  --planner-candidate-model gpt-5.4 \
+  --scoring-baseline-profile default \
+  --scoring-candidate-profile conservative
+```
+
+Referencia RF14b:
+
+- `docs/rf14b.md`
+- `docs/langsmith_experiments.md`
+- `docs/langsmith_tracing_runbook.md`
+
 Verificación RF18 (scoring):
 
 ```bash

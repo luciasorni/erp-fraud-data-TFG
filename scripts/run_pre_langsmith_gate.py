@@ -26,6 +26,10 @@ GATE_COMMANDS: list[list[str]] = [
         "tests/test_rf15c_scoring_node.py",
         "tests/test_rf18_scoring_end_to_end.py",
         "tests/test_rf14b_contracts.py",
+        "tests/test_rf14b_env_validation.py",
+        "tests/test_rf14b_evaluators.py",
+        "tests/test_rf14b_langsmith_dataset.py",
+        "tests/test_rf14b_experiments_script.py",
     ],
 ]
 

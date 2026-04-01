@@ -17,6 +17,9 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf13.md`
 - `docs/rf14.md`
 - `docs/rf14b.md`
+- `docs/langsmith_experiments.md`
+- `docs/langsmith_tracing_runbook.md`
+- `docs/rf14b_verification.md`
 - `docs/rf15.md`
 - `docs/rf15_verification.md`
 - `docs/rf15b.md`
@@ -239,6 +242,35 @@ Se añadió generación de reporte estructurado y legible:
   - generado desde `report.json` con secciones fijas
 - `report.html`:
   - render opcional desde Markdown (con fallback seguro)
+
+## LangSmith Trazabilidad y Experimentos (RF14b)
+
+Estado actual RF14b:
+
+- trazabilidad por nodo en `run_metadata["node_trace_events"]`
+- snapshot de configuración LangSmith en `run_metadata["langsmith"]`
+- evaluadores automáticos RF14b en `run_metadata["rf14b_evaluation"]`
+- dataset de evaluación local en `run_results/<run_id>/graph/langsmith_eval_dataset.jsonl`
+- comparativa de modelos (RF14b-08) con script reproducible:
+  - `scripts/run_rf14b_experiments.py`
+
+Comando rápido de experimentos:
+
+```bash
+python3 scripts/run_rf14b_experiments.py \
+  --run-id-prefix rf14b-08 \
+  --models-config config/models.yaml \
+  --planner-baseline-model gpt-5.4-mini \
+  --planner-candidate-model gpt-5.4 \
+  --scoring-baseline-profile default \
+  --scoring-candidate-profile conservative
+```
+
+Referencia:
+
+- `docs/rf14b.md`
+- `docs/langsmith_experiments.md`
+- `docs/langsmith_tracing_runbook.md`
 
 Componentes:
 

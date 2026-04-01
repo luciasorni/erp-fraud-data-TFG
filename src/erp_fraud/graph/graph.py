@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
 
+from .langsmith_dataset import publish_langsmith_eval_dataset, write_langsmith_eval_dataset_jsonl
 from .nodes import run_node_by_id
 from .evaluators import evaluate_rf14b_automatic
 from .observability import (
@@ -280,6 +281,7 @@ def run_graph(
             if "persist" in sequence:
                 state = _execute_node_with_policy(state=state, node_id="persist")
             _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
+            _attach_langsmith_eval_dataset(state)
             return state
         try:
             state = _execute_node_with_policy(state=state, node_id=node_id)
@@ -291,13 +293,58 @@ def run_graph(
                 except Exception:
                     pass
             _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
+            _attach_langsmith_eval_dataset(state)
             return state
 
     metadata = _meta(state)
     if str(metadata.get("graph_status", "")).strip().upper() != "ABORTED":
         metadata["graph_status"] = "OK"
     metadata["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
+    _attach_langsmith_eval_dataset(state)
     return state
+
+
+def _attach_langsmith_eval_dataset(state: GraphState) -> None:
+    metadata = _meta(state)
+    run_id = str(getattr(state, "run_id", "")).strip()
+    if not run_id:
+        return
+
+    dataset_name = str(metadata.get("langsmith_dataset_name", f"erp-fraud-eval-{run_id}")).strip()
+    project_name = str(metadata.get("langsmith_project", "")).strip() or str(
+        metadata.get("langsmith", {}).get("project", "")
+    ).strip()
+    publish_enabled = bool(metadata.get("enable_langsmith_dataset_publish", False))
+
+    try:
+        path = write_langsmith_eval_dataset_jsonl(state=state)
+        metadata["langsmith_eval_dataset"] = {
+            "status": "LOCAL_ONLY",
+            "path": str(path),
+            "dataset_name": dataset_name,
+            "project_name": project_name,
+            "published": False,
+        }
+    except Exception as exc:
+        metadata["langsmith_eval_dataset"] = {
+            "status": "ERROR",
+            "reason": f"{type(exc).__name__}: {exc}",
+            "dataset_name": dataset_name,
+            "project_name": project_name,
+            "published": False,
+        }
+        return
+
+    if not publish_enabled:
+        return
+
+    publish_result = publish_langsmith_eval_dataset(
+        state=state,
+        dataset_name=dataset_name,
+        project_name=project_name or "default",
+    )
+    metadata["langsmith_eval_dataset"]["publish"] = publish_result
+    metadata["langsmith_eval_dataset"]["published"] = bool(publish_result.get("status") == "OK")
 
 
 def run_graph_stub(
