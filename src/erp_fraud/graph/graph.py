@@ -309,6 +309,10 @@ def run_graph_stub(
         dataset_hash=dataset_hash,
         input_zip=input_zip,
     )
+    # Modo stub debe ser totalmente determinista y no depender de alpha-loop/servicios externos.
+    metadata = _meta(state)
+    metadata["alphacodium_enabled"] = False
+    metadata["kb_search_enabled"] = False
     return run_graph(initial_state=state, sequence=sequence)
 
 
