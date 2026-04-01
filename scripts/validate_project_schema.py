@@ -63,9 +63,48 @@ def _validate_catalog_yaml() -> None:
         _fail("tests/catalog sin YAMLs")
     for path in files:
         payload = _load_yaml(path)
-        for field in ("id", "version", "fraud_type", "process_step", "expected_output", "evidence_columns"):
+        for field in (
+            "id",
+            "version",
+            "fraud_type",
+            "red_flag_id",
+            "process_step",
+            "expected_output",
+            "evidence_columns",
+        ):
             if field not in payload:
                 _fail(f"{path}: falta campo requerido '{field}'")
+
+
+def _validate_red_flags_mapping() -> None:
+    path = Path("config/red_flags_mapping.yaml")
+    payload = _load_yaml(path)
+
+    red_flags = payload.get("red_flags")
+    if not isinstance(red_flags, list) or not red_flags:
+        _fail(f"{path}: falta lista 'red_flags' no vacía")
+
+    seen_ids: set[str] = set()
+    for idx, item in enumerate(red_flags):
+        if not isinstance(item, dict):
+            _fail(f"{path}: red_flags[{idx}] debe ser objeto")
+        red_flag_id = str(item.get("red_flag_id", "")).strip()
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        name = str(item.get("name", "")).strip()
+        description = str(item.get("description", "")).strip()
+        if not red_flag_id:
+            _fail(f"{path}: red_flags[{idx}] sin red_flag_id")
+        if red_flag_id in seen_ids:
+            _fail(f"{path}: red_flag_id duplicado '{red_flag_id}'")
+        seen_ids.add(red_flag_id)
+        if not re.match(r"^RF-[A-Z0-9-]+$", red_flag_id):
+            _fail(f"{path}: red_flag_id inválido '{red_flag_id}'")
+        if not name:
+            _fail(f"{path}: {red_flag_id} sin name")
+        if not description:
+            _fail(f"{path}: {red_flag_id} sin description")
+        if not fraud_type:
+            _fail(f"{path}: {red_flag_id} sin fraud_type")
 
 
 def _validate_prompt_naming() -> None:
@@ -97,6 +136,7 @@ def main() -> int:
         _validate_agent_policies()
         _validate_query_templates()
         _validate_catalog_yaml()
+        _validate_red_flags_mapping()
         _validate_prompt_naming()
         _validate_data_dictionary_json()
     except Exception as exc:
