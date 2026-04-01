@@ -9,11 +9,11 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
 
-from ..agents import alpha_loop, alpha_loop_result_to_dict
-from ..agents.kb_index import build_kb_index
-from ..agents.kb_search import KBSearchTool
-from ..agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
-from ..catalog import (
+from ...agents import alpha_loop, alpha_loop_result_to_dict
+from ...agents.kb_index import build_kb_index
+from ...agents.kb_search import KBSearchTool
+from ...agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
+from ...catalog import (
     SCORE_SCHEMA_REQUIRED_FIELDS,
     ScoringAgent,
     aggregate_findings_by_entity,
@@ -21,12 +21,12 @@ from ..catalog import (
     load_models_config,
     resolve_scoring_model,
 )
-from ..catalog import RESULT_SCHEMA_VERSION, get_result_schema_required_fields
-from ..catalog.scoring import load_weights_config, resolve_ranking_top_k
-from ..catalog.test_runner import TestRunner
-from ..storage.paths import ruta_run
-from ..storage.schema_summary import build_schema_summary
-from .state import GraphState
+from ...catalog import RESULT_SCHEMA_VERSION, get_result_schema_required_fields
+from ...catalog.scoring import load_weights_config, resolve_ranking_top_k
+from ...catalog.test_runner import TestRunner
+from ...storage.paths import ruta_run
+from ...storage.schema_summary import build_schema_summary
+from ..state import GraphState
 
 GraphNode = Callable[[GraphState], GraphState]
 
@@ -1479,7 +1479,7 @@ def _validate_explanations_guardrails(
     schema_columns: set[str] | None = None,
 ) -> None:
     catalog_allowlist = catalog_test_ids or set()
-    allowed_schema_columns = schema_columns or set()
+    allowed_schema_columns = {str(name).strip().lower() for name in (schema_columns or set()) if str(name).strip()}
     findings_by_test: dict[str, dict[str, Any]] = {}
     for row in findings:
         if not isinstance(row, dict):
@@ -1525,7 +1525,9 @@ def _validate_explanations_guardrails(
                 f"Guardrail: explicación {test_id} cita keys inexistentes en finding: {unknown_key_names}"
             )
         if allowed_schema_columns:
-            unknown_schema_keys = [name for name in cited_keys.keys() if name not in allowed_schema_columns]
+            unknown_schema_keys = [
+                name for name in cited_keys.keys() if str(name).strip().lower() not in allowed_schema_columns
+            ]
             if unknown_schema_keys:
                 raise ValueError(
                     f"Guardrail: explicación {test_id} cita keys fuera de schema_summary: {unknown_schema_keys}"
