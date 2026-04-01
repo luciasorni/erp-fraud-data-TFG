@@ -45,7 +45,15 @@ jobs:
 
       - name: Pre-LangSmith release gate
         run: |
-          python scripts/run_pre_langsmith_gate.py
+          python scripts/run_pre_langsmith_gate.py || (echo "---- pre_langsmith_gate.json ----" && cat run_results/pre_langsmith_gate.json && false)
+
+      - name: Upload pre-LangSmith gate artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pre-langsmith-gate
+          path: run_results/pre_langsmith_gate.json
+          if-no-files-found: ignore
 
       - name: Pytest
         run: |
