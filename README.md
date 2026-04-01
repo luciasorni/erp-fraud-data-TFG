@@ -16,6 +16,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf10.md`
 - `docs/rf13.md`
 - `docs/rf14.md`
+- `docs/rf14b.md`
 - `docs/rf15.md`
 - `docs/rf15_verification.md`
 - `docs/rf15b.md`

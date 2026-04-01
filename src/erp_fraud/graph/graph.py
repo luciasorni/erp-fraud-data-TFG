@@ -7,7 +7,12 @@ from time import perf_counter
 from typing import Any
 
 from .nodes import run_node_by_id
-from .observability import append_error_event
+from .observability import (
+    append_error_event,
+    append_trace_event,
+    get_langsmith_snapshot,
+    summarize_graph_state,
+)
 from .state import GraphState, create_initial_graph_state
 
 
@@ -109,6 +114,13 @@ def _execute_node_with_policy(
     last_error: Exception | None = None
 
     for attempt in range(1, policy.retries + 2):
+        append_trace_event(
+            run_metadata=_meta(state),
+            node_id=node_id,
+            stage="start",
+            attempt=attempt,
+            input_summary=summarize_graph_state(state),
+        )
         started = perf_counter()
         try:
             result_state = run_node_by_id(node_id=node_id, state=state)
@@ -124,6 +136,16 @@ def _execute_node_with_policy(
                     status="ERROR_RETRY",
                     error=f"{type(exc).__name__}: {exc}",
                 )
+                append_trace_event(
+                    run_metadata=_meta(state),
+                    node_id=node_id,
+                    stage="end",
+                    attempt=attempt,
+                    duration_ms=elapsed_ms,
+                    status="ERROR_RETRY",
+                    output_summary=summarize_graph_state(state),
+                    error=f"{type(exc).__name__}: {exc}",
+                )
                 continue
             _record_node_attempt(
                 state=state,
@@ -131,6 +153,16 @@ def _execute_node_with_policy(
                 attempt=attempt,
                 duration_ms=elapsed_ms,
                 status="ERROR",
+                error=f"{type(exc).__name__}: {exc}",
+            )
+            append_trace_event(
+                run_metadata=_meta(state),
+                node_id=node_id,
+                stage="end",
+                attempt=attempt,
+                duration_ms=elapsed_ms,
+                status="ERROR",
+                output_summary=summarize_graph_state(state),
                 error=f"{type(exc).__name__}: {exc}",
             )
             raise exc
@@ -148,6 +180,16 @@ def _execute_node_with_policy(
                     status="TIMEOUT_RETRY",
                     error=str(timeout_exc),
                 )
+                append_trace_event(
+                    run_metadata=_meta(state),
+                    node_id=node_id,
+                    stage="end",
+                    attempt=attempt,
+                    duration_ms=elapsed_ms,
+                    status="TIMEOUT_RETRY",
+                    output_summary=summarize_graph_state(result_state),
+                    error=str(timeout_exc),
+                )
                 continue
             _record_node_attempt(
                 state=state,
@@ -155,6 +197,16 @@ def _execute_node_with_policy(
                 attempt=attempt,
                 duration_ms=elapsed_ms,
                 status="TIMEOUT",
+                error=str(timeout_exc),
+            )
+            append_trace_event(
+                run_metadata=_meta(state),
+                node_id=node_id,
+                stage="end",
+                attempt=attempt,
+                duration_ms=elapsed_ms,
+                status="TIMEOUT",
+                output_summary=summarize_graph_state(result_state),
                 error=str(timeout_exc),
             )
             raise timeout_exc
@@ -165,6 +217,15 @@ def _execute_node_with_policy(
             attempt=attempt,
             duration_ms=elapsed_ms,
             status="OK",
+        )
+        append_trace_event(
+            run_metadata=_meta(result_state),
+            node_id=node_id,
+            stage="end",
+            attempt=attempt,
+            duration_ms=elapsed_ms,
+            status="OK",
+            output_summary=summarize_graph_state(result_state),
         )
         return result_state
 
@@ -209,6 +270,9 @@ def run_graph(
 ) -> GraphState:
     """Ejecuta grafo con routing condicional + timeout/retry por nodo (RF14-12)."""
     state = initial_state
+    metadata = _meta(state)
+    metadata["langsmith"] = get_langsmith_snapshot()
+    metadata.setdefault("node_trace_events", [])
     for node_id in sequence:
         if node_id != "persist" and _should_abort_before_planning(state):
             _mark_graph_abort(state, reason="precondition_failed_before_planning")

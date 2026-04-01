@@ -9,13 +9,14 @@ CONFIG ?=
 SELECT_TESTS ?=
 TOP_K ?=
 
-.PHONY: help run test pre-langsmith-gate test-rf01 test-rf02 test-rf02b test-rf03 test-rf04 test-rf05 test-rf06 test-rf07 test-rf08
+.PHONY: help run test pre-langsmith-gate langsmith-check test-rf01 test-rf02 test-rf02b test-rf03 test-rf04 test-rf05 test-rf06 test-rf07 test-rf08
 
 help:
 	@echo "Targets disponibles:"
 	@echo "  make run            # Ejecuta pipeline completo RF10 (usa INPUT_ZIP/OUT_DIR/RUN_ID)"
 	@echo "  make test           # Ejecuta test suite de requisitos implementados"
 	@echo "  make pre-langsmith-gate  # Ejecuta gate previo RF14b (contratos + regresión crítica)"
+	@echo "  make langsmith-check # Valida variables obligatorias para LangSmith"
 	@echo "  make test-rf08      # Ejecuta solo tests de reporte RF08"
 	@echo ""
 	@echo "Variables opcionales:"
@@ -51,6 +52,9 @@ test:
 
 pre-langsmith-gate:
 	$(PYTHON) scripts/run_pre_langsmith_gate.py
+
+langsmith-check:
+	$(PYTHON) scripts/validate_required_env.py --profile langsmith
 
 test-rf01:
 	$(PYTEST) tests/test_rf01_ingest_storage.py
