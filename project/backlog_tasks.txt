@@ -755,7 +755,32 @@ requirements:
   estimador: 8
   prioridad: Must
   riesgo: Alto
+  prerequisitos:
+  - Contratos I/O congelados y versionados (`GraphState`, `ExplanationSchema`, `ScoreSchema`, `report.json`)
+  - Configuración centralizada y validación de config al arranque
+  - Observabilidad local homogénea (logs estructurados + métricas por nodo + taxonomía de errores)
+  - Release gate de regresión en CI (RF14/RF15/RF15c/RF18) en verde y sin `--no-verify`
+  - Política de secretos y `env.example` listos para LangSmith/cloud
+  - Checklist completado en `docs/pre_langsmith_checklist.md`
   tasks:
+  - id: RF14b-P01
+    title: Congelar contratos de salida (GraphState/Explanation/Score/Report) y añadir test de compatibilidad retro
+    estimate_hours: 1.2
+  - id: RF14b-P02
+    title: Centralizar carga de configuración y eliminar defaults duplicados entre CLI y nodos
+    estimate_hours: 1.2
+  - id: RF14b-P03
+    title: Normalizar observabilidad local (logs + métricas + taxonomy de errores) antes de tracing externo
+    estimate_hours: 1.0
+  - id: RF14b-P04
+    title: Definir y ejecutar release gate de regresión pre-LangSmith (subset RF14/RF15/RF15c/RF18)
+    estimate_hours: 1.0
+  - id: RF14b-P05
+    title: Preparar baseline de secretos (`env.example`) y validación de variables obligatorias
+    estimate_hours: 0.8
+  - id: RF14b-P06
+    title: Cerrar checklist pre-LangSmith y adjuntar evidencia en docs/pre_langsmith_checklist.md
+    estimate_hours: 0.6
   - id: RF14b-01
     title: Crear proyecto en LangSmith (nombre, tags) y guardar variables de entorno (LANGSMITH_API_KEY, PROJECT)
     estimate_hours: 0.8

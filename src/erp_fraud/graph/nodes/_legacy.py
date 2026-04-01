@@ -26,7 +26,28 @@ from ...catalog.scoring import load_weights_config, resolve_ranking_top_k
 from ...catalog.test_runner import TestRunner
 from ...storage.paths import ruta_run
 from ...storage.schema_summary import build_schema_summary
+from ...config import (
+    DEFAULT_BASE_DIR,
+    DEFAULT_CATALOG_PATH,
+    DEFAULT_DB_PATH,
+    DEFAULT_EXECUTOR_TIMEOUT_MS,
+    DEFAULT_EXPLAINER_KB_TOP_K,
+    DEFAULT_EXPLAINER_TOP_K,
+    DEFAULT_HYPOTHESIS_KB_TOP_K,
+    DEFAULT_HYPOTHESIS_MAX_ITEMS,
+    DEFAULT_KB_CHROMA_CONFIG,
+    DEFAULT_KB_CHUNKING_CONFIG,
+    DEFAULT_KB_ENABLED,
+    DEFAULT_KB_MANIFEST_PATH,
+    DEFAULT_KB_SOURCES_CONFIG,
+    DEFAULT_KB_STATE_PATH,
+    DEFAULT_SCHEMA_NAME,
+    DEFAULT_TABLE_NAME,
+    DEFAULT_TEST_PLANNER_TOP_N,
+    DEFAULT_WEIGHTS_CONFIG,
+)
 from ..state import GraphState
+from ..observability import append_error_event
 
 GraphNode = Callable[[GraphState], GraphState]
 
@@ -76,9 +97,13 @@ def _set_node_status(
     if isinstance(node_timings, dict):
         node_timings[node_id] = duration_ms
     if error:
-        errors = state.run_metadata.setdefault("errors", [])
-        if isinstance(errors, list):
-            errors.append({"node_id": node_id, "error": error})
+        append_error_event(
+            run_metadata=state.run_metadata,
+            node_id=node_id,
+            status=status,
+            error=error,
+            phase="graph_node",
+        )
 
 
 def _run_node(node_id: str, fn: GraphNode, state: GraphState) -> GraphState:
@@ -753,13 +778,13 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
-    catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
+    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     data_dictionary_path = str(metadata.get("data_dictionary_path", "data_dictionary.json")).strip()
     kb_search_enabled = bool(metadata.get("kb_search_enabled", False))
-    kb_top_k = int(metadata.get("hypothesis_kb_top_k", 3) or 3)
+    kb_top_k = int(metadata.get("hypothesis_kb_top_k", DEFAULT_HYPOTHESIS_KB_TOP_K) or DEFAULT_HYPOTHESIS_KB_TOP_K)
     if kb_top_k <= 0:
         kb_top_k = 3
-    max_hypotheses = int(metadata.get("hypothesis_max_items", 1) or 1)
+    max_hypotheses = int(metadata.get("hypothesis_max_items", DEFAULT_HYPOTHESIS_MAX_ITEMS) or DEFAULT_HYPOTHESIS_MAX_ITEMS)
     if max_hypotheses <= 0:
         max_hypotheses = 1
 
@@ -820,8 +845,8 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     if kb_search_enabled:
         try:
             tool = KBSearchTool(
-                kb_chroma_config_path=str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")),
-                base_dir=str(metadata.get("base_dir", ".")),
+                kb_chroma_config_path=str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
+                base_dir=str(metadata.get("base_dir", DEFAULT_BASE_DIR)),
             )
             kb_out = tool.search(query=kb_query, top_k=kb_top_k)
             hits = kb_out.get("hits", []) if isinstance(kb_out, dict) else []
@@ -884,8 +909,8 @@ def ingest_node(state: GraphState) -> GraphState:
     """Nodo de ingesta no-LLM: carga `schema_summary` en el estado (RF14-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     schema_summary_path = str(metadata.get("schema_summary_path", "")).strip()
-    db_path = str(metadata.get("db_path", "erp.duckdb")).strip()
-    schema_name = str(metadata.get("schema_name", "main")).strip() or "main"
+    db_path = str(metadata.get("db_path", DEFAULT_DB_PATH)).strip()
+    schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
 
     if schema_summary_path:
         path = Path(schema_summary_path)
@@ -1025,8 +1050,8 @@ def test_planner_node(state: GraphState) -> GraphState:
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
     node_id = "test_planner"
-    catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
-    top_n = int(metadata.get("test_planner_top_n", 2) or 2)
+    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+    top_n = int(metadata.get("test_planner_top_n", DEFAULT_TEST_PLANNER_TOP_N) or DEFAULT_TEST_PLANNER_TOP_N)
     if top_n <= 0:
         top_n = 1
 
@@ -1186,7 +1211,7 @@ test_planner_node.__test__ = False
 def kb_index_node(state: GraphState) -> GraphState:
     """Nodo no-LLM: asegura índice KB (RF14-04) con rebuild incremental."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
-    enabled = bool(metadata.get("kb_index_enabled", True))
+    enabled = bool(metadata.get("kb_index_enabled", DEFAULT_KB_ENABLED))
     if not enabled:
         state.kb_status = {
             "status": "DISABLED",
@@ -1199,12 +1224,12 @@ def kb_index_node(state: GraphState) -> GraphState:
         metadata["kb_index_status"] = "DISABLED"
         return state
 
-    base_dir = str(metadata.get("base_dir", ".")).strip() or "."
-    kb_sources_config = str(metadata.get("kb_sources_config", "config/kb_sources.yaml")).strip()
-    kb_chunking_config = str(metadata.get("kb_chunking_config", "config/kb_chunking.yaml")).strip()
-    kb_chroma_config = str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")).strip()
-    kb_manifest_path = str(metadata.get("kb_manifest_path", "kb/index_manifest.json")).strip()
-    kb_index_state_path = str(metadata.get("kb_index_state_path", "kb/index_state.json")).strip()
+    base_dir = str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
+    kb_sources_config = str(metadata.get("kb_sources_config", DEFAULT_KB_SOURCES_CONFIG)).strip()
+    kb_chunking_config = str(metadata.get("kb_chunking_config", DEFAULT_KB_CHUNKING_CONFIG)).strip()
+    kb_chroma_config = str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
+    kb_manifest_path = str(metadata.get("kb_manifest_path", DEFAULT_KB_MANIFEST_PATH)).strip()
+    kb_index_state_path = str(metadata.get("kb_index_state_path", DEFAULT_KB_STATE_PATH)).strip()
 
     try:
         manifest = build_kb_index(
@@ -1245,11 +1270,13 @@ def kb_index_node(state: GraphState) -> GraphState:
 def executor_node(state: GraphState) -> GraphState:
     """Nodo no-LLM: ejecuta tests seleccionados y guarda findings (RF14-07)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
-    db_path = str(metadata.get("db_path", "erp.duckdb")).strip() or "erp.duckdb"
-    schema_name = str(metadata.get("schema_name", "main")).strip() or "main"
-    table_name = str(metadata.get("table_name", "fraud_1")).strip() or "fraud_1"
-    catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
+    db_path = str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH
+    schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
+    table_name = str(metadata.get("table_name", DEFAULT_TABLE_NAME)).strip() or DEFAULT_TABLE_NAME
+    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     timeout_ms = metadata.get("executor_timeout_ms")
+    if timeout_ms is None:
+        timeout_ms = DEFAULT_EXECUTOR_TIMEOUT_MS
     timeout_value = int(timeout_ms) if isinstance(timeout_ms, int) and timeout_ms > 0 else None
 
     selected_ids: list[str] = []
@@ -1686,15 +1713,15 @@ def explainer_node(state: GraphState) -> GraphState:
         return state
 
     kb_enabled = bool(metadata.get("kb_search_enabled", False))
-    kb_top_k = int(metadata.get("explainer_kb_top_k", 2) or 2)
+    kb_top_k = int(metadata.get("explainer_kb_top_k", DEFAULT_EXPLAINER_KB_TOP_K) or DEFAULT_EXPLAINER_KB_TOP_K)
     if kb_top_k <= 0:
-        kb_top_k = 2
-    explainer_top_k = int(metadata.get("explainer_top_k", 5) or 5)
+        kb_top_k = DEFAULT_EXPLAINER_KB_TOP_K
+    explainer_top_k = int(metadata.get("explainer_top_k", DEFAULT_EXPLAINER_TOP_K) or DEFAULT_EXPLAINER_TOP_K)
     if explainer_top_k <= 0:
-        explainer_top_k = 5
-    kb_chroma_config_path = str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")).strip()
-    base_dir = str(metadata.get("base_dir", ".")).strip() or "."
-    catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
+        explainer_top_k = DEFAULT_EXPLAINER_TOP_K
+    kb_chroma_config_path = str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
+    base_dir = str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
+    catalog_path = str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
 
     catalog_test_ids: set[str] = set()
     try:
@@ -1830,7 +1857,7 @@ def scoring_node(state: GraphState) -> GraphState:
     """Scoring por entidad/transacción + tipología de fraude (RF14-09)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     findings = [row for row in state.findings if isinstance(row, dict)]
-    weights_config_path = str(metadata.get("weights_config", "config/weights.yaml")).strip()
+    weights_config_path = str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip()
     models_config_path = str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
     scoring_model_profile = str(metadata.get("scoring_model_profile", "")).strip()
     top_k_override = metadata.get("scoring_top_k")

@@ -8,6 +8,16 @@ from pathlib import Path
 from typing import Any
 
 REPORT_JSON_VERSION = "1.0.0"
+REPORT_JSON_REQUIRED_TOP_LEVEL_FIELDS: tuple[str, ...] = (
+    "report_version",
+    "generated_at_utc",
+    "metadata",
+    "summary",
+    "ranking",
+    "test_runs",
+    "artifact_paths",
+    "errors",
+)
 
 
 def _utc_timestamp_iso() -> str:
@@ -269,3 +279,26 @@ def validate_report_json_file_artifact_links(
         report_payload=payload,
         base_path=base_path,
     )
+
+
+def get_report_json_contract() -> dict[str, Any]:
+    """Contrato congelado de report.json (campos top-level requeridos)."""
+    return {
+        "schema_version": REPORT_JSON_VERSION,
+        "required_top_level_fields": list(REPORT_JSON_REQUIRED_TOP_LEVEL_FIELDS),
+    }
+
+
+def validate_report_json_contract(payload: dict[str, Any]) -> list[str]:
+    """Valida compatibilidad mínima de un payload `report.json`."""
+    if not isinstance(payload, dict):
+        return ["report.json payload debe ser objeto"]
+    errors: list[str] = []
+    missing = [field for field in REPORT_JSON_REQUIRED_TOP_LEVEL_FIELDS if field not in payload]
+    errors.extend([f"missing_field:{field}" for field in missing])
+
+    if "report_version" in payload:
+        report_version = str(payload.get("report_version", "")).strip()
+        if not report_version:
+            errors.append("report_version vacío")
+    return errors

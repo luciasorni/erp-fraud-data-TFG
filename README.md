@@ -28,6 +28,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/alphacodium_workflow.md`
 - `docs/ag03_iteraciones_reales.md`
 - `docs/rag_kb.md`
+- `docs/pre_langsmith_checklist.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
 - `docs/tools_and_policies.md`

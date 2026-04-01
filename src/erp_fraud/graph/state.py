@@ -6,6 +6,24 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+GRAPH_STATE_SCHEMA_VERSION = "1.0.0"
+GRAPH_STATE_REQUIRED_FIELDS: tuple[str, ...] = (
+    "run_id",
+    "schema",
+    "kb_status",
+    "hypotheses",
+    "selected_tests",
+    "findings",
+    "test_runs",
+    "ranking",
+    "fraud_type_predicho",
+    "recomendaciones",
+    "export_paths",
+    "explanations",
+    "scores",
+    "run_metadata",
+)
+
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -85,3 +103,19 @@ def graph_state_to_dict(state: GraphState) -> dict[str, Any]:
     payload = asdict(state)
     payload["run_metadata"]["updated_at_utc"] = _utc_now_iso()
     return payload
+
+
+def get_graph_state_contract() -> dict[str, Any]:
+    """Contrato congelado de GraphState para compatibilidad retro."""
+    return {
+        "schema_version": GRAPH_STATE_SCHEMA_VERSION,
+        "required_fields": list(GRAPH_STATE_REQUIRED_FIELDS),
+    }
+
+
+def validate_graph_state_payload(payload: dict[str, Any]) -> list[str]:
+    """Valida campos mínimos requeridos del estado serializado."""
+    if not isinstance(payload, dict):
+        return ["GraphState payload debe ser objeto"]
+    missing = [field for field in GRAPH_STATE_REQUIRED_FIELDS if field not in payload]
+    return [f"missing_field:{field}" for field in missing]

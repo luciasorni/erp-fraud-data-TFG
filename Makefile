@@ -9,12 +9,13 @@ CONFIG ?=
 SELECT_TESTS ?=
 TOP_K ?=
 
-.PHONY: help run test test-rf01 test-rf02 test-rf02b test-rf03 test-rf04 test-rf05 test-rf06 test-rf07 test-rf08
+.PHONY: help run test pre-langsmith-gate test-rf01 test-rf02 test-rf02b test-rf03 test-rf04 test-rf05 test-rf06 test-rf07 test-rf08
 
 help:
 	@echo "Targets disponibles:"
 	@echo "  make run            # Ejecuta pipeline completo RF10 (usa INPUT_ZIP/OUT_DIR/RUN_ID)"
 	@echo "  make test           # Ejecuta test suite de requisitos implementados"
+	@echo "  make pre-langsmith-gate  # Ejecuta gate previo RF14b (contratos + regresión crítica)"
 	@echo "  make test-rf08      # Ejecuta solo tests de reporte RF08"
 	@echo ""
 	@echo "Variables opcionales:"
@@ -47,6 +48,9 @@ test:
 		tests/test_rf06_drilldown_components.py \
 		tests/test_rf07_ranking.py \
 		tests/test_rf08_reporting.py
+
+pre-langsmith-gate:
+	$(PYTHON) scripts/run_pre_langsmith_gate.py
 
 test-rf01:
 	$(PYTEST) tests/test_rf01_ingest_storage.py

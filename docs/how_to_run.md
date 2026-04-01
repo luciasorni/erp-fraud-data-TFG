@@ -65,6 +65,14 @@ Calidad rápida:
 ```bash
 make test
 make test-rf08
+make pre-langsmith-gate
+```
+
+Validación de variables por perfil:
+
+```bash
+python3 scripts/validate_required_env.py --profile pre_langsmith
+python3 scripts/validate_required_env.py --profile langsmith
 ```
 
 ## Entorno limpio (RF10-06)

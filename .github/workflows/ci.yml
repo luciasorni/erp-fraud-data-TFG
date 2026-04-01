@@ -43,6 +43,10 @@ jobs:
         run: |
           python scripts/dry_run_alphacodium_stub.py
 
+      - name: Pre-LangSmith release gate
+        run: |
+          python scripts/run_pre_langsmith_gate.py
+
       - name: Pytest
         run: |
           python -m pytest -q

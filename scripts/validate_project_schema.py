@@ -138,6 +138,22 @@ def _validate_data_dictionary_json() -> None:
     json.loads(raw)
 
 
+def _validate_env_example() -> None:
+    path = Path(".env.example")
+    if not path.exists():
+        _fail("Falta .env.example")
+    text = path.read_text(encoding="utf-8")
+    required_keys = (
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_PROJECT",
+        "OPENAI_API_KEY",
+        "AWS_REGION",
+    )
+    for key in required_keys:
+        if key not in text:
+            _fail(f".env.example: falta clave {key}")
+
+
 def main() -> int:
     try:
         _validate_tools_registry()
@@ -147,6 +163,7 @@ def main() -> int:
         _validate_red_flags_mapping()
         _validate_prompt_naming()
         _validate_data_dictionary_json()
+        _validate_env_example()
     except Exception as exc:
         print(f"ERROR schema/config validation: {exc}", file=sys.stderr)
         return 1

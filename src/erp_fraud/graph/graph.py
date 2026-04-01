@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any
 
 from .nodes import run_node_by_id
+from .observability import append_error_event
 from .state import GraphState, create_initial_graph_state
 
 
@@ -89,9 +90,14 @@ def _record_node_attempt(
         node_timings[node_id] = int(duration_ms)
 
     if error:
-        errors = metadata.setdefault("errors", [])
-        if isinstance(errors, list):
-            errors.append({"node_id": node_id, "attempt": int(attempt), "error": error})
+        append_error_event(
+            run_metadata=metadata,
+            node_id=node_id,
+            status=status,
+            error=error,
+            attempt=attempt,
+            phase="graph_runner",
+        )
 
 
 def _execute_node_with_policy(
@@ -187,7 +193,13 @@ def _mark_graph_abort(state: GraphState, *, reason: str) -> None:
         node_status["graph_router"] = "ABORTED"
     errors = metadata.setdefault("errors", [])
     if isinstance(errors, list):
-        errors.append({"node_id": "graph_router", "error": reason})
+        append_error_event(
+            run_metadata=metadata,
+            node_id="graph_router",
+            status="ABORTED",
+            error=reason,
+            phase="graph_router",
+        )
 
 
 def run_graph(

@@ -47,19 +47,20 @@ from ..storage import (
 from ..storage.data_dictionary import DataDictionaryCompletenessError, check_dictionary_completeness
 from ..storage.paths import ruta_run
 from ..storage.report_json import build_report_json_payload
-
-DEFAULT_RUN_INPUT_ZIP = "erp_fraud_data.zip"
-DEFAULT_RUN_OUT_DIR = "run_results"
-DEFAULT_RUN_DB_PATH = "erp.duckdb"
-DEFAULT_RUN_SCHEMA_NAME = "main"
-DEFAULT_RUN_TABLE_NAME = "fraud_1"
-DEFAULT_RUN_CATALOG = "tests/catalog"
-DEFAULT_RUN_WEIGHTS_CONFIG = "config/weights.yaml"
-DEFAULT_RUN_SAMPLE_TOP_N = 20
-DEFAULT_RUN_KB_ENABLED = True
-DEFAULT_RUN_KB_SOURCES_CONFIG = "config/kb_sources.yaml"
-DEFAULT_RUN_KB_CHUNKING_CONFIG = "config/kb_chunking.yaml"
-DEFAULT_RUN_KB_CHROMA_CONFIG = "config/kb_chroma.yaml"
+from ..config import (
+    DEFAULT_CATALOG_PATH,
+    DEFAULT_DB_PATH,
+    DEFAULT_KB_CHROMA_CONFIG,
+    DEFAULT_KB_CHUNKING_CONFIG,
+    DEFAULT_KB_ENABLED,
+    DEFAULT_KB_SOURCES_CONFIG,
+    DEFAULT_OUT_DIR,
+    DEFAULT_RUN_INPUT_ZIP,
+    DEFAULT_SAMPLE_TOP_N,
+    DEFAULT_SCHEMA_NAME,
+    DEFAULT_TABLE_NAME,
+    DEFAULT_WEIGHTS_CONFIG,
+)
 
 
 def _run_validate_dictionary(args: argparse.Namespace) -> int:
@@ -296,22 +297,22 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
     resolved: dict[str, Any] = {
         "input_zip": str(_pick("input_zip", DEFAULT_RUN_INPUT_ZIP)),
         "run_id": _pick("run_id", None),
-        "out_dir": str(_pick("out_dir", DEFAULT_RUN_OUT_DIR)),
-        "db_path": str(_pick("db_path", DEFAULT_RUN_DB_PATH)),
-        "schema_name": str(_pick("schema_name", DEFAULT_RUN_SCHEMA_NAME)),
-        "table_name": str(_pick("table_name", DEFAULT_RUN_TABLE_NAME)),
-        "catalog": str(_pick("catalog", DEFAULT_RUN_CATALOG)),
-        "weights_config": str(_pick("weights_config", DEFAULT_RUN_WEIGHTS_CONFIG)),
+        "out_dir": str(_pick("out_dir", DEFAULT_OUT_DIR)),
+        "db_path": str(_pick("db_path", DEFAULT_DB_PATH)),
+        "schema_name": str(_pick("schema_name", DEFAULT_SCHEMA_NAME)),
+        "table_name": str(_pick("table_name", DEFAULT_TABLE_NAME)),
+        "catalog": str(_pick("catalog", DEFAULT_CATALOG_PATH)),
+        "weights_config": str(_pick("weights_config", DEFAULT_WEIGHTS_CONFIG)),
         "timeout_ms": _pick("timeout_ms", None),
-        "sample_top_n": int(_pick("sample_top_n", DEFAULT_RUN_SAMPLE_TOP_N)),
+        "sample_top_n": int(_pick("sample_top_n", DEFAULT_SAMPLE_TOP_N)),
         "top_k": _pick("top_k", None),
         "select_tests": _parse_select_tests(_pick("select_tests", None)),
         "select_fraud_types": _parse_select_values(_pick("select_fraud_types", None)),
         "select_tags": _parse_select_values(_pick("select_tags", None)),
-        "kb_index_enabled": bool(_pick("kb_index_enabled", DEFAULT_RUN_KB_ENABLED)),
-        "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_RUN_KB_SOURCES_CONFIG)),
-        "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_RUN_KB_CHUNKING_CONFIG)),
-        "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_RUN_KB_CHROMA_CONFIG)),
+        "kb_index_enabled": bool(_pick("kb_index_enabled", DEFAULT_KB_ENABLED)),
+        "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_KB_SOURCES_CONFIG)),
+        "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_KB_CHUNKING_CONFIG)),
+        "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
     }
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
@@ -868,32 +869,32 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--out-dir",
         default=None,
-        help=f"Directorio raíz de salidas por run (default: {DEFAULT_RUN_OUT_DIR})",
+        help=f"Directorio raíz de salidas por run (default: {DEFAULT_OUT_DIR})",
     )
     run_parser.add_argument(
         "--db-path",
         default=None,
-        help=f"Ruta a DuckDB (default: {DEFAULT_RUN_DB_PATH})",
+        help=f"Ruta a DuckDB (default: {DEFAULT_DB_PATH})",
     )
     run_parser.add_argument(
         "--schema-name",
         default=None,
-        help=f"Schema DuckDB para validación/tests (default: {DEFAULT_RUN_SCHEMA_NAME})",
+        help=f"Schema DuckDB para validación/tests (default: {DEFAULT_SCHEMA_NAME})",
     )
     run_parser.add_argument(
         "--table-name",
         default=None,
-        help=f"Tabla base para ejecución de tests del catálogo (default: {DEFAULT_RUN_TABLE_NAME})",
+        help=f"Tabla base para ejecución de tests del catálogo (default: {DEFAULT_TABLE_NAME})",
     )
     run_parser.add_argument(
         "--catalog",
         default=None,
-        help=f"Ruta al catálogo de tests (default: {DEFAULT_RUN_CATALOG})",
+        help=f"Ruta al catálogo de tests (default: {DEFAULT_CATALOG_PATH})",
     )
     run_parser.add_argument(
         "--weights-config",
         default=None,
-        help=f"Ruta a configuración de pesos del ranking (default: {DEFAULT_RUN_WEIGHTS_CONFIG})",
+        help=f"Ruta a configuración de pesos del ranking (default: {DEFAULT_WEIGHTS_CONFIG})",
     )
     run_parser.add_argument(
         "--timeout-ms",
@@ -931,7 +932,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--sample-top-n",
         type=int,
         default=None,
-        help=f"Top N para sample por test (default: {DEFAULT_RUN_SAMPLE_TOP_N})",
+        help=f"Top N para sample por test (default: {DEFAULT_SAMPLE_TOP_N})",
     )
     run_parser.add_argument(
         "--kb-index-enabled",
@@ -949,17 +950,17 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--kb-sources-config",
         default=None,
-        help=f"Config de fuentes KB (default: {DEFAULT_RUN_KB_SOURCES_CONFIG})",
+        help=f"Config de fuentes KB (default: {DEFAULT_KB_SOURCES_CONFIG})",
     )
     run_parser.add_argument(
         "--kb-chunking-config",
         default=None,
-        help=f"Config de chunking KB (default: {DEFAULT_RUN_KB_CHUNKING_CONFIG})",
+        help=f"Config de chunking KB (default: {DEFAULT_KB_CHUNKING_CONFIG})",
     )
     run_parser.add_argument(
         "--kb-chroma-config",
         default=None,
-        help=f"Config de Chroma KB (default: {DEFAULT_RUN_KB_CHROMA_CONFIG})",
+        help=f"Config de Chroma KB (default: {DEFAULT_KB_CHROMA_CONFIG})",
     )
     run_parser.set_defaults(handler=_run_pipeline)
     return parser

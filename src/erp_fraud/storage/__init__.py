@@ -41,10 +41,13 @@ from .reporting import (
     write_report_markdown_from_report_json,
 )
 from .report_json import (
+    REPORT_JSON_REQUIRED_TOP_LEVEL_FIELDS,
     REPORT_JSON_VERSION,
     build_default_report_artifact_paths,
     build_report_json_payload,
+    get_report_json_contract,
     validate_report_artifact_paths_exist,
+    validate_report_json_contract,
     validate_report_json_file_artifact_links,
     write_report_json,
 )
@@ -75,6 +78,7 @@ __all__ = [
     "normalize_data_dictionary_entry_min_fields",
     "run_technical_validation_before_tests",
     "REPORT_JSON_VERSION",
+    "REPORT_JSON_REQUIRED_TOP_LEVEL_FIELDS",
     "build_report_markdown_template",
     "build_report_markdown_from_report_json_payload",
     "render_report_markdown_to_html",
@@ -82,7 +86,9 @@ __all__ = [
     "build_report_json_payload",
     "build_default_report_artifact_paths",
     "validate_report_artifact_paths_exist",
+    "validate_report_json_contract",
     "validate_report_json_file_artifact_links",
+    "get_report_json_contract",
     "ruta_run",
     "write_report_json",
     "write_run_metadata_json",
