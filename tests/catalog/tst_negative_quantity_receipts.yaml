@@ -1,0 +1,46 @@
+id: TST-NEGATIVE-QUANTITY-RECEIPTS
+version: 1.0.0
+name: Negative quantity receipts
+fraud_type: inventory_anomaly
+process_step: goods_receipt
+description: Detecta registros con cantidad negativa para revisión de ajustes y devoluciones atípicas.
+source:
+  catalog: acfe_coso
+  reference: negative_receipt_quantities
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Material
+        - Menge
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Material
+        - Menge
+expected_output:
+  primary_entity: receipt_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - material
+    - menge
+  notes: Selecciona líneas con cantidad estrictamente negativa.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Material
+  - Menge
+logic:
+  implementation_type: sql
+  description: Filtrar líneas con Menge < 0.
+  sql_ref: sql/tests/tst_negative_quantity_receipts.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - inventory

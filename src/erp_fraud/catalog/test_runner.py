@@ -13,7 +13,16 @@ from typing import Any
 from ..storage.duckdb_store import DEFAULT_DUCKDB_PATH
 from ..storage.paths import ruta_run
 from .result_schema import RESULT_SCHEMA_VERSION
-from .test_execution import run_test_duplicate_postings, run_test_unusual_amount_by_vendor
+from .test_execution import (
+    run_test_duplicate_material_items,
+    run_test_duplicate_postings,
+    run_test_invoice_sequence_gaps,
+    run_test_just_below_auth_threshold,
+    run_test_negative_quantity_receipts,
+    run_test_round_dollar_payments,
+    run_test_split_payments_near_limit,
+    run_test_unusual_amount_by_vendor,
+)
 from .test_spec_loader import load_test_specs_from_catalog
 
 
@@ -182,6 +191,48 @@ class TestRunner:
             )
         elif test_id == "TST-UNUSUAL-AMOUNT-BY-VENDOR":
             result = run_test_unusual_amount_by_vendor(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-ROUND-DOLLAR-PAYMENTS":
+            result = run_test_round_dollar_payments(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-JUST-BELOW-AUTH-THRESHOLD":
+            result = run_test_just_below_auth_threshold(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-SPLIT-PAYMENTS-NEAR-LIMIT":
+            result = run_test_split_payments_near_limit(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-INVOICE-SEQUENCE-GAPS":
+            result = run_test_invoice_sequence_gaps(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-NEGATIVE-QUANTITY-RECEIPTS":
+            result = run_test_negative_quantity_receipts(
+                test_spec,
+                db_path=self.db_path,
+                schema_name=self.schema_name,
+                table_name=self.table_name,
+            )
+        elif test_id == "TST-DUPLICATE-MATERIAL-ITEMS":
+            result = run_test_duplicate_material_items(
                 test_spec,
                 db_path=self.db_path,
                 schema_name=self.schema_name,

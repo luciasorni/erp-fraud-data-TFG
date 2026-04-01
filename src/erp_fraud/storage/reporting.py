@@ -93,6 +93,9 @@ def build_report_markdown_from_report_json_payload(
 
     run_id = str(metadata.get("run_id", ""))
     dataset_hash = str(metadata.get("dataset_hash", ""))
+    metadata_extra = metadata.get("metadata_extra", {}) if isinstance(metadata, dict) else {}
+    if not isinstance(metadata_extra, dict):
+        metadata_extra = {}
     generated_at_utc = str(report_payload.get("generated_at_utc", ""))
     overall_status = str(summary.get("overall_status", "UNKNOWN"))
 
@@ -175,6 +178,33 @@ def build_report_markdown_from_report_json_payload(
             lines.append(f"- `{_md(key)}`: `{_md(path)}`")
     else:
         lines.append("- Sin anexos registrados.")
+
+    lines.extend(["", "## Explicación mínima por test", ""])
+    test_cards = metadata_extra.get("test_report_cards", [])
+    if isinstance(test_cards, list) and test_cards:
+        for card in sorted(
+            [row for row in test_cards if isinstance(row, dict)],
+            key=lambda row: str(row.get("test_id", "")),
+        ):
+            lines.extend(
+                [
+                    f"- `test_id`: `{_md(card.get('test_id', ''))}`",
+                    f"  - `name`: `{_md(card.get('name', ''))}`",
+                    f"  - `fraud_type`: `{_md(card.get('fraud_type', ''))}`",
+                    f"  - `process_step`: `{_md(card.get('process_step', ''))}`",
+                    f"  - `acfe_reference`: `{_md(card.get('acfe_reference', ''))}`",
+                    f"  - `description`: {_md(card.get('description', ''))}",
+                    f"  - `expected_output_notes`: {_md(card.get('expected_output_notes', ''))}",
+                    f"  - `sample_artifact`: `{_md(card.get('sample_artifact', ''))}`",
+                ]
+            )
+            evidence = card.get("evidence_columns", [])
+            if isinstance(evidence, list) and evidence:
+                lines.append(f"  - `evidence_columns`: `{_md(', '.join(str(item) for item in evidence))}`")
+            else:
+                lines.append("  - `evidence_columns`: ``")
+    else:
+        lines.append("- Sin tarjetas de test registradas.")
 
     lines.extend(["", "## Errores", ""])
     failed_runs: list[dict[str, Any]] = []

@@ -1,0 +1,45 @@
+id: TST-JUST-BELOW-AUTH-THRESHOLD
+version: 1.0.0
+name: Payments just below authorization thresholds
+fraud_type: authorization_bypass
+process_step: invoice_posting
+description: Detecta pagos justo por debajo de umbrales de autorización para priorizar revisión.
+source:
+  catalog: acfe_coso
+  reference: transactions_just_below_authorization_thresholds
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - betrag
+    - threshold
+    - threshold_gap
+  notes: Marca importes dentro de una banda configurable por debajo de umbrales.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Betrag
+logic:
+  implementation_type: sql
+  description: Identificar pagos por debajo de thresholds predefinidos dentro de una banda porcentual.
+  sql_ref: sql/tests/tst_just_below_auth_threshold.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - authorization
+  - threshold

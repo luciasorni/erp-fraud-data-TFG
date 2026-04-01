@@ -12,10 +12,21 @@ from .test_spec_loader import (
     load_test_specs_from_catalog,
     validate_test_spec,
 )
+from .catalog_validation import (
+    CatalogValidationError,
+    REQUIRED_TESTSPEC_FIELDS_RF13,
+    validate_catalog_against_schema_summary,
+)
 from .test_execution import (
     STANDARD_TEST_RESULT_SCHEMA_VERSION,
     build_standard_test_result,
+    run_test_duplicate_material_items,
     run_test_duplicate_postings,
+    run_test_invoice_sequence_gaps,
+    run_test_just_below_auth_threshold,
+    run_test_negative_quantity_receipts,
+    run_test_round_dollar_payments,
+    run_test_split_payments_near_limit,
     run_test_unusual_amount_by_vendor,
 )
 from .result_schema import (
@@ -86,6 +97,8 @@ __all__ = [
     "DRILLDOWN_MIN_KEYS_BY_TEST_ID",
     "DRILLDOWN_QUERY_ID_BY_TEST_ID",
     "TestSpecValidationError",
+    "CatalogValidationError",
+    "REQUIRED_TESTSPEC_FIELDS_RF13",
     "build_standard_test_result",
     "build_drilldown_template_ref",
     "build_entity_key",
@@ -113,7 +126,14 @@ __all__ = [
     "write_test_results_by_test_id",
     "parse_entity_key",
     "run_test_duplicate_postings",
+    "run_test_duplicate_material_items",
+    "run_test_invoice_sequence_gaps",
+    "run_test_just_below_auth_threshold",
+    "run_test_negative_quantity_receipts",
+    "run_test_round_dollar_payments",
+    "run_test_split_payments_near_limit",
     "run_test_unusual_amount_by_vendor",
+    "validate_catalog_against_schema_summary",
     "TestRunner",
     "validate_result_schema",
     "validate_test_spec",

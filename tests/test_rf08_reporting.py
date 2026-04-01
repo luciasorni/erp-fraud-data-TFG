@@ -83,6 +83,35 @@ def test_write_report_markdown_from_report_json_contains_error_section(tmp_path:
     assert "ValueError: invalid data" in content
 
 
+def test_write_report_markdown_from_report_json_includes_test_cards_section(tmp_path: Path) -> None:
+    report_json_path = tmp_path / "report_cards.json"
+    payload = build_report_json_payload(
+        run_id="rf13-04-md",
+        dataset_hash="hash-cards",
+        metadata_extra={
+            "test_report_cards": [
+                {
+                    "test_id": "TST-ROUND-DOLLAR-PAYMENTS",
+                    "name": "Round-dollar payments by vendor",
+                    "fraud_type": "suspicious_payment_pattern",
+                    "process_step": "invoice_posting",
+                    "description": "Detecta pagos con importes redondos.",
+                    "acfe_reference": "round_dollar_payments",
+                    "expected_output_notes": "Marca pagos con importe entero.",
+                    "sample_artifact": "run_results/x/tests_outputs/TST-ROUND-DOLLAR-PAYMENTS/sample_top20.json",
+                    "evidence_columns": ["Kreditor", "Belegnummer", "Betrag"],
+                }
+            ]
+        },
+    )
+    write_report_json(output_path=report_json_path, payload=payload)
+    report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
+    content = report_md_path.read_text(encoding="utf-8")
+    assert "## Explicación mínima por test" in content
+    assert "TST-ROUND-DOLLAR-PAYMENTS" in content
+    assert "round_dollar_payments" in content
+
+
 def test_render_report_markdown_to_html_creates_html(tmp_path: Path) -> None:
     report_md_path = tmp_path / "report.md"
     report_md_path.write_text("# Report\n\n## Resumen\n\n- ok\n", encoding="utf-8")
@@ -148,4 +177,3 @@ def test_validate_report_json_file_artifact_links_ok_when_all_exist(tmp_path: Pa
         base_path=tmp_path,
     )
     assert missing == []
-

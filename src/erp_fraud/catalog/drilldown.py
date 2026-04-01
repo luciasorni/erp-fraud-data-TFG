@@ -101,6 +101,126 @@ def _build_drilldown_query_and_params(
         ]
         return query, params
 
+    if query_id == "drilldown_round_dollar_payments_v1":
+        if any(key not in {"Transaktionsart"} for key in filters.keys()):
+            raise ValueError(
+                "extra_filters no permitidos para round_dollar_payments; permitido: Transaktionsart"
+            )
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
+              AND (? IS NULL OR "Transaktionsart" = ?)
+            ORDER BY "Belegnummer" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            keys["betrag"],
+            filters.get("Transaktionsart"),
+            filters.get("Transaktionsart"),
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_just_below_auth_threshold_v1":
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
+            ORDER BY "Belegnummer" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            keys["betrag"],
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_split_payments_near_limit_v1":
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            ORDER BY "Position" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_invoice_sequence_gaps_v1":
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            ORDER BY "Belegnummer" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_negative_quantity_receipts_v1":
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND "Material" = ?
+            ORDER BY TRY_CAST("Menge" AS DOUBLE) ASC
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            keys["material"],
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_duplicate_material_items_v1":
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE "Kreditor" = ?
+              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND REGEXP_REPLACE(CAST("Position" AS VARCHAR), '\\.0+$', '') =
+                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+              AND "Material" = ?
+            ORDER BY "Position" {resolved_order_direction}, "Material" {resolved_order_direction}
+            LIMIT ?
+        """
+        params = [
+            keys["kreditor"],
+            keys["belegnummer"],
+            keys["position"],
+            keys["material"],
+            resolved_limit,
+        ]
+        return query, params
+
     raise KeyError(f"query_id no soportado para drilldown: {query_id}")
 
 

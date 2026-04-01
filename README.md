@@ -14,6 +14,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf07.md`
 - `docs/rf08.md`
 - `docs/rf10.md`
+- `docs/rf13.md`
 - `docs/rf15b.md`
 - `docs/rf15e.md`
 - `docs/rag_kb.md`
@@ -271,6 +272,18 @@ Se añadió un índice local en Chroma para fuentes ACFE + documentación del pr
   - `src/erp_fraud/agents/kb_chroma.py`
   - `src/erp_fraud/agents/kb_index.py`
   - `src/erp_fraud/agents/kb_search.py`
+
+## Catálogo ampliado RF13
+
+Estado actual:
+
+- selección priorizada ACFE documentada en `docs/rf13.md`,
+- catálogo con TestSpecs activos en `tests/catalog/`,
+- soporte de ejecución por subconjunto:
+  - `--select-tests`
+  - `--select-fraud-types`
+  - `--select-tags`
+- validación automatizada de catálogo contra `schema_summary` antes del run.
 
 Opciones útiles:
 

@@ -283,3 +283,565 @@ def run_test_unusual_amount_by_vendor(
         implementation_type="sql",
         executed_on=executed_on,
     )
+
+
+def run_test_round_dollar_payments(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    """Ejecuta TST-ROUND-DOLLAR-PAYMENTS y devuelve resultado estándar."""
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    query = f"""
+        SELECT
+            "Kreditor" AS kreditor,
+            "Belegnummer" AS belegnummer,
+            TRY_CAST("Betrag" AS DOUBLE) AS betrag,
+            CASE
+                WHEN ABS(TRY_CAST("Betrag" AS DOUBLE) - ROUND(TRY_CAST("Betrag" AS DOUBLE), 0)) < 1e-9
+                    THEN TRUE
+                ELSE FALSE
+            END AS is_round_amount
+        FROM {qualified_table}
+        WHERE TRY_CAST("Betrag" AS DOUBLE) IS NOT NULL
+          AND ABS(TRY_CAST("Betrag" AS DOUBLE) - ROUND(TRY_CAST("Betrag" AS DOUBLE), 0)) < 1e-9
+        ORDER BY betrag DESC, kreditor, belegnummer
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "betrag", "is_round_amount"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                        "betrag": str(base["betrag"]),
+                    },
+                    evidence_columns=["kreditor", "belegnummer", "betrag", "is_round_amount"],
+                    metrics={"is_round_amount": bool(base["is_round_amount"])},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "betrag": row[2],
+                "is_round_amount": bool(row[3]),
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )
+
+
+def run_test_just_below_auth_threshold(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    threshold_values: tuple[float, ...] = (100.0, 500.0, 1000.0, 5000.0, 10000.0),
+    threshold_band: float = 0.02,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    threshold_sql = ", ".join(f"({float(value)})" for value in threshold_values)
+    lower_factor = 1.0 - float(threshold_band)
+
+    query = f"""
+        WITH thresholds AS (
+            SELECT * FROM (VALUES {threshold_sql}) t(threshold_value)
+        ),
+        base AS (
+            SELECT
+                "Kreditor" AS kreditor,
+                "Belegnummer" AS belegnummer,
+                TRY_CAST("Betrag" AS DOUBLE) AS betrag
+            FROM {qualified_table}
+            WHERE TRY_CAST("Betrag" AS DOUBLE) IS NOT NULL
+        ),
+        matches AS (
+            SELECT
+                b.kreditor,
+                b.belegnummer,
+                b.betrag,
+                t.threshold_value AS threshold,
+                (t.threshold_value - b.betrag) AS threshold_gap,
+                ROW_NUMBER() OVER (
+                    PARTITION BY b.kreditor, b.belegnummer, b.betrag
+                    ORDER BY t.threshold_value
+                ) AS rn
+            FROM base b
+            JOIN thresholds t
+              ON b.betrag < t.threshold_value
+             AND b.betrag >= t.threshold_value * {lower_factor}
+        )
+        SELECT
+            kreditor,
+            belegnummer,
+            betrag,
+            threshold,
+            threshold_gap
+        FROM matches
+        WHERE rn = 1
+        ORDER BY threshold_gap ASC, betrag DESC, kreditor, belegnummer
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "betrag", "threshold", "threshold_gap"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                        "betrag": str(base["betrag"]),
+                    },
+                    evidence_columns=["kreditor", "belegnummer", "betrag", "threshold", "threshold_gap"],
+                    metrics={
+                        "threshold": float(base["threshold"]) if base["threshold"] is not None else None,
+                        "threshold_gap": float(base["threshold_gap"])
+                        if base["threshold_gap"] is not None
+                        else None,
+                    },
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "betrag": row[2],
+                "threshold": row[3],
+                "threshold_gap": row[4],
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )
+
+
+def run_test_split_payments_near_limit(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    threshold: float = 1000.0,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    query = f"""
+        WITH base AS (
+            SELECT
+                "Kreditor" AS kreditor,
+                "Belegnummer" AS belegnummer,
+                "Position" AS position,
+                TRY_CAST("Betrag" AS DOUBLE) AS betrag
+            FROM {qualified_table}
+            WHERE "Kreditor" IS NOT NULL
+              AND "Belegnummer" IS NOT NULL
+              AND TRY_CAST("Betrag" AS DOUBLE) IS NOT NULL
+        ),
+        agg AS (
+            SELECT
+                kreditor,
+                belegnummer,
+                COUNT(*) AS line_count,
+                SUM(betrag) AS total_betrag,
+                MAX(betrag) AS max_line_betrag
+            FROM base
+            GROUP BY 1, 2
+        )
+        SELECT
+            kreditor,
+            belegnummer,
+            line_count,
+            total_betrag,
+            max_line_betrag,
+            ? AS threshold
+        FROM agg
+        WHERE line_count > 1
+          AND max_line_betrag < ?
+          AND total_betrag >= ?
+        ORDER BY total_betrag DESC, line_count DESC, kreditor, belegnummer
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [threshold, threshold, threshold, max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "line_count", "total_betrag", "max_line_betrag", "threshold"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                    },
+                    evidence_columns=columns,
+                    metrics={
+                        "line_count": int(base["line_count"]),
+                        "total_betrag": float(base["total_betrag"]),
+                        "max_line_betrag": float(base["max_line_betrag"]),
+                        "threshold": float(base["threshold"]),
+                    },
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "line_count": int(row[2]),
+                "total_betrag": row[3],
+                "max_line_betrag": row[4],
+                "threshold": row[5],
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )
+
+
+def run_test_invoice_sequence_gaps(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    min_sequence_gap: int = 10,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    query = f"""
+        WITH base AS (
+            SELECT DISTINCT
+                "Kreditor" AS kreditor,
+                TRY_CAST(REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') AS BIGINT) AS belegnummer_num,
+                REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') AS belegnummer
+            FROM {qualified_table}
+            WHERE "Kreditor" IS NOT NULL
+              AND TRY_CAST(REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') AS BIGINT) IS NOT NULL
+        ),
+        with_prev AS (
+            SELECT
+                kreditor,
+                belegnummer,
+                belegnummer_num,
+                LAG(belegnummer_num) OVER (PARTITION BY kreditor ORDER BY belegnummer_num) AS previous_belegnummer_num
+            FROM base
+        )
+        SELECT
+            kreditor,
+            belegnummer,
+            CAST(previous_belegnummer_num AS VARCHAR) AS previous_belegnummer,
+            (belegnummer_num - previous_belegnummer_num) AS sequence_gap
+        FROM with_prev
+        WHERE previous_belegnummer_num IS NOT NULL
+          AND (belegnummer_num - previous_belegnummer_num) >= ?
+        ORDER BY sequence_gap DESC, kreditor, belegnummer_num
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [min_sequence_gap, max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "previous_belegnummer", "sequence_gap"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                    },
+                    evidence_columns=columns,
+                    metrics={"sequence_gap": int(base["sequence_gap"])},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "previous_belegnummer": row[2],
+                "sequence_gap": int(row[3]),
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )
+
+
+def run_test_negative_quantity_receipts(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    query = f"""
+        SELECT
+            "Kreditor" AS kreditor,
+            "Belegnummer" AS belegnummer,
+            "Material" AS material,
+            TRY_CAST("Menge" AS DOUBLE) AS menge
+        FROM {qualified_table}
+        WHERE TRY_CAST("Menge" AS DOUBLE) < 0
+        ORDER BY menge ASC, kreditor, belegnummer
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "material", "menge"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                        "material": str(base["material"]),
+                    },
+                    evidence_columns=columns,
+                    metrics={"menge": float(base["menge"]) if base["menge"] is not None else None},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "material": row[2],
+                "menge": row[3],
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )
+
+
+def run_test_duplicate_material_items(
+    test_spec: dict[str, Any],
+    *,
+    table_name: str = "fraud_1",
+    schema_name: str = "main",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+    max_rows: int = 1000,
+) -> dict[str, Any]:
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    quoted_schema = _quote_identifier(schema_name)
+    quoted_table = _quote_identifier(table_name)
+    qualified_table = f"{quoted_schema}.{quoted_table}"
+    executed_on = f"{schema_name}.{table_name}"
+
+    query = f"""
+        SELECT
+            "Kreditor" AS kreditor,
+            "Belegnummer" AS belegnummer,
+            "Position" AS position,
+            "Material" AS material,
+            COUNT(*) AS duplicate_count
+        FROM {qualified_table}
+        WHERE "Material" IS NOT NULL
+        GROUP BY 1, 2, 3, 4
+        HAVING COUNT(*) > 1
+        ORDER BY duplicate_count DESC, kreditor, belegnummer, position, material
+        LIMIT ?
+    """
+
+    started = perf_counter()
+    try:
+        raw_rows = conn.execute(query, [max_rows]).fetchall()
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    columns = ["kreditor", "belegnummer", "position", "material", "duplicate_count"]
+    rows = [
+        (
+            lambda base: {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys={
+                        "kreditor": str(base["kreditor"]),
+                        "belegnummer": str(base["belegnummer"]),
+                        "position": str(base["position"]),
+                        "material": str(base["material"]),
+                    },
+                    evidence_columns=columns,
+                    metrics={"duplicate_count": int(base["duplicate_count"])},
+                ),
+            }
+        )(
+            {
+                "kreditor": row[0],
+                "belegnummer": row[1],
+                "position": row[2],
+                "material": row[3],
+                "duplicate_count": int(row[4]),
+            }
+        )
+        for row in raw_rows
+    ]
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql",
+        executed_on=executed_on,
+    )

@@ -8,6 +8,12 @@ from typing import Mapping
 DRILLDOWN_QUERY_ID_BY_TEST_ID: dict[str, str] = {
     "TST-DUPLICATE-POSTINGS": "drilldown_duplicate_postings_v1",
     "TST-UNUSUAL-AMOUNT-BY-VENDOR": "drilldown_unusual_amount_by_vendor_v1",
+    "TST-ROUND-DOLLAR-PAYMENTS": "drilldown_round_dollar_payments_v1",
+    "TST-JUST-BELOW-AUTH-THRESHOLD": "drilldown_just_below_auth_threshold_v1",
+    "TST-SPLIT-PAYMENTS-NEAR-LIMIT": "drilldown_split_payments_near_limit_v1",
+    "TST-INVOICE-SEQUENCE-GAPS": "drilldown_invoice_sequence_gaps_v1",
+    "TST-NEGATIVE-QUANTITY-RECEIPTS": "drilldown_negative_quantity_receipts_v1",
+    "TST-DUPLICATE-MATERIAL-ITEMS": "drilldown_duplicate_material_items_v1",
 }
 
 
@@ -30,4 +36,3 @@ def build_drilldown_template_ref(
         "query_id": get_drilldown_query_id_for_test_id(test_id),
         "params": {str(k): str(v) for k, v in keys.items()},
     }
-

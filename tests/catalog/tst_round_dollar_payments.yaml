@@ -1,0 +1,44 @@
+id: TST-ROUND-DOLLAR-PAYMENTS
+version: 1.0.0
+name: Round-dollar payments by vendor
+fraud_type: suspicious_payment_pattern
+process_step: invoice_posting
+description: Detecta pagos con importes redondos para priorizar revisión por posible manipulación.
+source:
+  catalog: acfe_coso
+  reference: round_dollar_payments
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Betrag
+        - Belegnummer
+      required_columns_exact:
+        - Kreditor
+        - Betrag
+        - Belegnummer
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - betrag
+    - is_round_amount
+  notes: Marca pagos cuyo importe no tiene decimales (importe entero).
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Betrag
+logic:
+  implementation_type: sql
+  description: Filtrar transacciones con importe entero por proveedor/documento.
+  sql_ref: sql/tests/tst_round_dollar_payments.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - amount
+  - pattern

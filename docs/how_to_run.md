@@ -36,6 +36,12 @@ Variantes frecuentes:
   --select-tests TST-DUPLICATE-POSTINGS,TST-UNUSUAL-AMOUNT-BY-VENDOR \
   --top-k 20
 
+# Ejecutar subset por fraud_type/tags (RF13-05)
+/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --select-fraud-types duplicate_payment,amount_anomaly \
+  --select-tags p2p,acfe
+
 # Parametrizar por fichero config (json/yaml)
 /opt/anaconda3/bin/python -m src.erp_fraud.cli.main run \
   --config config/run_config.yaml
@@ -145,6 +151,15 @@ Ejecutar tests RF08:
 
 ```bash
 /opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
+```
+
+Ejecutar tests RF13 (catálogo ampliado):
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q \
+  tests/test_rf13_catalog_selection.py \
+  tests/test_rf13_families.py \
+  tests/test_rf13_catalog_validation.py
 ```
 
 Ejecutar tests RF15b (tools + policies + guardrails):

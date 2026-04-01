@@ -18,6 +18,35 @@ DRILLDOWN_MIN_KEYS_BY_TEST_ID: dict[str, tuple[str, ...]] = {
         "kreditor",
         "betrag",
     ),
+    "TST-ROUND-DOLLAR-PAYMENTS": (
+        "kreditor",
+        "belegnummer",
+        "betrag",
+    ),
+    "TST-JUST-BELOW-AUTH-THRESHOLD": (
+        "kreditor",
+        "belegnummer",
+        "betrag",
+    ),
+    "TST-SPLIT-PAYMENTS-NEAR-LIMIT": (
+        "kreditor",
+        "belegnummer",
+    ),
+    "TST-INVOICE-SEQUENCE-GAPS": (
+        "kreditor",
+        "belegnummer",
+    ),
+    "TST-NEGATIVE-QUANTITY-RECEIPTS": (
+        "kreditor",
+        "belegnummer",
+        "material",
+    ),
+    "TST-DUPLICATE-MATERIAL-ITEMS": (
+        "kreditor",
+        "belegnummer",
+        "position",
+        "material",
+    ),
 }
 
 
@@ -47,4 +76,3 @@ def validate_minimum_keys_for_test_id(test_id: str, keys: Mapping[str, object]) 
             f"keys incompletas para test_id={test_id}. Faltan: {missing}. "
             f"Requeridas: {list(required)}"
         )
-

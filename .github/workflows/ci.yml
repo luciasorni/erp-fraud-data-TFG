@@ -48,8 +48,13 @@ jobs:
           pytest -q \
             tests/test_rf03_catalog.py \
             tests/test_rf04_runner.py \
+            tests/test_rf06_drilldown_components.py \
             tests/test_rf07_ranking.py \
             tests/test_rf08_reporting.py \
+            tests/test_rf13_catalog_selection.py \
+            tests/test_rf13_catalog_validation.py \
+            tests/test_rf13_families.py \
+            tests/test_rf13_p1_execution.py \
             tests/test_rf15b_tools.py \
             tests/test_rf15b_policy_and_schema_guard.py \
             tests/test_rf15b_tool_call_logging.py

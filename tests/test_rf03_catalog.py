@@ -7,6 +7,7 @@ from src.erp_fraud.catalog import (
     STANDARD_TEST_RESULT_SCHEMA_VERSION,
     load_test_specs_from_catalog,
     run_test_duplicate_postings,
+    run_test_round_dollar_payments,
     run_test_unusual_amount_by_vendor,
     validate_test_spec,
 )
@@ -20,10 +21,19 @@ def _spec_by_id(catalog_specs: list[dict], test_id: str) -> dict:
     raise AssertionError(f"No se encontró TestSpec: {test_id}")
 
 
-def test_catalog_loads_two_valid_specs() -> None:
+def test_catalog_loads_valid_specs() -> None:
     specs = load_test_specs_from_catalog("tests/catalog", validate_schema=True)
     ids = sorted(str(spec.get("id")) for spec in specs)
-    assert ids == ["TST-DUPLICATE-POSTINGS", "TST-UNUSUAL-AMOUNT-BY-VENDOR"]
+    assert ids == [
+        "TST-DUPLICATE-MATERIAL-ITEMS",
+        "TST-DUPLICATE-POSTINGS",
+        "TST-INVOICE-SEQUENCE-GAPS",
+        "TST-JUST-BELOW-AUTH-THRESHOLD",
+        "TST-NEGATIVE-QUANTITY-RECEIPTS",
+        "TST-ROUND-DOLLAR-PAYMENTS",
+        "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
+        "TST-UNUSUAL-AMOUNT-BY-VENDOR",
+    ]
     for spec in specs:
         assert isinstance(spec.get("process_step"), str)
         assert isinstance(spec.get("expected_output"), dict)
@@ -148,3 +158,31 @@ def test_run_test_unusual_amount_by_vendor_returns_standard_result() -> None:
     ]
     assert out["rows"][0]["kreditor"] == "V1"
     assert out["rows"][0]["z_score"] >= 1.7
+
+
+def test_run_test_round_dollar_payments_returns_standard_result() -> None:
+    specs = load_test_specs_from_catalog("tests/catalog", validate_schema=True)
+    spec = _spec_by_id(specs, "TST-ROUND-DOLLAR-PAYMENTS")
+
+    conn = duckdb.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE fraud_1 (Kreditor VARCHAR, Belegnummer VARCHAR, Position VARCHAR, Betrag DOUBLE, Transaktionsart VARCHAR)"
+    )
+    conn.executemany(
+        "INSERT INTO fraud_1 VALUES (?, ?, ?, ?, ?)",
+        [
+            ("V1", "D1", "10", 100.0, "N"),
+            ("V1", "D2", "10", 100.5, "N"),
+            ("V2", "D3", "10", 250.0, "N"),
+        ],
+    )
+
+    out = run_test_round_dollar_payments(spec, conn=conn, table_name="fraud_1", schema_name="main")
+    conn.close()
+
+    assert out["result_schema_version"] == STANDARD_TEST_RESULT_SCHEMA_VERSION
+    assert out["test_id"] == "TST-ROUND-DOLLAR-PAYMENTS"
+    assert out["status"] == "OK"
+    assert out["finding_count"] == 2
+    assert out["columns"] == ["kreditor", "belegnummer", "betrag", "is_round_amount"]
+    assert out["rows"][0]["is_round_amount"] is True

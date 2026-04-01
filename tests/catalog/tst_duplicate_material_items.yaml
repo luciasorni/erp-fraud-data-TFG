@@ -1,0 +1,48 @@
+id: TST-DUPLICATE-MATERIAL-ITEMS
+version: 1.0.0
+name: Duplicate material items in same invoice line
+fraud_type: duplicate_entry
+process_step: invoice_posting
+description: Detecta duplicidades de material en el mismo proveedor/documento/posición.
+source:
+  catalog: acfe_coso
+  reference: duplicate_items_or_serial_numbers
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Material
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Material
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - position
+    - material
+    - duplicate_count
+  notes: Devuelve grupos con recuento mayor que uno.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Position
+  - Material
+logic:
+  implementation_type: sql
+  description: Agrupar por proveedor/documento/posición/material y detectar count > 1.
+  sql_ref: sql/tests/tst_duplicate_material_items.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - duplicate
+  - material

@@ -1,0 +1,49 @@
+id: TST-SPLIT-PAYMENTS-NEAR-LIMIT
+version: 1.0.0
+name: Split payments near authorization limit
+fraud_type: authorization_bypass
+process_step: invoice_posting
+description: Detecta facturas con líneas fraccionadas para superar umbral de autorización agregado.
+source:
+  catalog: acfe_coso
+  reference: split_payments_exceeding_authorization_limits
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Betrag
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Position
+        - Betrag
+expected_output:
+  primary_entity: invoice_header
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - line_count
+    - total_betrag
+    - max_line_betrag
+    - threshold
+  notes: Señala grupos con varias líneas por debajo del umbral cuyo total agregado lo supera.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Position
+  - Betrag
+logic:
+  implementation_type: sql
+  description: Agrupar por proveedor+documento y detectar fraccionamiento por umbral.
+  sql_ref: sql/tests/tst_split_payments_near_limit.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - split
+  - authorization

@@ -10,12 +10,14 @@ import sys
 from typing import Any
 
 from ..catalog import (
+    CatalogValidationError,
     TestRunner,
     aggregate_findings_by_entity,
     drilldown,
     load_weights_config,
     parse_entity_key,
     resolve_ranking_top_k,
+    validate_catalog_against_schema_summary,
     write_ranking_outputs,
     write_test_results_by_test_id,
 )
@@ -213,6 +215,73 @@ def _parse_select_tests(raw_value: Any) -> list[str] | None:
     return values or None
 
 
+def _parse_select_values(raw_value: Any) -> list[str] | None:
+    if raw_value is None:
+        return None
+    if isinstance(raw_value, list):
+        values = [str(item).strip() for item in raw_value if str(item).strip()]
+        return values or None
+    raw = str(raw_value).strip()
+    if not raw:
+        return None
+    values = [item.strip() for item in raw.split(",") if item.strip()]
+    return values or None
+
+
+def _filter_catalog_test_ids(
+    *,
+    test_specs: list[dict[str, Any]],
+    select_tests: list[str] | None = None,
+    select_fraud_types: list[str] | None = None,
+    select_tags: list[str] | None = None,
+) -> list[str] | None:
+    """Filtra tests por id/fraud_type/tags (RF13-05).
+
+    Retorna:
+    - `None`: ejecutar catálogo completo (sin filtros)
+    - `list[str]`: subconjunto final en orden estable
+    """
+    specs_by_id: dict[str, dict[str, Any]] = {}
+    catalog_order_ids: list[str] = []
+    for spec in test_specs:
+        if not isinstance(spec, dict):
+            continue
+        test_id = str(spec.get("id", "")).strip()
+        if not test_id:
+            continue
+        if test_id in specs_by_id:
+            continue
+        specs_by_id[test_id] = spec
+        catalog_order_ids.append(test_id)
+
+    if select_tests is None and select_fraud_types is None and select_tags is None:
+        return None
+
+    if select_tests is not None:
+        selected_ids = [test_id for test_id in select_tests if test_id in specs_by_id]
+    else:
+        selected_ids = list(catalog_order_ids)
+
+    fraud_filter = {value.strip().lower() for value in (select_fraud_types or []) if value.strip()}
+    tag_filter = {value.strip().lower() for value in (select_tags or []) if value.strip()}
+
+    def _passes(spec: dict[str, Any]) -> bool:
+        if fraud_filter:
+            fraud_type = str(spec.get("fraud_type", "")).strip().lower()
+            if fraud_type not in fraud_filter:
+                return False
+        if tag_filter:
+            tags = spec.get("tags", [])
+            tags_normalized: set[str] = set()
+            if isinstance(tags, list):
+                tags_normalized = {str(tag).strip().lower() for tag in tags if str(tag).strip()}
+            if not (tags_normalized & tag_filter):
+                return False
+        return True
+
+    return [test_id for test_id in selected_ids if _passes(specs_by_id[test_id])]
+
+
 def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
     cfg = _load_config_file(args.config)
 
@@ -237,6 +306,8 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "sample_top_n": int(_pick("sample_top_n", DEFAULT_RUN_SAMPLE_TOP_N)),
         "top_k": _pick("top_k", None),
         "select_tests": _parse_select_tests(_pick("select_tests", None)),
+        "select_fraud_types": _parse_select_values(_pick("select_fraud_types", None)),
+        "select_tags": _parse_select_values(_pick("select_tags", None)),
         "kb_index_enabled": bool(_pick("kb_index_enabled", DEFAULT_RUN_KB_ENABLED)),
         "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_RUN_KB_SOURCES_CONFIG)),
         "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_RUN_KB_CHUNKING_CONFIG)),
@@ -269,6 +340,38 @@ def _build_run_paths(run_dir: Path) -> dict[str, Path]:
         "kb_index_manifest": run_dir / "kb_index_manifest.json",
         "kb_index_state": run_dir / "kb_index_state.json",
     }
+
+
+def _build_test_report_cards(
+    *,
+    test_specs: list[dict[str, Any]],
+    test_output_paths: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    cards: list[dict[str, Any]] = []
+    for spec in test_specs:
+        test_id = str(spec.get("id", "")).strip()
+        if not test_id:
+            continue
+        source = spec.get("source", {}) if isinstance(spec.get("source"), dict) else {}
+        expected_output = (
+            spec.get("expected_output", {}) if isinstance(spec.get("expected_output"), dict) else {}
+        )
+        card = {
+            "test_id": test_id,
+            "name": str(spec.get("name", "")),
+            "fraud_type": str(spec.get("fraud_type", "")),
+            "process_step": str(spec.get("process_step", "")),
+            "description": str(spec.get("description", "")),
+            "acfe_reference": str(source.get("reference", "")),
+            "acfe_url": str(source.get("url", "")),
+            "expected_output_notes": str(expected_output.get("notes", "")),
+            "evidence_columns": list(spec.get("evidence_columns", []))
+            if isinstance(spec.get("evidence_columns"), list)
+            else [],
+            "sample_artifact": str(test_output_paths.get(test_id, {}).get("sample_json", "")),
+        }
+        cards.append(card)
+    return sorted(cards, key=lambda row: str(row.get("test_id", "")))
 
 
 def _write_run_structure_manifest(*, run_id: str, run_dir: Path, paths: dict[str, Path]) -> Path:
@@ -373,6 +476,11 @@ def _run_pipeline(args: argparse.Namespace) -> int:
         )
 
         test_specs = load_test_specs_from_catalog(settings["catalog"], validate_schema=True)
+        schema_summary_payload = json.loads(schema_summary_path.read_text(encoding="utf-8"))
+        validate_catalog_against_schema_summary(
+            test_specs=test_specs,
+            schema_summary_payload=schema_summary_payload,
+        )
         validation_outcome = run_technical_validation_before_tests(
             test_specs=test_specs,
             report_output_path=run_paths["data_validation_report"],
@@ -425,8 +533,13 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 validation_report=validation_outcome.report_path,
             )
         else:
-            selected_ids = settings["select_tests"]
-            if selected_ids:
+            selected_ids = _filter_catalog_test_ids(
+                test_specs=test_specs,
+                select_tests=settings["select_tests"],
+                select_fraud_types=settings["select_fraud_types"],
+                select_tags=settings["select_tags"],
+            )
+            if selected_ids is not None:
                 results = test_runner.run_all(
                     selected_ids,
                     catalog_path=settings["catalog"],
@@ -457,6 +570,20 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             test_results=results,
             formats=("jsonl", "parquet"),
             sample_top_n=settings["sample_top_n"],
+        )
+        specs_by_id = {
+            str(spec.get("id", "")).strip(): spec
+            for spec in test_specs
+            if isinstance(spec, dict) and str(spec.get("id", "")).strip()
+        }
+        executed_specs = [
+            specs_by_id[test_id]
+            for test_id in sorted(test_output_paths.keys())
+            if test_id in specs_by_id
+        ]
+        test_report_cards = _build_test_report_cards(
+            test_specs=executed_specs,
+            test_output_paths=test_output_paths,
         )
 
         weights_cfg = load_weights_config(settings["weights_config"])
@@ -523,7 +650,10 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 "weights_config": settings["weights_config"],
                 "out_dir": settings["out_dir"],
                 "select_tests": settings["select_tests"] or [],
+                "select_fraud_types": settings["select_fraud_types"] or [],
+                "select_tags": settings["select_tags"] or [],
                 "table_stats": table_stats,
+                "test_report_cards": test_report_cards,
                 "kb_index_enabled": settings["kb_index_enabled"],
                 "kb_index_status": kb_index_status,
                 "kb_index_error": kb_index_error,
@@ -581,6 +711,10 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             f"(run_id={run_id}, tests={len(test_runs)}, findings={findings_total}, out={run_dir})"
         )
         return 0
+    except CatalogValidationError as exc:
+        logger.log_error("Validación de catálogo RF13 falló", error=str(exc))
+        print(f"ERROR: validación catálogo falló: {exc}", file=sys.stderr)
+        return 1
     except Exception as exc:
         logger.log_error("Pipeline run falló", error=str(exc))
         print(f"ERROR: pipeline run falló: {exc}", file=sys.stderr)
@@ -721,6 +855,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--select-tests",
         default=None,
         help="Lista de test_ids separada por coma (ej: TST-A,TST-B)",
+    )
+    run_parser.add_argument(
+        "--select-fraud-types",
+        default=None,
+        help="Filtra tests por fraud_type (lista separada por coma, ej: duplicate_payment,amount_anomaly)",
+    )
+    run_parser.add_argument(
+        "--select-tags",
+        default=None,
+        help="Filtra tests por tags de catálogo (lista separada por coma, ej: p2p,acfe)",
     )
     run_parser.add_argument(
         "--top-k",

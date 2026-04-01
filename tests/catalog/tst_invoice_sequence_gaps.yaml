@@ -1,0 +1,40 @@
+id: TST-INVOICE-SEQUENCE-GAPS
+version: 1.0.0
+name: Invoice sequence gaps by vendor
+fraud_type: invoice_number_anomaly
+process_step: invoice_posting
+description: Detecta saltos atípicos en la secuencia de números de factura por proveedor.
+source:
+  catalog: acfe_coso
+  reference: little_or_no_sequence_between_invoice_numbers
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+expected_output:
+  primary_entity: invoice_header
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - previous_belegnummer
+    - sequence_gap
+  notes: Requiere que Belegnummer sea parseable a numérico para cálculo de gap.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+logic:
+  implementation_type: sql
+  description: Ordenar por número de documento y detectar diferencias por encima de un umbral.
+  sql_ref: sql/tests/tst_invoice_sequence_gaps.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - sequence
