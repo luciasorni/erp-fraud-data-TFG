@@ -174,6 +174,20 @@ def _validate_env_example() -> None:
             _fail(f".env.example: falta clave {key}")
 
 
+def _validate_models_config() -> None:
+    path = Path("config/models.yaml")
+    payload = _load_yaml(path)
+    scoring = payload.get("scoring")
+    if not isinstance(scoring, dict):
+        _fail(f"{path}: falta objeto 'scoring'")
+    profiles = scoring.get("profiles")
+    if not isinstance(profiles, dict) or not profiles:
+        _fail(f"{path}: falta objeto 'scoring.profiles' no vacío")
+    graph_nodes = payload.get("graph_nodes")
+    if not isinstance(graph_nodes, dict) or not graph_nodes:
+        _fail(f"{path}: falta objeto 'graph_nodes' no vacío")
+
+
 def main() -> int:
     try:
         _validate_tools_registry()
@@ -183,6 +197,7 @@ def main() -> int:
         _validate_red_flags_mapping()
         _validate_prompt_naming()
         _validate_prompt_registry()
+        _validate_models_config()
         _validate_data_dictionary_json()
         _validate_env_example()
     except Exception as exc:

@@ -93,3 +93,23 @@ Versionado de prompts + hash en metadata:
 Además, la validación de esquema/config ahora comprueba que:
 - existe `config/prompt_versions.yaml`
 - cada prompt referenciado existe y tiene `version`.
+
+## RF14b-04 (estado implementado en código)
+
+Registro de `model_config` por nodo/agente en `run_metadata`:
+
+- Config base: `config/models.yaml` sección `graph_nodes`.
+- Se guarda en `run_metadata["agent_model_config"]` para:
+  - `hypothesis_planner`
+  - `test_planner`
+  - `executor` (deterministic/sql runner)
+  - `expert_explainer`
+  - `scoring`
+
+Campos mínimos registrados por nodo:
+- `mode`
+- `model_used`
+- `temperature`
+- `max_tokens`
+- `models_config_path`
+- `source`

@@ -3,6 +3,28 @@ schema_version: "1.0"
 defaults:
   scoring_profile: default
 
+graph_nodes:
+  hypothesis_planner:
+    mode: stub
+    model_used: gpt-5.4-mini
+    temperature: 0.0
+    max_tokens: 800
+  test_planner:
+    mode: stub
+    model_used: gpt-5.4-mini
+    temperature: 0.0
+    max_tokens: 600
+  expert_explainer:
+    mode: stub
+    model_used: gpt-5.4-mini
+    temperature: 0.0
+    max_tokens: 1000
+  scoring:
+    mode: stub
+    model_used: scoring-stub-v2
+    temperature: 0.0
+    max_tokens: 800
+
 scoring:
   profiles:
     default:

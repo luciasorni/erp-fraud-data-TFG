@@ -55,3 +55,11 @@ def test_rf14_run_graph_stub_updates_state_and_node_status() -> None:
     ):
         value = str(state.run_metadata.get(key, "")).strip()
         assert value
+
+    agent_model_config = state.run_metadata.get("agent_model_config", {})
+    assert isinstance(agent_model_config, dict)
+    for node_id in ("hypothesis_planner", "test_planner", "executor", "expert_explainer", "scoring"):
+        cfg = agent_model_config.get(node_id)
+        assert isinstance(cfg, dict)
+        assert str(cfg.get("model_used", "")).strip()
+        assert str(cfg.get("mode", "")).strip()

@@ -9,6 +9,8 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
 
+import yaml
+
 from ...agents import alpha_loop, alpha_loop_result_to_dict
 from ...agents.kb_index import build_kb_index
 from ...agents.kb_search import KBSearchTool
@@ -92,6 +94,73 @@ def _langsmith_snapshot() -> dict[str, Any]:
         "endpoint": endpoint,
         "trace_link": trace_link,
     }
+
+
+def _resolve_graph_node_model_config(
+    *,
+    node_id: str,
+    metadata: dict[str, Any],
+    default_model_used: str,
+) -> dict[str, Any]:
+    models_config_path = _resolve_project_path(
+        str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
+    )
+    payload: dict[str, Any] = {}
+    try:
+        path = Path(models_config_path)
+        if path.exists():
+            loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                payload = loaded
+    except Exception:
+        payload = {}
+
+    graph_nodes = payload.get("graph_nodes", {}) if isinstance(payload, dict) else {}
+    node_cfg = graph_nodes.get(node_id, {}) if isinstance(graph_nodes, dict) else {}
+    if not isinstance(node_cfg, dict):
+        node_cfg = {}
+
+    model_used = str(node_cfg.get("model_used", "")).strip() or default_model_used
+    try:
+        temperature = float(node_cfg.get("temperature", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        temperature = 0.0
+    try:
+        max_tokens = int(node_cfg.get("max_tokens", 0) or 0)
+    except (TypeError, ValueError):
+        max_tokens = 0
+
+    return {
+        "node_id": node_id,
+        "mode": str(node_cfg.get("mode", "stub")).strip() or "stub",
+        "model_used": model_used,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "models_config_path": models_config_path,
+        "source": "config" if node_cfg else "fallback",
+    }
+
+
+def _record_graph_node_model_config(
+    *,
+    node_id: str,
+    metadata: dict[str, Any],
+    default_model_used: str,
+    overrides: dict[str, Any] | None = None,
+) -> None:
+    agent_model_config = metadata.setdefault("agent_model_config", {})
+    if not isinstance(agent_model_config, dict):
+        agent_model_config = {}
+        metadata["agent_model_config"] = agent_model_config
+
+    config = _resolve_graph_node_model_config(
+        node_id=node_id,
+        metadata=metadata,
+        default_model_used=default_model_used,
+    )
+    if isinstance(overrides, dict):
+        config.update(overrides)
+    agent_model_config[node_id] = config
 
 
 def _set_node_status(
@@ -788,6 +857,11 @@ def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: d
 def hypothesis_planner_node(state: GraphState) -> GraphState:
     """Genera hipótesis con trazabilidad de fuentes (RF15c-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    _record_graph_node_model_config(
+        node_id="hypothesis_planner",
+        metadata=metadata,
+        default_model_used="gpt-5.4-mini",
+    )
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
     catalog_path = _resolve_project_path(
@@ -1091,6 +1165,11 @@ def _test_spec_is_schema_compatible(
 def test_planner_node(state: GraphState) -> GraphState:
     """Selecciona test_ids allowlist del catálogo para cada hipótesis (RF14-06/RF15c-05)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    _record_graph_node_model_config(
+        node_id="test_planner",
+        metadata=metadata,
+        default_model_used="gpt-5.4-mini",
+    )
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
     node_id = "test_planner"
@@ -1337,6 +1416,12 @@ def kb_index_node(state: GraphState) -> GraphState:
 def executor_node(state: GraphState) -> GraphState:
     """Nodo no-LLM: ejecuta tests seleccionados y guarda findings (RF14-07)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    _record_graph_node_model_config(
+        node_id="executor",
+        metadata=metadata,
+        default_model_used="deterministic-sql-runner",
+        overrides={"mode": "deterministic"},
+    )
     db_path = _resolve_project_path(
         str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH
     )
@@ -1793,6 +1878,11 @@ def _build_acfe_reference_via_kb(
 def explainer_node(state: GraphState) -> GraphState:
     """Nodo explicador con guardrails (RF14-08)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    _record_graph_node_model_config(
+        node_id="expert_explainer",
+        metadata=metadata,
+        default_model_used="gpt-5.4-mini",
+    )
     findings = [row for row in state.findings if isinstance(row, dict)]
 
     if not findings:
@@ -1973,6 +2063,11 @@ def expert_explainer_node(state: GraphState) -> GraphState:
 def scoring_node(state: GraphState) -> GraphState:
     """Scoring por entidad/transacción + tipología de fraude (RF14-09)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    _record_graph_node_model_config(
+        node_id="scoring",
+        metadata=metadata,
+        default_model_used="scoring-stub-v2",
+    )
     findings = [row for row in state.findings if isinstance(row, dict)]
     weights_config_path = _resolve_project_path(
         str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip() or DEFAULT_WEIGHTS_CONFIG
@@ -2033,6 +2128,18 @@ def scoring_node(state: GraphState) -> GraphState:
         metadata["scoring_status"] = "NO_FINDINGS"
         metadata["scoring_entities"] = 0
         metadata["scoring_model_used"] = str(empty_score.get("model_used", "")).strip()
+        _record_graph_node_model_config(
+            node_id="scoring",
+            metadata=metadata,
+            default_model_used=str(empty_score.get("model_used", "")).strip() or "scoring-node-no-findings",
+            overrides={
+                "mode": "stub",
+                "model_used": str(empty_score.get("model_used", "")).strip() or "scoring-node-no-findings",
+                "temperature": 0.0,
+                "max_tokens": 0,
+                "profile": str(scoring_model_profile).strip(),
+            },
+        )
         metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
             scoring_prompt_text
         )
@@ -2268,6 +2375,18 @@ def scoring_node(state: GraphState) -> GraphState:
     metadata["scoring_top_k"] = top_k
     metadata["scoring_fraud_types"] = len(fraud_type_probs)
     metadata["scoring_model_used"] = str(base_score_schema.get("model_used", "")).strip()
+    _record_graph_node_model_config(
+        node_id="scoring",
+        metadata=metadata,
+        default_model_used=str(base_score_schema.get("model_used", "")).strip() or "scoring-stub-v2",
+        overrides={
+            "mode": "stub",
+            "model_used": str(base_score_schema.get("model_used", "")).strip() or "scoring-stub-v2",
+            "temperature": float(metadata.get("scoring_model_temperature", 0.0) or 0.0),
+            "max_tokens": int(metadata.get("scoring_model_max_tokens", 0) or 0),
+            "profile": str(metadata.get("scoring_model_profile", "")).strip(),
+        },
+    )
     metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
         scoring_prompt_text
     )
