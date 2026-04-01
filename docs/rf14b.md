@@ -125,3 +125,15 @@ Evaluadores automáticos añadidos (post-run) en `run_metadata["rf14b_evaluation
 - `kb_citations_present`
   - si `explainer_kb_enabled=true`, exige citas KB (`acfe_reference.hits`) por explicación.
   - si KB está desactivado, marca `SKIPPED_KB_DISABLED`.
+
+## RF14b-06 (estado implementado en código)
+
+Métrica de correspondencia fraude (`fraud_correspondence`) añadida dentro de `rf14b_evaluation`:
+
+- compara `fraud_type` observados en `findings` con:
+  - `scores[0].final_label`
+  - `scores[0].fraud_type_probs[*].fraud_type`
+- calcula `coherence_ratio = |intersección| / |fraud_types_en_findings|`.
+- regla de pase:
+  - `final_label` debe estar presente en los `fraud_type` de findings (si existe),
+  - `coherence_ratio >= 0.5`.

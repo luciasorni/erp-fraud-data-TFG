@@ -186,11 +186,74 @@ def _check_kb_citations_present(state: Any) -> dict[str, Any]:
     }
 
 
+def _check_fraud_correspondence(state: Any) -> dict[str, Any]:
+    findings = [row for row in getattr(state, "findings", []) if isinstance(row, dict)]
+    scores = [row for row in getattr(state, "scores", []) if isinstance(row, dict)]
+
+    finding_fraud_types = {
+        str(row.get("fraud_type", "")).strip()
+        for row in findings
+        if str(row.get("fraud_type", "")).strip()
+    }
+    if not finding_fraud_types:
+        return {
+            "id": "fraud_correspondence",
+            "passed": True,
+            "errors": [],
+            "status": "SKIPPED_NO_FINDINGS",
+            "coherence_ratio": 1.0,
+            "expected_fraud_types": [],
+            "predicted_fraud_types": [],
+            "final_label": "",
+        }
+
+    first_score = scores[0] if scores else {}
+    final_label = str(first_score.get("final_label", "")).strip() if isinstance(first_score, dict) else ""
+    probs = first_score.get("fraud_type_probs", []) if isinstance(first_score, dict) else []
+    predicted_fraud_types = {
+        str(row.get("fraud_type", "")).strip()
+        for row in probs
+        if isinstance(row, dict) and str(row.get("fraud_type", "")).strip()
+    }
+    if final_label:
+        predicted_fraud_types.add(final_label)
+
+    intersection = finding_fraud_types.intersection(predicted_fraud_types)
+    coherence_ratio = len(intersection) / max(len(finding_fraud_types), 1)
+    min_threshold = 0.5
+
+    errors: list[str] = []
+    if final_label and final_label not in finding_fraud_types:
+        errors.append(
+            f"final_label '{final_label}' no aparece en fraud_type de findings ({sorted(finding_fraud_types)})"
+        )
+    if coherence_ratio < min_threshold:
+        errors.append(
+            f"coherence_ratio={coherence_ratio:.3f} por debajo de umbral {min_threshold:.3f}"
+        )
+    if not predicted_fraud_types:
+        errors.append("score no devuelve fraud_type_probs/final_label útiles")
+
+    return {
+        "id": "fraud_correspondence",
+        "passed": len(errors) == 0,
+        "errors": errors,
+        "status": "CHECKED",
+        "coherence_ratio": round(coherence_ratio, 6),
+        "min_threshold": min_threshold,
+        "intersection": sorted(intersection),
+        "expected_fraud_types": sorted(finding_fraud_types),
+        "predicted_fraud_types": sorted(predicted_fraud_types),
+        "final_label": final_label,
+    }
+
+
 def evaluate_rf14b_automatic(state: Any) -> dict[str, Any]:
     checks = [
         _check_schema_allowlist_compliance(state),
         _check_no_invented_columns(state),
         _check_kb_citations_present(state),
+        _check_fraud_correspondence(state),
     ]
     passed = all(bool(check.get("passed", False)) for check in checks)
     return {
