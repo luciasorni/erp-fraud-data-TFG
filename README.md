@@ -15,8 +15,10 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf08.md`
 - `docs/rf10.md`
 - `docs/rf13.md`
+- `docs/rf14.md`
 - `docs/rf15b.md`
 - `docs/rf15e.md`
+- `docs/langgraph_architecture.md`
 - `docs/rag_kb.md`
 - `docs/data.md`
 - `docs/how_to_run.md`
@@ -236,6 +238,35 @@ Componentes:
 Validación de links:
 
 - `validate_report_json_file_artifact_links(...)` detecta artefactos no existentes en `artifact_paths`.
+
+## Orquestación por Grafo (RF14)
+
+Se implementó un grafo multiagente con ejecución por nodos y trazabilidad por estado:
+
+- estado: `src/erp_fraud/graph/state.py`
+- nodos: `src/erp_fraud/graph/nodes.py`
+- orquestador/routing: `src/erp_fraud/graph/graph.py`
+- documentación técnica:
+  - `docs/rf14.md`
+  - `docs/langgraph_architecture.md`
+
+Verificación rápida RF14:
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf14_graph_state.py \
+  tests/test_rf14_graph_structure.py \
+  tests/test_rf14_ingest_node.py \
+  tests/test_rf14_kb_index_node.py \
+  tests/test_rf14_hypothesis_planner_node.py \
+  tests/test_rf14_test_planner_node.py \
+  tests/test_rf14_executor_node.py \
+  tests/test_rf14_explainer_node.py \
+  tests/test_rf14_scoring_node.py \
+  tests/test_rf14_persist_node.py \
+  tests/test_rf14_graph_routing.py \
+  tests/test_rf14_graph_integration.py
+```
 
 ## Comando Único (RF10)
 

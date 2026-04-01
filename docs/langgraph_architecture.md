@@ -1,0 +1,171 @@
+# Arquitectura LangGraph (RF14)
+
+## Objetivo
+
+Documentar el grafo multiagente para que cualquier persona pueda:
+
+1. entender el orden y propósito de cada nodo,
+2. saber qué entra y qué sale de cada nodo,
+3. reproducir una ejecución y depurar fallos.
+
+## Diagrama del flujo
+
+
+
+## Routing y control de ejecución
+
+El orquestador (`src/erp_fraud/graph/graph.py`) soporta:
+
+- **secuencia full**: `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist`
+- **abort condicional** antes de planificación si:
+  - `abort_graph=true`,
+  - `schema_validation_failed=true`,
+  - `ingest_status=ERROR`.
+- **timeouts y retries por nodo** (configurables):
+  - `graph_default_timeout_ms`
+  - `graph_default_retries`
+  - `graph_node_timeouts_ms` (override por nodo)
+  - `graph_node_retries` (override por nodo)
+- incluso en abort, si existe nodo `persist`, se intenta persistir artefactos.
+
+## Estado compartido (GraphState)
+
+Definido en `src/erp_fraud/graph/state.py`.
+
+Campos principales:
+
+- `run_id`
+- `schema`
+- `kb_status`
+- `hypotheses`
+- `selected_tests`
+- `findings`
+- `explanations`
+- `scores`
+- `run_metadata`
+
+`run_metadata` actúa como bitácora técnica: estado por nodo, tiempos, intentos, errores y rutas de artefactos.
+
+## Contrato por nodo (I/O)
+
+### 1) `ingest`
+
+- Entrada:
+  - `run_metadata.db_path` o `run_metadata.schema_summary_path`
+  - `run_metadata.schema_name` (opcional, default `main`)
+- Salida:
+  - `state.schema` poblado con `schema_summary`
+  - `run_metadata.ingest_*` con trazas (`ingest_source`, `ingest_table_count`, etc.)
+
+### 2) `kb_index`
+
+- Entrada:
+  - `run_metadata.kb_index_enabled`
+  - paths de config KB (`kb_sources_config`, `kb_chunking_config`, `kb_chroma_config`)
+- Salida:
+  - `state.kb_status` (`OK`, `DISABLED` o `ERROR`)
+  - trazas en `run_metadata` (`kb_index_status`, manifest/state path)
+
+### 3) `hypothesis_planner` (agente)
+
+- Entrada:
+  - `state.schema`
+  - catálogo (`run_metadata.catalog_path`)
+  - flag opcional KB search (`run_metadata.kb_search_enabled`)
+- Tools usadas (con policy RF15b):
+  - `TestCatalog`
+  - `Schema`
+  - `RunStore` (stub actual)
+  - KB opcional: `KBSearchTool` (RF15e)
+- Salida:
+  - `state.hypotheses` con hipótesis estructuradas y `tool_context`
+
+### 4) `test_planner` (agente)
+
+- Entrada:
+  - `state.hypotheses`
+  - catálogo de tests (allowlist)
+- Lógica:
+  - puntúa candidatos por keywords/fraud_type
+  - filtra por allowlist
+  - `top_n` configurable
+- Salida:
+  - `state.selected_tests` con `hypothesis_id`, `test_id`, `score`, `match_reasons`
+
+### 5) `executor` (no-LLM)
+
+- Entrada:
+  - `state.selected_tests`
+  - DB/config (`db_path`, `schema_name`, `table_name`)
+- Lógica:
+  - ejecuta tests reales via `TestRunner.run_all(...)`
+- Salida:
+  - `state.findings` (resultado estándar por test)
+  - métricas en `run_metadata` (`executor_tests_count`, `executor_findings_total`)
+
+### 6) `explainer` (agente explicador con guardrails)
+
+- Entrada:
+  - `state.findings`
+- Guardrails:
+  - solo `test_id` ejecutados
+  - solo columnas existentes en `result.columns`
+- Salida:
+  - `state.explanations` (resumen por test)
+
+### 7) `scoring`
+
+- Entrada:
+  - `state.findings`
+  - `weights.yaml`
+- Lógica:
+  - agrega por `entity_key` (transacción/entidad)
+  - calcula `score_total`
+  - genera distribución por `fraud_type`
+- Salida:
+  - `state.scores` con `ranking`, `fraud_type_distribution`, `summary`
+
+### 8) `persist`
+
+- Entrada:
+  - todo el estado acumulado
+- Salida en disco:
+  - `run_results/<run_id>/graph/`
+  - `hypotheses.json`, `selected_tests.json`, `findings.json`, `explanations.json`, `scores.json`, `graph_state.json`, `manifest.json`
+- Trazas:
+  - `run_metadata.persist_*`
+
+## Nodos y agentes (qué es “agente” aquí)
+
+En esta arquitectura, **agente = rol de decisión** dentro del nodo.  
+No todos los nodos son LLM:
+
+- Agentes/roles de decisión: `hypothesis_planner`, `test_planner`, `explainer`
+- Nodos deterministas/no-LLM: `ingest`, `kb_index`, `executor`, `scoring`, `persist`
+
+Esto permite control y auditabilidad: decisión asistida donde aporta valor, ejecución determinista donde hay riesgo.
+
+## Artefactos clave para depurar
+
+- estado técnico:
+  - `run_metadata.node_status`
+  - `run_metadata.node_timings_ms`
+  - `run_metadata.node_attempts`
+  - `run_metadata.errors`
+- outputs de negocio:
+  - `graph/hypotheses.json`
+  - `graph/selected_tests.json`
+  - `graph/findings.json`
+  - `graph/explanations.json`
+  - `graph/scores.json`
+- índice de artefactos:
+  - `graph/manifest.json`
+
+## Estado actual de implementación
+
+Actualmente RF14 está implementado incrementalmente con tests por bloque y un integration test de `run_graph_full`.
+
+Referencia:
+
+- `docs/rf14.md`
+

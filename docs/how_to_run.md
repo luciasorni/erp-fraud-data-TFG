@@ -171,6 +171,24 @@ Ejecutar tests RF15b (tools + policies + guardrails):
   tests/test_rf15b_tool_call_logging.py
 ```
 
+Ejecutar verificación RF14 (grafo):
+
+```bash
+/opt/anaconda3/bin/python -m pytest -q \
+  tests/test_rf14_graph_state.py \
+  tests/test_rf14_graph_structure.py \
+  tests/test_rf14_ingest_node.py \
+  tests/test_rf14_kb_index_node.py \
+  tests/test_rf14_hypothesis_planner_node.py \
+  tests/test_rf14_test_planner_node.py \
+  tests/test_rf14_executor_node.py \
+  tests/test_rf14_explainer_node.py \
+  tests/test_rf14_scoring_node.py \
+  tests/test_rf14_persist_node.py \
+  tests/test_rf14_graph_routing.py \
+  tests/test_rf14_graph_integration.py
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:
@@ -281,3 +299,6 @@ Notas:
 - artefactos KB (RF15e, si indexado activado):
   - `run_results/<run_id>/kb_index_manifest.json`
   - `run_results/<run_id>/kb_index_state.json`
+- evidencias RF14 (cierre):
+  - `run_results/rf14-17-check/pytest_rf14.log`
+  - `run_results/rf14-17-check/verification_summary.json`
