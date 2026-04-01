@@ -286,7 +286,7 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
     cfg = _load_config_file(args.config)
 
     def _pick(name: str, default: Any) -> Any:
-        cli_value = getattr(args, name)
+        cli_value = getattr(args, name, None)
         if cli_value is not None:
             return cli_value
         if name in cfg and cfg[name] is not None:

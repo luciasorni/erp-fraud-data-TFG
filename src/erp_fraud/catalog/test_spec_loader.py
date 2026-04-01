@@ -14,6 +14,7 @@ SUPPORTED_TESTSPEC_SUFFIXES = {".json", ".yml", ".yaml"}
 
 class TestSpecValidationError(ValueError):
     """Error de validación de esquema en un TestSpec."""
+    __test__ = False
 
 
 def _load_testspec_file(path: Path) -> dict[str, Any]:

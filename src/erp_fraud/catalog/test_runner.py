@@ -28,6 +28,7 @@ from .test_spec_loader import load_test_specs_from_catalog
 
 class TestRunner:
     """Ejecutor de tests del catálogo."""
+    __test__ = False
 
     def __init__(
         self,

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from decimal import Decimal
 from typing import Any
 
 import pandas as pd
@@ -23,7 +24,24 @@ def _rows_to_dataframe(rows: list[dict[str, Any]]) -> pd.DataFrame:
 
 
 def _stable_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        _json_safe(value),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, tuple):
+        return [_json_safe(item) for item in value]
+    return value
 
 
 def sort_result_rows_stable(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -58,7 +76,7 @@ def write_test_result_jsonl(
     sorted_rows = sort_result_rows_stable(rows)
     with path.open("w", encoding="utf-8") as fh:
         for row in sorted_rows:
-            fh.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.write(json.dumps(_json_safe(row), ensure_ascii=False, sort_keys=True) + "\n")
     return path
 
 
@@ -131,7 +149,7 @@ def write_test_results_by_test_id(
             "test_id": test_id,
             "sample_size": len(sample_rows),
             "sample_limit": sample_top_n,
-            "rows": sample_rows,
+            "rows": _json_safe(sample_rows),
         }
         sample_path.write_text(
             json.dumps(sample_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
