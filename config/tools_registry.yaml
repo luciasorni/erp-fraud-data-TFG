@@ -76,6 +76,34 @@ tools:
       timeout_ms: 2000
       max_payload_kb: 1024
 
+  DataCatalog:
+    tool_id: DataCatalog
+    enabled: true
+    description: >
+      Devuelve campos documentados del data_dictionary para construir hipótesis
+      y validar cobertura de datos.
+    inputs:
+      type: object
+      required:
+        - data_dictionary_path
+      properties:
+        data_dictionary_path:
+          type: string
+          min_length: 1
+    outputs:
+      type: object
+      required:
+        - source
+        - payload
+      properties:
+        source:
+          type: string
+        payload:
+          type: object
+    limits:
+      timeout_ms: 2000
+      max_payload_kb: 1024
+
   TestCatalog:
     tool_id: TestCatalog
     enabled: true

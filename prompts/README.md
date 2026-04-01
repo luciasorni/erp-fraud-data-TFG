@@ -20,3 +20,15 @@ Prompts iniciales:
 - `test_planner__v001.md`
 - `expert_explainer__v001.md`
 - `scoring__v001.md`
+
+Entrypoints estables (RF15c-02):
+
+- `hypothesis_planner.md`
+- `test_planner.md`
+- `explainer.md`
+- `scoring.md`
+
+Nota:
+
+- Los `*.md` estables son las plantillas activas para runtime/multiagente.
+- Los `*__vNNN.md` mantienen versionado histórico de prompts.

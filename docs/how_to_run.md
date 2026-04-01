@@ -198,6 +198,47 @@ python3 -m pytest -q \
   tests/test_ag03_prompt_snapshots.py
 ```
 
+Ejecutar RF15c-14 manual (E2E + evidencia tutor):
+
+```bash
+python3 scripts/run_rf15c_e2e_manual.py \
+  --run-id rf15c14-demo \
+  --schema-summary-path schema_summary.json \
+  --catalog-path tests/catalog \
+  --persist-base-dir run_results \
+  --llm-mode stub
+```
+
+Verificación RF15c (suite completa):
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf15c_graph_state.py \
+  tests/test_rf15c_hypothesis_planner.py \
+  tests/test_rf15c_test_planner.py \
+  tests/test_rf15c_executor_node.py \
+  tests/test_rf15c_explainer_node.py \
+  tests/test_rf15c_explainer_repair.py \
+  tests/test_rf15c_scoring_node.py \
+  tests/test_rf15c_persist_node.py \
+  tests/test_rf15c_multiagent_integration.py \
+  tests/test_rf15c_end_to_end_contract.py \
+  tests/test_rf15c_manual_e2e_script.py
+```
+
+Nota:
+
+- LangSmith no es obligatorio para ejecutar RF15c en local; la traza puede quedar en `N/A`.
+
+Opcional: adjuntar traza LangSmith manualmente:
+
+```bash
+python3 scripts/run_rf15c_e2e_manual.py \
+  --run-id rf15c14-demo \
+  --schema-summary-path schema_summary.json \
+  --langsmith-trace-link "https://smith.langchain.com/..."
+```
+
 ## Validación técnica (RF02b)
 
 Si ya tienes columnas requeridas por test, el pipeline genera:

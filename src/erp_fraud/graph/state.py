@@ -13,7 +13,7 @@ def _utc_now_iso() -> str:
 
 @dataclass
 class GraphState:
-    """Estado canónico del flujo RF14.
+    """Estado canónico del flujo RF14/RF15c.
 
     Campos exigidos por backlog RF14-01:
     - schema
@@ -24,6 +24,13 @@ class GraphState:
     - explanations
     - scores
     - run_metadata
+
+    Extensiones RF15c-01:
+    - test_runs
+    - ranking
+    - fraud_type_predicho
+    - recomendaciones
+    - export_paths
     """
 
     run_id: str
@@ -32,6 +39,11 @@ class GraphState:
     hypotheses: list[dict[str, Any]] = field(default_factory=list)
     selected_tests: list[dict[str, Any]] = field(default_factory=list)
     findings: list[dict[str, Any]] = field(default_factory=list)
+    test_runs: list[dict[str, Any]] = field(default_factory=list)
+    ranking: list[dict[str, Any]] = field(default_factory=list)
+    fraud_type_predicho: list[dict[str, Any]] = field(default_factory=list)
+    recomendaciones: list[dict[str, Any]] = field(default_factory=list)
+    export_paths: dict[str, Any] = field(default_factory=dict)
     explanations: list[dict[str, Any]] = field(default_factory=list)
     scores: list[dict[str, Any]] = field(default_factory=list)
     run_metadata: dict[str, Any] = field(default_factory=dict)
@@ -73,4 +85,3 @@ def graph_state_to_dict(state: GraphState) -> dict[str, Any]:
     payload = asdict(state)
     payload["run_metadata"]["updated_at_utc"] = _utc_now_iso()
     return payload
-

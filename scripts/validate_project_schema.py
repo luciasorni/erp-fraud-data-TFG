@@ -115,8 +115,16 @@ def _validate_prompt_naming() -> None:
     if not files:
         _fail("prompts/ sin ficheros .md")
     pattern = re.compile(r"^[a-z_]+__v\d{3}\.md$")
+    allowed_entrypoints = {
+        "hypothesis_planner.md",
+        "test_planner.md",
+        "explainer.md",
+        "scoring.md",
+    }
     for path in files:
         if path.name == "README.md":
+            continue
+        if path.name in allowed_entrypoints:
             continue
         if not pattern.match(path.name):
             _fail(f"Nombre de prompt inválido: {path.name}")

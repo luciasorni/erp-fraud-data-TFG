@@ -17,7 +17,9 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf13.md`
 - `docs/rf14.md`
 - `docs/rf15b.md`
+- `docs/rf15c.md`
 - `docs/rf15e.md`
+- `docs/agents.md`
 - `docs/langgraph_architecture.md`
 - `docs/alphacodium_workflow.md`
 - `docs/ag03_iteraciones_reales.md`
@@ -278,6 +280,31 @@ Se implementó el loop `Plan -> Draft -> Validate -> Repair` para nodos LLM del 
 - `test_planner`
 - `expert_explainer`
 - `scoring`
+
+## Multiagente RF15c
+
+Se añadió el flujo multiagente completo de planificación/ejecución/explicación/scoring:
+
+- planner de hipótesis con `sources` trazables,
+- selección de tests por allowlist y compatibilidad de schema,
+- ejecución determinista de tests en catálogo (sin SQL libre),
+- explicador con guardrails anti-alucinación + reparación,
+- scoring con `fraud_type_probs` y validación de evidencia real,
+- persistencia de artefactos RF15c:
+  - `hypotheses.json`
+  - `selected_tests.json`
+  - `explanations.json`
+  - `explanations.md`
+  - `score.json`
+
+Documentación principal:
+
+- `docs/rf15c.md`
+- `docs/agents.md`
+
+Nota:
+
+- LangSmith es opcional; el flujo funciona sin LangSmith configurado.
 
 Componentes:
 

@@ -16,6 +16,7 @@ agents:
       - RunStore
     denied_tools:
       - KBSearch
+      - DataCatalog
     limits:
       max_tool_calls: 20
       max_total_time_ms: 60000
@@ -38,6 +39,7 @@ agents:
     denied_tools:
       - DuckDBQuery
       - KBSearch
+      - DataCatalog
     limits:
       max_tool_calls: 12
       max_total_time_ms: 30000
@@ -53,6 +55,7 @@ agents:
     allowed_tools:
       - TestCatalog
       - Schema
+      - DataCatalog
       - RunStore
     denied_tools:
       - DuckDBQuery
@@ -62,6 +65,7 @@ agents:
       max_calls_per_tool:
         TestCatalog: 5
         Schema: 3
+        DataCatalog: 3
         RunStore: 4
     constraints:
       allow_kbsearch_if_enabled: true
@@ -77,6 +81,7 @@ agents:
       - DuckDBQuery
       - TestCatalog
       - KBSearch
+      - DataCatalog
     limits:
       max_tool_calls: 8
       max_total_time_ms: 20000
@@ -94,6 +99,7 @@ agents:
     denied_tools:
       - DuckDBQuery
       - Schema
+      - DataCatalog
       - TestCatalog
       - KBSearch
     limits:

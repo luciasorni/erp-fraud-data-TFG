@@ -12,6 +12,7 @@ from ..agents.kb_index import build_kb_index
 from ..agents.kb_search import KBSearchTool
 from ..agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
 from ..catalog import aggregate_findings_by_entity, load_test_specs_from_catalog
+from ..catalog import RESULT_SCHEMA_VERSION, get_result_schema_required_fields
 from ..catalog.scoring import load_weights_config, resolve_ranking_top_k
 from ..catalog.test_runner import TestRunner
 from ..storage.paths import ruta_run
@@ -84,11 +85,33 @@ def _tool_test_catalog(*, catalog_path: str) -> dict[str, Any]:
         test_id = str(spec.get("id", "")).strip()
         if not test_id:
             continue
+        table_requirements: list[dict[str, Any]] = []
+        data_requirements = spec.get("data_requirements", {})
+        if isinstance(data_requirements, dict):
+            tables = data_requirements.get("tables", [])
+            if isinstance(tables, list):
+                for table_req in tables:
+                    if not isinstance(table_req, dict):
+                        continue
+                    table_name = str(table_req.get("table", "")).strip()
+                    required_columns = table_req.get("required_columns", [])
+                    if not isinstance(required_columns, list):
+                        required_columns = []
+                    cols = [str(col).strip() for col in required_columns if str(col).strip()]
+                    if table_name and cols:
+                        table_requirements.append(
+                            {
+                                "table": table_name,
+                                "required_columns": cols,
+                            }
+                        )
         tests.append(
             {
                 "id": test_id,
                 "fraud_type": str(spec.get("fraud_type", "")).strip(),
+                "process_step": str(spec.get("process_step", "")).strip(),
                 "name": str(spec.get("name", "")).strip(),
+                "table_requirements": table_requirements,
                 "tags": [str(tag).strip() for tag in spec.get("tags", []) if str(tag).strip()]
                 if isinstance(spec.get("tags"), list)
                 else [],
@@ -106,7 +129,260 @@ def _tool_schema(state: GraphState) -> dict[str, Any]:
         for row in tables
         if isinstance(row, dict) and str(row.get("table_name", "")).strip()
     )
-    return {"source": "schema_summary", "payload": {"table_names": table_names, "count": len(table_names)}}
+    columns_by_table: dict[str, list[str]] = {}
+    for row in tables:
+        if not isinstance(row, dict):
+            continue
+        table_name = str(row.get("table_name", "")).strip()
+        if not table_name:
+            continue
+        columns = row.get("columns", [])
+        if not isinstance(columns, list):
+            continue
+        names = []
+        for col in columns:
+            if not isinstance(col, dict):
+                continue
+            name = str(col.get("name", col.get("column_name", ""))).strip()
+            if name:
+                names.append(name)
+        columns_by_table[table_name] = sorted(set(names))
+    return {
+        "source": "schema_summary",
+        "payload": {
+            "table_names": table_names,
+            "count": len(table_names),
+            "columns_by_table": columns_by_table,
+        },
+    }
+
+
+def _tool_data_catalog(*, data_dictionary_path: str) -> dict[str, Any]:
+    path = Path(data_dictionary_path)
+    if not path.exists():
+        return {
+            "source": "data_dictionary",
+            "payload": {
+                "entries": [],
+                "count": 0,
+                "status": "MISSING",
+                "path": str(path),
+            },
+        }
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {
+            "source": "data_dictionary",
+            "payload": {
+                "entries": [],
+                "count": 0,
+                "status": f"ERROR:{type(exc).__name__}",
+                "path": str(path),
+            },
+        }
+
+    entries = []
+    if isinstance(raw, dict):
+        maybe_entries = raw.get("entries", [])
+        if isinstance(maybe_entries, list):
+            entries = [row for row in maybe_entries if isinstance(row, dict)]
+
+    slim_entries: list[dict[str, Any]] = []
+    for row in entries:
+        table = str(row.get("table", "")).strip()
+        column = str(row.get("column", "")).strip()
+        if not table or not column:
+            continue
+        slim_entries.append({"table": table, "column": column, "type": str(row.get("type", "")).strip()})
+
+    return {
+        "source": "data_dictionary",
+        "payload": {
+            "entries": slim_entries,
+            "count": len(slim_entries),
+            "status": "OK",
+            "path": str(path),
+        },
+    }
+
+
+def _build_hypotheses_from_tools(
+    *,
+    catalog_out: dict[str, Any],
+    schema_out: dict[str, Any],
+    data_catalog_out: dict[str, Any],
+    kb_status: str,
+    kb_query: str,
+    kb_top_k: int,
+    kb_hits: list[dict[str, Any]],
+    max_hypotheses: int,
+) -> list[dict[str, Any]]:
+    catalog_tests = catalog_out.get("tests", []) if isinstance(catalog_out, dict) else []
+    if not isinstance(catalog_tests, list):
+        catalog_tests = []
+
+    tests_by_fraud_type: dict[str, list[str]] = {}
+    tests_by_process_step: dict[str, list[str]] = {}
+    for row in catalog_tests:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("id", "")).strip()
+        if not test_id:
+            continue
+        fraud_type = str(row.get("fraud_type", "")).strip() or "unknown"
+        process_step = str(row.get("process_step", "")).strip() or "unknown_step"
+        tests_by_fraud_type.setdefault(fraud_type, []).append(test_id)
+        tests_by_process_step.setdefault(process_step, []).append(test_id)
+
+    table_names = []
+    schema_payload = schema_out.get("payload", {}) if isinstance(schema_out, dict) else {}
+    schema_columns_by_table: dict[str, list[str]] = {}
+    if isinstance(schema_payload, dict):
+        names = schema_payload.get("table_names", [])
+        if isinstance(names, list):
+            table_names = [str(item).strip() for item in names if str(item).strip()]
+        raw_cols = schema_payload.get("columns_by_table", {})
+        if isinstance(raw_cols, dict):
+            schema_columns_by_table = {
+                str(table).strip(): [str(col).strip() for col in cols if str(col).strip()]
+                for table, cols in raw_cols.items()
+                if str(table).strip() and isinstance(cols, list)
+            }
+
+    data_payload = data_catalog_out.get("payload", {}) if isinstance(data_catalog_out, dict) else {}
+    data_entries = data_payload.get("entries", []) if isinstance(data_payload, dict) else []
+    if not isinstance(data_entries, list):
+        data_entries = []
+    data_evidence_raw = [
+        {
+            "table": str(row.get("table", "")).strip(),
+            "column": str(row.get("column", "")).strip(),
+        }
+        for row in data_entries[:6]
+        if isinstance(row, dict)
+    ]
+    data_evidence_raw = [row for row in data_evidence_raw if row["table"] and row["column"]]
+    data_evidence = [
+        row
+        for row in data_evidence_raw
+        if row["table"] in schema_columns_by_table and row["column"] in set(schema_columns_by_table[row["table"]])
+    ]
+    if not data_evidence:
+        for table_name in table_names[:2]:
+            for col_name in schema_columns_by_table.get(table_name, [])[:3]:
+                data_evidence.append({"table": table_name, "column": col_name})
+
+    kb_chunks = [
+        str(hit.get("chunk_id", "")).strip()
+        for hit in kb_hits
+        if isinstance(hit, dict) and str(hit.get("chunk_id", "")).strip()
+    ]
+
+    if not tests_by_fraud_type:
+        return [
+            {
+                "hypothesis_id": "HYP-001",
+                "title": "Insufficient catalog context to derive fraud hypothesis",
+                "description": "No hay tests disponibles en el catálogo para crear hipótesis específicas.",
+                "fraud_type": "unknown",
+                "process_step": "unknown_step",
+                "evidence_requirements": [],
+                "candidate_test_ids": [],
+                "sources": [
+                    {
+                        "type": "test_catalog",
+                        "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+                    },
+                    {
+                        "type": "schema_summary",
+                        "table_names": table_names,
+                    },
+                    {
+                        "type": "data_catalog",
+                        "field_count": int(data_payload.get("count", 0) or 0),
+                    },
+                ],
+                "source": "alpha_loop_context",
+                "tool_context": {
+                    "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+                    "schema_tables_count": int(schema_payload.get("count", 0) or 0),
+                    "kb_search_status": kb_status,
+                    "kb_hits_count": len(kb_chunks),
+                    "data_catalog_fields_count": int(data_payload.get("count", 0) or 0),
+                },
+            }
+        ]
+
+    hypotheses: list[dict[str, Any]] = []
+    for idx, fraud_type in enumerate(sorted(tests_by_fraud_type.keys())[:max_hypotheses], start=1):
+        candidate_ids = sorted(tests_by_fraud_type[fraud_type])[:3]
+        process_step = "unknown_step"
+        for step, step_test_ids in tests_by_process_step.items():
+            overlap = sorted(set(step_test_ids).intersection(set(candidate_ids)))
+            if overlap:
+                process_step = step
+                break
+        title = f"Hypothesis for {fraud_type.replace('_', ' ').title()} patterns"
+        description = (
+            f"Comprobar señales asociadas a '{fraud_type}' usando tests del catálogo y contexto de datos disponible."
+        )
+        sources = [
+            {
+                "type": "test_catalog",
+                "fraud_type": fraud_type,
+                "test_ids": candidate_ids,
+                "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+            },
+            {
+                "type": "schema_summary",
+                "table_names": table_names,
+                "table_count": int(schema_payload.get("count", 0) or 0),
+            },
+            {
+                "type": "data_catalog",
+                "fields": data_evidence,
+                "field_count": int(data_payload.get("count", 0) or 0),
+            },
+        ]
+        if kb_status == "OK":
+            sources.append(
+                {
+                    "type": "kb_search",
+                    "query": kb_query,
+                    "top_k": int(kb_top_k),
+                    "chunk_ids": kb_chunks[:kb_top_k],
+                    "hits_count": len(kb_chunks),
+                }
+            )
+
+        evidence_requirements = [
+            {"table": row["table"], "column": row["column"]}
+            for row in data_evidence[:3]
+            if row.get("table") and row.get("column")
+        ]
+
+        hypotheses.append(
+            {
+                "hypothesis_id": f"HYP-{idx:03d}",
+                "title": title,
+                "description": description,
+                "fraud_type": fraud_type,
+                "process_step": process_step,
+                "evidence_requirements": evidence_requirements,
+                "candidate_test_ids": candidate_ids,
+                "sources": sources,
+                "source": "alpha_loop_context",
+                "tool_context": {
+                    "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+                    "schema_tables_count": int(schema_payload.get("count", 0) or 0),
+                    "kb_search_status": kb_status,
+                    "kb_hits_count": len(kb_chunks),
+                    "data_catalog_fields_count": int(data_payload.get("count", 0) or 0),
+                },
+            }
+        )
+    return hypotheses
 
 
 def _tool_runstore_write_stub(*, run_id: str, hypotheses: list[dict[str, Any]]) -> dict[str, Any]:
@@ -164,9 +440,31 @@ def _run_alpha_loop_for_node(
     return loop_result.final_output
 
 
-def _validate_hypotheses_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
+def _validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(output, list) or not output:
         return {"passed": False, "errors": ["hypotheses debe ser lista no vacía"]}
+    allowed_fraud_types = {
+        str(value).strip()
+        for value in input_payload.get("allowed_fraud_types", [])
+        if str(value).strip()
+    }
+    allowed_process_steps = {
+        str(value).strip()
+        for value in input_payload.get("allowed_process_steps", [])
+        if str(value).strip()
+    }
+    schema_columns_by_table_raw = input_payload.get("schema_columns_by_table", {})
+    schema_columns_by_table: dict[str, set[str]] = {}
+    if isinstance(schema_columns_by_table_raw, dict):
+        for table, columns in schema_columns_by_table_raw.items():
+            table_name = str(table).strip()
+            if not table_name:
+                continue
+            if isinstance(columns, list):
+                schema_columns_by_table[table_name] = {
+                    str(col).strip() for col in columns if str(col).strip()
+                }
+
     errors: list[str] = []
     for idx, item in enumerate(output):
         if not isinstance(item, dict):
@@ -178,6 +476,54 @@ def _validate_hypotheses_output(output: Any, _input_payload: dict[str, Any]) -> 
             errors.append(f"hypotheses[{idx}].hypothesis_id vacío")
         if not title:
             errors.append(f"hypotheses[{idx}].title vacío")
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        process_step = str(item.get("process_step", "")).strip()
+        if not fraud_type:
+            errors.append(f"hypotheses[{idx}].fraud_type vacío")
+        elif allowed_fraud_types and fraud_type not in allowed_fraud_types:
+            errors.append(f"hypotheses[{idx}].fraud_type fuera de catálogo: {fraud_type}")
+        if not process_step:
+            errors.append(f"hypotheses[{idx}].process_step vacío")
+        elif allowed_process_steps and process_step not in allowed_process_steps:
+            errors.append(f"hypotheses[{idx}].process_step fuera de catálogo: {process_step}")
+
+        evidence_requirements = item.get("evidence_requirements", [])
+        if not isinstance(evidence_requirements, list):
+            errors.append(f"hypotheses[{idx}].evidence_requirements debe ser lista")
+            evidence_requirements = []
+        for req_idx, req in enumerate(evidence_requirements):
+            if not isinstance(req, dict):
+                errors.append(f"hypotheses[{idx}].evidence_requirements[{req_idx}] debe ser objeto")
+                continue
+            table = str(req.get("table", "")).strip()
+            column = str(req.get("column", "")).strip()
+            if not table or not column:
+                errors.append(
+                    f"hypotheses[{idx}].evidence_requirements[{req_idx}] requiere table/column no vacíos"
+                )
+                continue
+            if schema_columns_by_table:
+                table_cols = schema_columns_by_table.get(table)
+                if table_cols is None:
+                    errors.append(f"hypotheses[{idx}] evidencia usa tabla no existente: {table}")
+                    continue
+                if column not in table_cols:
+                    errors.append(
+                        f"hypotheses[{idx}] evidencia usa columna no existente: {table}.{column}"
+                    )
+        sources = item.get("sources", [])
+        if not isinstance(sources, list) or not sources:
+            errors.append(f"hypotheses[{idx}].sources debe ser lista no vacía")
+            continue
+        source_types = {
+            str(source.get("type", "")).strip()
+            for source in sources
+            if isinstance(source, dict)
+        }
+        if "test_catalog" not in source_types:
+            errors.append(f"hypotheses[{idx}].sources sin test_catalog")
+        if "schema_summary" not in source_types:
+            errors.append(f"hypotheses[{idx}].sources sin schema_summary")
     return {"passed": len(errors) == 0, "errors": errors}
 
 
@@ -230,16 +576,92 @@ def _validate_scores_output(output: Any, _input_payload: dict[str, Any]) -> dict
             return {"passed": False, "errors": [f"ranking[{idx}] debe ser objeto"]}
         if not str(row.get("entity_key", "")).strip():
             return {"passed": False, "errors": [f"ranking[{idx}].entity_key vacío"]}
+    fraud_type_probs = first.get("fraud_type_probs", [])
+    if fraud_type_probs:
+        if not isinstance(fraud_type_probs, list):
+            return {"passed": False, "errors": ["scores[0].fraud_type_probs debe ser lista"]}
+        for idx, row in enumerate(fraud_type_probs):
+            if not isinstance(row, dict):
+                return {"passed": False, "errors": [f"fraud_type_probs[{idx}] debe ser objeto"]}
+            if not str(row.get("fraud_type", "")).strip():
+                return {"passed": False, "errors": [f"fraud_type_probs[{idx}].fraud_type vacío"]}
+            prob = float(row.get("probability", 0.0) or 0.0)
+            if prob < 0.0 or prob > 1.0:
+                return {
+                    "passed": False,
+                    "errors": [f"fraud_type_probs[{idx}].probability fuera de [0,1]: {prob}"],
+                }
     return {"passed": True, "errors": []}
 
 
+def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(output, list) or not output:
+        return {"passed": False, "errors": ["scores debe ser lista no vacía"]}
+    first = output[0]
+    if not isinstance(first, dict):
+        return {"passed": False, "errors": ["scores[0] debe ser objeto"]}
+    fraud_type_probs = first.get("fraud_type_probs", [])
+    if not isinstance(fraud_type_probs, list):
+        return {"passed": False, "errors": ["scores[0].fraud_type_probs debe ser lista"]}
+    if not fraud_type_probs:
+        return {"passed": True, "errors": []}
+
+    findings = input_payload.get("findings", [])
+    if not isinstance(findings, list):
+        findings = []
+    findings_by_fraud_type: dict[str, set[str]] = {}
+    for row in findings:
+        if not isinstance(row, dict):
+            continue
+        fraud_type = str(row.get("fraud_type", "")).strip()
+        test_id = str(row.get("test_id", "")).strip()
+        if not fraud_type or not test_id:
+            continue
+        findings_by_fraud_type.setdefault(fraud_type, set()).add(test_id)
+
+    errors: list[str] = []
+    total_prob = 0.0
+    for idx, row in enumerate(fraud_type_probs):
+        if not isinstance(row, dict):
+            errors.append(f"fraud_type_probs[{idx}] debe ser objeto")
+            continue
+        fraud_type = str(row.get("fraud_type", "")).strip()
+        prob = float(row.get("probability", 0.0) or 0.0)
+        total_prob += prob
+        source_test_ids = row.get("source_test_ids", [])
+        if not isinstance(source_test_ids, list):
+            errors.append(f"fraud_type_probs[{idx}].source_test_ids debe ser lista")
+            continue
+        allowed_ids = findings_by_fraud_type.get(fraud_type, set())
+        unknown = [
+            str(test_id).strip()
+            for test_id in source_test_ids
+            if str(test_id).strip() and str(test_id).strip() not in allowed_ids
+        ]
+        if unknown:
+            errors.append(
+                f"fraud_type_probs[{idx}] referencia source_test_ids no presentes en findings: {unknown}"
+            )
+
+    if abs(total_prob - 1.0) > 0.001:
+        errors.append(f"fraud_type_probs.probability suma {total_prob:.6f} (esperado ~1.0)")
+    return {"passed": len(errors) == 0, "errors": errors}
+
+
 def hypothesis_planner_node(state: GraphState) -> GraphState:
-    """Stub con tools RF15b + KBSearch opcional (RF14-05)."""
+    """Genera hipótesis con trazabilidad de fuentes (RF15c-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
     catalog_path = str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog"
+    data_dictionary_path = str(metadata.get("data_dictionary_path", "data_dictionary.json")).strip()
     kb_search_enabled = bool(metadata.get("kb_search_enabled", False))
+    kb_top_k = int(metadata.get("hypothesis_kb_top_k", 3) or 3)
+    if kb_top_k <= 0:
+        kb_top_k = 3
+    max_hypotheses = int(metadata.get("hypothesis_max_items", 1) or 1)
+    if max_hypotheses <= 0:
+        max_hypotheses = 1
 
     enforcer = _build_graph_policy_enforcer(state)
     catalog_out = enforcer.enforce_and_call(
@@ -255,45 +677,87 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
         tool_callable=lambda: _tool_schema(state),
         node_id=node_id,
     )
+    data_catalog_out = enforcer.enforce_and_call(
+        agent_id=agent_id,
+        tool_id="DataCatalog",
+        tool_callable=_tool_data_catalog,
+        node_id=node_id,
+        data_dictionary_path=data_dictionary_path,
+    )
+    catalog_tests = catalog_out.get("tests", []) if isinstance(catalog_out, dict) else []
+    if not isinstance(catalog_tests, list):
+        catalog_tests = []
+    allowed_fraud_types = sorted(
+        {
+            str(row.get("fraud_type", "")).strip()
+            for row in catalog_tests
+            if isinstance(row, dict) and str(row.get("fraud_type", "")).strip()
+        }
+    )
+    allowed_process_steps = sorted(
+        {
+            str(row.get("process_step", "")).strip()
+            for row in catalog_tests
+            if isinstance(row, dict) and str(row.get("process_step", "")).strip()
+        }
+    )
+    schema_columns_by_table = {}
+    schema_payload = schema_out.get("payload", {}) if isinstance(schema_out, dict) else {}
+    if isinstance(schema_payload, dict):
+        raw = schema_payload.get("columns_by_table", {})
+        if isinstance(raw, dict):
+            schema_columns_by_table = {
+                str(table).strip(): [
+                    str(col).strip() for col in cols if str(col).strip()
+                ]
+                for table, cols in raw.items()
+                if str(table).strip() and isinstance(cols, list)
+            }
 
-    kb_hits_count = 0
+    kb_hits: list[dict[str, Any]] = []
     kb_status = "SKIPPED"
+    kb_query = str(metadata.get("hypothesis_query", "split payments authorization threshold")).strip()
     if kb_search_enabled:
-        query = str(metadata.get("hypothesis_query", "split payments authorization threshold")).strip()
         try:
             tool = KBSearchTool(
                 kb_chroma_config_path=str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")),
                 base_dir=str(metadata.get("base_dir", ".")),
             )
-            kb_out = tool.search(query=query, top_k=3)
-            kb_hits_count = int(kb_out.get("count", 0) or 0)
+            kb_out = tool.search(query=kb_query, top_k=kb_top_k)
+            hits = kb_out.get("hits", []) if isinstance(kb_out, dict) else []
+            kb_hits = [row for row in hits if isinstance(row, dict)]
             kb_status = "OK"
         except Exception as exc:
             kb_status = f"ERROR:{type(exc).__name__}"
 
     if not state.hypotheses:
-        default_hypotheses = [
-            {
-                "hypothesis_id": "HYP-001",
-                "title": "Split payments near approval thresholds",
-                "source": "stub",
-                "tool_context": {
-                    "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
-                    "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
-                    "kb_search_status": kb_status,
-                    "kb_hits_count": kb_hits_count,
-                },
-            }
-        ]
+        default_hypotheses = _build_hypotheses_from_tools(
+            catalog_out=catalog_out,
+            schema_out=schema_out,
+            data_catalog_out=data_catalog_out,
+            kb_status=kb_status,
+            kb_query=kb_query,
+            kb_top_k=kb_top_k,
+            kb_hits=kb_hits,
+            max_hypotheses=max_hypotheses,
+        )
         state.hypotheses = _run_alpha_loop_for_node(
             state=state,
             node_id="hypothesis_planner",
-            prompt_text="Genera hipótesis iniciales P2P usando catálogo, schema y KB opcional.",
+            prompt_text=(
+                "Genera hipótesis iniciales P2P con sources trazables usando TestCatalog, "
+                "Schema/DataCatalog y KB opcional."
+            ),
             input_payload={
                 "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
                 "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
+                "data_catalog_fields_count": int(data_catalog_out.get("payload", {}).get("count", 0) or 0),
                 "kb_search_status": kb_status,
-                "kb_hits_count": kb_hits_count,
+                "kb_hits_count": len(kb_hits),
+                "kb_top_k": kb_top_k,
+                "allowed_fraud_types": allowed_fraud_types,
+                "allowed_process_steps": allowed_process_steps,
+                "schema_columns_by_table": schema_columns_by_table,
             },
             generate_fn=lambda _p, _i, _f, _it: list(default_hypotheses),
             validators={"hypothesis_schema": _validate_hypotheses_output},
@@ -401,8 +865,62 @@ def _score_test_against_hypothesis(
     return score, reasons
 
 
+def _build_schema_columns_lookup(schema_payload: dict[str, Any]) -> dict[str, set[str]]:
+    lookup: dict[str, set[str]] = {}
+    tables = schema_payload.get("tables", []) if isinstance(schema_payload.get("tables"), list) else []
+    for table in tables:
+        if not isinstance(table, dict):
+            continue
+        table_name = str(table.get("table_name", "")).strip()
+        if not table_name:
+            continue
+        cols_raw = table.get("columns", [])
+        if not isinstance(cols_raw, list):
+            continue
+        col_names = {
+            str(col.get("name", col.get("column_name", ""))).strip()
+            for col in cols_raw
+            if isinstance(col, dict) and str(col.get("name", col.get("column_name", ""))).strip()
+        }
+        lookup[table_name] = col_names
+    return lookup
+
+
+def _test_spec_is_schema_compatible(
+    *,
+    test_spec: dict[str, Any],
+    schema_columns_lookup: dict[str, set[str]],
+) -> tuple[bool, str]:
+    requirements = test_spec.get("table_requirements", [])
+    if not isinstance(requirements, list) or not requirements:
+        return True, ""
+    test_id = str(test_spec.get("id", "")).strip() or "<unknown_test>"
+    for req in requirements:
+        if not isinstance(req, dict):
+            continue
+        table_name = str(req.get("table", "")).strip()
+        required_columns = req.get("required_columns", [])
+        if not table_name:
+            continue
+        if table_name not in schema_columns_lookup:
+            return False, f"{test_id}: tabla requerida no disponible en schema_summary: {table_name}"
+        if not isinstance(required_columns, list):
+            continue
+        missing_columns = [
+            str(col).strip()
+            for col in required_columns
+            if str(col).strip() and str(col).strip() not in schema_columns_lookup[table_name]
+        ]
+        if missing_columns:
+            return (
+                False,
+                f"{test_id}: columnas requeridas no disponibles en {table_name}: {missing_columns}",
+            )
+    return True, ""
+
+
 def test_planner_node(state: GraphState) -> GraphState:
-    """Selecciona test_ids allowlist del catálogo para cada hipótesis (RF14-06)."""
+    """Selecciona test_ids allowlist del catálogo para cada hipótesis (RF14-06/RF15c-05)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
@@ -423,9 +941,26 @@ def test_planner_node(state: GraphState) -> GraphState:
     catalog_tests = catalog_out.get("tests", []) if isinstance(catalog_out, dict) else []
     if not isinstance(catalog_tests, list):
         catalog_tests = []
+    schema_lookup = _build_schema_columns_lookup(state.schema if isinstance(state.schema, dict) else {})
+    compatible_catalog_tests: list[dict[str, Any]] = []
+    filtered_out: list[str] = []
+    if not schema_lookup:
+        compatible_catalog_tests = [row for row in catalog_tests if isinstance(row, dict)]
+    else:
+        for test_spec in catalog_tests:
+            if not isinstance(test_spec, dict):
+                continue
+            compatible, reason = _test_spec_is_schema_compatible(
+                test_spec=test_spec,
+                schema_columns_lookup=schema_lookup,
+            )
+            if compatible:
+                compatible_catalog_tests.append(test_spec)
+            else:
+                filtered_out.append(reason)
     allowlist_ids = {
         str(row.get("id", "")).strip()
-        for row in catalog_tests
+        for row in compatible_catalog_tests
         if isinstance(row, dict) and str(row.get("id", "")).strip()
     }
 
@@ -448,7 +983,7 @@ def test_planner_node(state: GraphState) -> GraphState:
         }
 
         scored: list[tuple[int, dict[str, Any], list[str]]] = []
-        for test_spec in catalog_tests:
+        for test_spec in compatible_catalog_tests:
             if not isinstance(test_spec, dict):
                 continue
             test_id = str(test_spec.get("id", "")).strip()
@@ -517,7 +1052,30 @@ def test_planner_node(state: GraphState) -> GraphState:
         validators={"selected_tests_schema": _validate_selected_tests_output},
         max_iter=2,
     )
+    state.recomendaciones = [
+        {
+            "hypothesis_id": str(row.get("hypothesis_id", "")).strip(),
+            "test_id": str(row.get("test_id", "")).strip(),
+            "reason": ", ".join(
+                str(reason).strip()
+                for reason in row.get("match_reasons", [])
+                if str(reason).strip()
+            )
+            or str(row.get("source", "allowlist")).strip(),
+            "source": str(row.get("source", "planner_allowlist")).strip(),
+            "approved_for_execution": False,
+        }
+        for row in state.selected_tests
+        if isinstance(row, dict)
+        and str(row.get("hypothesis_id", "")).strip()
+        and str(row.get("test_id", "")).strip()
+    ]
     metadata["selected_tests_count"] = len(state.selected_tests)
+    metadata["recommendations_count"] = len(state.recomendaciones)
+    metadata["test_planner_allowlist_enforced"] = True
+    metadata["test_planner_schema_filtered_count"] = len(filtered_out)
+    if filtered_out:
+        metadata["test_planner_schema_filtered"] = filtered_out
     return state
 
 
@@ -613,6 +1171,7 @@ def executor_node(state: GraphState) -> GraphState:
 
     if not selected_ids:
         state.findings = []
+        state.test_runs = []
         metadata["executor_status"] = "SKIPPED_NO_SELECTED_TESTS"
         metadata["executor_tests_count"] = 0
         metadata["executor_findings_total"] = 0
@@ -634,14 +1193,64 @@ def executor_node(state: GraphState) -> GraphState:
         log_path=Path(log_path),
     )
 
-    state.findings = [dict(row) for row in results if isinstance(row, dict)]
+    normalized_results = [_normalize_result_schema_payload(row) for row in results if isinstance(row, dict)]
+    state.findings = [dict(row) for row in normalized_results]
+    state.test_runs = [_to_test_run_record(row) for row in normalized_results]
     metadata["executor_status"] = "OK"
     metadata["executor_tests_count"] = len(state.findings)
     metadata["executor_findings_total"] = sum(
         int(row.get("finding_count", 0) or 0) for row in state.findings if isinstance(row, dict)
     )
+    metadata["executor_result_schema_version"] = RESULT_SCHEMA_VERSION
+    metadata["executor_test_runs_count"] = len(state.test_runs)
     metadata["executor_test_runner_log_path"] = log_path
     return state
+
+
+def _normalize_result_schema_payload(result: dict[str, Any]) -> dict[str, Any]:
+    row = dict(result)
+    required_fields = get_result_schema_required_fields()
+    defaults: dict[str, Any] = {
+        "result_schema_version": RESULT_SCHEMA_VERSION,
+        "generated_at_utc": "",
+        "test_id": "",
+        "test_version": "",
+        "fraud_type": "",
+        "status": "UNKNOWN",
+        "finding_count": 0,
+        "duration_ms": int(row.get("runner_duration_ms", 0) or row.get("duration_ms", 0) or 0),
+        "columns": [],
+        "rows": [],
+        "metadata": {},
+    }
+    for field in required_fields:
+        if field not in row or row.get(field) is None:
+            row[field] = defaults.get(field)
+    row["result_schema_version"] = str(row.get("result_schema_version") or RESULT_SCHEMA_VERSION)
+    row["test_id"] = str(row.get("test_id", "")).strip()
+    row["test_version"] = str(row.get("test_version", "")).strip()
+    row["fraud_type"] = str(row.get("fraud_type", "")).strip()
+    row["status"] = str(row.get("status", "UNKNOWN")).strip().upper() or "UNKNOWN"
+    row["finding_count"] = int(row.get("finding_count", 0) or 0)
+    row["duration_ms"] = int(row.get("duration_ms", 0) or 0)
+    if not isinstance(row.get("columns"), list):
+        row["columns"] = []
+    if not isinstance(row.get("rows"), list):
+        row["rows"] = []
+    if not isinstance(row.get("metadata"), dict):
+        row["metadata"] = {}
+    return row
+
+
+def _to_test_run_record(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "test_id": str(result.get("test_id", "")).strip(),
+        "version": str(result.get("test_version", "")).strip(),
+        "status": str(result.get("status", "UNKNOWN")).strip().upper(),
+        "duration_ms": int(result.get("runner_duration_ms", result.get("duration_ms", 0)) or 0),
+        "error_summary": str(result.get("error_summary", "")).strip(),
+        "finding_count": int(result.get("finding_count", 0) or 0),
+    }
 
 
 def _normalize_columns(value: Any) -> list[str]:
@@ -668,8 +1277,16 @@ def _build_explanation_from_finding(result: dict[str, Any]) -> dict[str, Any]:
     columns = _normalize_columns(result.get("columns", []))
     rows = result.get("rows", [])
     first_entity_key = ""
+    first_keys: dict[str, Any] = {}
+    first_evidence_columns: list[str] = []
     if isinstance(rows, list) and rows and isinstance(rows[0], dict):
         first_entity_key = str(rows[0].get("entity_key", "")).strip()
+        maybe_keys = rows[0].get("keys")
+        if isinstance(maybe_keys, dict):
+            first_keys = {str(k): str(v) for k, v in maybe_keys.items() if str(k).strip()}
+        maybe_evidence = rows[0].get("evidence_columns")
+        if isinstance(maybe_evidence, list):
+            first_evidence_columns = _normalize_columns(maybe_evidence)
 
     if status in {"ERROR", "TIMEOUT"}:
         summary = f"{test_id} terminó en {status}; revisar error_summary y logs del runner."
@@ -683,10 +1300,13 @@ def _build_explanation_from_finding(result: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "test_id": test_id,
+        "cited_test_id": test_id,
         "status": status,
         "fraud_type": fraud_type,
         "finding_count": finding_count,
         "referenced_columns": columns[:8],
+        "cited_keys": first_keys,
+        "cited_evidence_columns": first_evidence_columns,
         "sample_entity_key": first_entity_key,
         "summary": summary,
         "source": "explainer_stub_guarded",
@@ -714,6 +1334,11 @@ def _validate_explanations_guardrails(
             raise ValueError(f"explanations[{idx}] inválida: test_id vacío")
         if test_id not in findings_by_test:
             raise ValueError(f"Guardrail: explicación referencia test_id no ejecutado: {test_id}")
+        cited_test_id = str(item.get("cited_test_id", "")).strip()
+        if cited_test_id != test_id:
+            raise ValueError(
+                f"Guardrail: explicación {test_id} debe citar el mismo test_id en cited_test_id"
+            )
 
         allowed_columns = set(_normalize_columns(findings_by_test[test_id].get("columns", [])))
         referenced = _normalize_columns(item.get("referenced_columns", []))
@@ -722,6 +1347,126 @@ def _validate_explanations_guardrails(
             raise ValueError(
                 f"Guardrail: explicación {test_id} referencia columnas no presentes en resultado: {unknown}"
             )
+        rows = findings_by_test[test_id].get("rows", [])
+        first_row = rows[0] if isinstance(rows, list) and rows and isinstance(rows[0], dict) else {}
+        allowed_keys = first_row.get("keys", {}) if isinstance(first_row, dict) else {}
+        if not isinstance(allowed_keys, dict):
+            allowed_keys = {}
+        cited_keys = item.get("cited_keys", {})
+        if not isinstance(cited_keys, dict):
+            raise ValueError(f"Guardrail: explicación {test_id} debe incluir cited_keys (dict)")
+        unknown_key_names = [name for name in cited_keys.keys() if name not in allowed_keys]
+        if unknown_key_names:
+            raise ValueError(
+                f"Guardrail: explicación {test_id} cita keys inexistentes en finding: {unknown_key_names}"
+            )
+        allowed_evidence = []
+        maybe_evidence = first_row.get("evidence_columns", []) if isinstance(first_row, dict) else []
+        if isinstance(maybe_evidence, list):
+            allowed_evidence = _normalize_columns(maybe_evidence)
+        cited_evidence = _normalize_columns(item.get("cited_evidence_columns", []))
+        if cited_evidence:
+            unknown_evidence = [col for col in cited_evidence if col not in set(allowed_evidence)]
+            if unknown_evidence:
+                raise ValueError(
+                    f"Guardrail: explicación {test_id} cita evidence_columns no presentes: {unknown_evidence}"
+                )
+
+
+def _sanitize_explanations_against_findings(
+    *,
+    explanations: list[dict[str, Any]],
+    findings: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    findings_by_test: dict[str, dict[str, Any]] = {}
+    for row in findings:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("test_id", "")).strip()
+        if test_id:
+            findings_by_test[test_id] = row
+
+    sanitized: list[dict[str, Any]] = []
+    for item in explanations:
+        if not isinstance(item, dict):
+            continue
+        row = dict(item)
+        test_id = str(row.get("test_id", "")).strip()
+        if not test_id or test_id not in findings_by_test:
+            continue
+
+        finding = findings_by_test[test_id]
+        row["cited_test_id"] = test_id
+        allowed_columns = set(_normalize_columns(finding.get("columns", [])))
+        row["referenced_columns"] = [
+            col for col in _normalize_columns(row.get("referenced_columns", [])) if col in allowed_columns
+        ]
+
+        finding_rows = finding.get("rows", [])
+        first_row = finding_rows[0] if isinstance(finding_rows, list) and finding_rows else {}
+        allowed_keys = first_row.get("keys", {}) if isinstance(first_row, dict) else {}
+        if not isinstance(allowed_keys, dict):
+            allowed_keys = {}
+        cited_keys = row.get("cited_keys", {})
+        if not isinstance(cited_keys, dict):
+            cited_keys = {}
+        row["cited_keys"] = {
+            str(k): str(v)
+            for k, v in cited_keys.items()
+            if str(k).strip() and str(k) in allowed_keys
+        }
+
+        allowed_evidence = []
+        maybe_evidence = first_row.get("evidence_columns", []) if isinstance(first_row, dict) else []
+        if isinstance(maybe_evidence, list):
+            allowed_evidence = _normalize_columns(maybe_evidence)
+        row["cited_evidence_columns"] = [
+            col
+            for col in _normalize_columns(row.get("cited_evidence_columns", []))
+            if col in set(allowed_evidence)
+        ]
+        sanitized.append(row)
+    return sanitized
+
+
+def _build_acfe_reference_via_kb(
+    *,
+    kb_enabled: bool,
+    kb_query: str,
+    kb_top_k: int,
+    kb_chroma_config_path: str,
+    base_dir: str,
+) -> dict[str, Any]:
+    if not kb_enabled:
+        return {"status": "SKIPPED", "query": kb_query, "hits": []}
+    try:
+        tool = KBSearchTool(
+            kb_chroma_config_path=kb_chroma_config_path,
+            base_dir=base_dir,
+        )
+        result = tool.search(query=kb_query, top_k=kb_top_k)
+        hits = result.get("hits", []) if isinstance(result, dict) else []
+        out_hits = []
+        for row in hits[:kb_top_k]:
+            if not isinstance(row, dict):
+                continue
+            metadata = row.get("metadata", {}) if isinstance(row.get("metadata"), dict) else {}
+            out_hits.append(
+                {
+                    "chunk_id": str(row.get("chunk_id", "")).strip(),
+                    "score": float(row.get("score", 0.0) or 0.0),
+                    "source_path": str(metadata.get("source_path", "")).strip(),
+                    "source_id": str(metadata.get("source_id", "")).strip(),
+                }
+            )
+        return {"status": "OK", "query": kb_query, "hits": out_hits}
+    except Exception as exc:
+        return {
+            "status": f"ERROR:{type(exc).__name__}",
+            "query": kb_query,
+            "hits": [],
+            "error": str(exc),
+        }
 
 
 def explainer_node(state: GraphState) -> GraphState:
@@ -733,10 +1478,13 @@ def explainer_node(state: GraphState) -> GraphState:
         state.explanations = [
             {
                 "test_id": "",
+                "cited_test_id": "",
                 "status": "NO_DATA",
                 "fraud_type": "",
                 "finding_count": 0,
                 "referenced_columns": [],
+                "cited_keys": {},
+                "cited_evidence_columns": [],
                 "sample_entity_key": "",
                 "summary": "No hay resultados de ejecución para explicar.",
                 "source": "explainer_stub_guarded",
@@ -746,13 +1494,64 @@ def explainer_node(state: GraphState) -> GraphState:
         metadata["explainer_explanations_count"] = 1
         return state
 
-    explanations = [_build_explanation_from_finding(row) for row in findings]
+    kb_enabled = bool(metadata.get("kb_search_enabled", False))
+    kb_top_k = int(metadata.get("explainer_kb_top_k", 2) or 2)
+    if kb_top_k <= 0:
+        kb_top_k = 2
+    kb_chroma_config_path = str(metadata.get("kb_chroma_config", "config/kb_chroma.yaml")).strip()
+    base_dir = str(metadata.get("base_dir", ".")).strip() or "."
+
+    explanations = []
+    for row in findings:
+        item = _build_explanation_from_finding(row)
+        test_id = str(item.get("test_id", "")).strip()
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        acfe_query = (
+            f"ACFE anti-fraud data analytics test {test_id} {fraud_type} "
+            f"evidence columns {' '.join(item.get('cited_evidence_columns', []))}"
+        ).strip()
+        item["acfe_reference"] = _build_acfe_reference_via_kb(
+            kb_enabled=kb_enabled,
+            kb_query=acfe_query,
+            kb_top_k=kb_top_k,
+            kb_chroma_config_path=kb_chroma_config_path,
+            base_dir=base_dir,
+        )
+        explanations.append(item)
+
+    simulate_hallucination_once = bool(metadata.get("explainer_simulate_hallucination_once", False))
+
+    def _generate_explanations(
+        _prompt: str,
+        input_payload: dict[str, Any],
+        repair_feedback: list[str],
+        iteration: int,
+    ) -> list[dict[str, Any]]:
+        base = [dict(row) for row in explanations if isinstance(row, dict)]
+        if iteration == 1 and not repair_feedback and simulate_hallucination_once and base:
+            base[0]["referenced_columns"] = list(_normalize_columns(base[0].get("referenced_columns", []))) + [
+                "NO_EXISTE_COL"
+            ]
+            base[0]["cited_keys"] = {"NO_KEY": "X"}
+            base[0]["cited_evidence_columns"] = list(
+                _normalize_columns(base[0].get("cited_evidence_columns", []))
+            ) + ["NO_EVIDENCE"]
+            return base
+        if repair_feedback:
+            findings_payload = input_payload.get("findings", [])
+            if isinstance(findings_payload, list):
+                return _sanitize_explanations_against_findings(
+                    explanations=base,
+                    findings=[row for row in findings_payload if isinstance(row, dict)],
+                )
+        return base
+
     state.explanations = _run_alpha_loop_for_node(
         state=state,
         node_id="expert_explainer",
         prompt_text="Genera explicación auditora con evidencia real sin alucinaciones.",
         input_payload={"findings": findings},
-        generate_fn=lambda _p, _i, _f, _it: list(explanations),
+        generate_fn=_generate_explanations,
         validators={"explanations_guardrails": _validate_explanations_output},
         max_iter=2,
     )
@@ -760,8 +1559,12 @@ def explainer_node(state: GraphState) -> GraphState:
     metadata["explainer_explanations_count"] = len(state.explanations)
     metadata["explainer_guardrails"] = [
         "test_id debe existir en findings ejecutados",
+        "cited_test_id debe coincidir con test_id",
+        "cited_keys debe ser subconjunto de row.keys",
+        "cited_evidence_columns debe ser subconjunto de row.evidence_columns",
         "referenced_columns debe ser subconjunto de result.columns",
     ]
+    metadata["explainer_kb_enabled"] = kb_enabled
     return state
 
 
@@ -778,10 +1581,13 @@ def scoring_node(state: GraphState) -> GraphState:
     top_k_override = metadata.get("scoring_top_k")
 
     if not findings:
+        state.ranking = []
+        state.fraud_type_predicho = []
         state.scores = [
             {
                 "ranking": [],
                 "fraud_type_distribution": {},
+                "fraud_type_probs": [],
                 "summary": {
                     "entities_scored": 0,
                     "findings_total": 0,
@@ -820,16 +1626,95 @@ def scoring_node(state: GraphState) -> GraphState:
                 continue
             fraud_type_distribution[key] = fraud_type_distribution.get(key, 0) + 1
 
+    findings_by_fraud_type: dict[str, dict[str, Any]] = {}
+    for finding in findings:
+        if not isinstance(finding, dict):
+            continue
+        fraud_type = str(finding.get("fraud_type", "")).strip()
+        if not fraud_type:
+            continue
+        entry = findings_by_fraud_type.setdefault(
+            fraud_type,
+            {
+                "finding_count_total": 0,
+                "test_ids": set(),
+                "hypothesis_ids": set(),
+                "acfe_chunks": set(),
+            },
+        )
+        entry["finding_count_total"] += int(finding.get("finding_count", 0) or 0)
+        test_id = str(finding.get("test_id", "")).strip()
+        if test_id:
+            entry["test_ids"].add(test_id)
+
+    selected_tests = [row for row in state.selected_tests if isinstance(row, dict)]
+    for row in selected_tests:
+        test_id = str(row.get("test_id", "")).strip()
+        hypothesis_id = str(row.get("hypothesis_id", "")).strip()
+        if not test_id:
+            continue
+        for fraud_type, entry in findings_by_fraud_type.items():
+            if test_id in entry["test_ids"] and hypothesis_id:
+                entry["hypothesis_ids"].add(hypothesis_id)
+
+    for explanation in state.explanations:
+        if not isinstance(explanation, dict):
+            continue
+        fraud_type = str(explanation.get("fraud_type", "")).strip()
+        if fraud_type not in findings_by_fraud_type:
+            continue
+        acfe_reference = explanation.get("acfe_reference", {})
+        if not isinstance(acfe_reference, dict):
+            continue
+        hits = acfe_reference.get("hits", [])
+        if not isinstance(hits, list):
+            continue
+        for hit in hits:
+            if not isinstance(hit, dict):
+                continue
+            chunk_id = str(hit.get("chunk_id", "")).strip()
+            if chunk_id:
+                findings_by_fraud_type[fraud_type]["acfe_chunks"].add(chunk_id)
+
+    total_support = sum(max(0, int(entry["finding_count_total"])) for entry in findings_by_fraud_type.values())
+    fraud_type_probs: list[dict[str, Any]] = []
+    if total_support > 0:
+        for fraud_type in sorted(findings_by_fraud_type.keys()):
+            entry = findings_by_fraud_type[fraud_type]
+            support = max(0, int(entry["finding_count_total"]))
+            probability = float(support) / float(total_support)
+            fraud_type_probs.append(
+                {
+                    "fraud_type": fraud_type,
+                    "probability": probability,
+                    "evidence_summary": (
+                        f"support={support}; tests={sorted(entry['test_ids'])}; "
+                        f"hypotheses={sorted(entry['hypothesis_ids'])}"
+                    ),
+                    "source_test_ids": sorted(entry["test_ids"]),
+                    "source_hypothesis_ids": sorted(entry["hypothesis_ids"]),
+                    "acfe_chunk_ids": sorted(entry["acfe_chunks"]),
+                }
+            )
+    state.fraud_type_predicho = [
+        {"fraud_type": row["fraud_type"], "prob": row["probability"]}
+        for row in fraud_type_probs
+        if isinstance(row, dict)
+    ]
+    state.ranking = [dict(row) for row in top_rows if isinstance(row, dict)]
+
     scores_payload = [
         {
             "ranking": top_rows,
             "fraud_type_distribution": dict(sorted(fraud_type_distribution.items(), key=lambda item: item[0])),
+            "fraud_type_probs": fraud_type_probs,
             "summary": {
                 "entities_scored": len(ranking_rows),
                 "entities_returned": len(top_rows),
                 "findings_total": sum(int(row.get("finding_count", 0) or 0) for row in findings),
                 "top_k": top_k,
                 "weights_config": weights_config_path,
+                "fraud_types_scored": len(fraud_type_probs),
             },
             "method": "weighted_entity_ranking",
             "source": "scoring_node",
@@ -839,14 +1724,18 @@ def scoring_node(state: GraphState) -> GraphState:
         state=state,
         node_id="scoring",
         prompt_text="Calcula ranking por entidad y distribución por tipología de fraude.",
-        input_payload={"findings_count": len(findings), "top_k": top_k},
+        input_payload={"findings_count": len(findings), "top_k": top_k, "findings": findings},
         generate_fn=lambda _p, _i, _f, _it: list(scores_payload),
-        validators={"scores_schema": _validate_scores_output},
+        validators={
+            "scores_schema": _validate_scores_output,
+            "scores_probabilities": _validate_scoring_evidence_and_probability_sum,
+        },
         max_iter=2,
     )
     metadata["scoring_status"] = "OK"
     metadata["scoring_entities"] = len(ranking_rows)
     metadata["scoring_top_k"] = top_k
+    metadata["scoring_fraud_types"] = len(fraud_type_probs)
     return state
 
 
@@ -856,6 +1745,42 @@ def _write_json(path: Path, payload: Any) -> None:
         json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _write_explanations_markdown(path: Path, explanations: list[dict[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = ["# Explanations", ""]
+    if not explanations:
+        lines.extend(["No explanations generated.", ""])
+    else:
+        for idx, row in enumerate(explanations, start=1):
+            if not isinstance(row, dict):
+                continue
+            test_id = str(row.get("test_id", "")).strip() or "<unknown_test>"
+            status = str(row.get("status", "")).strip() or "UNKNOWN"
+            fraud_type = str(row.get("fraud_type", "")).strip() or "unknown"
+            finding_count = int(row.get("finding_count", 0) or 0)
+            summary = str(row.get("summary", "")).strip()
+            evidence_cols = _normalize_columns(row.get("cited_evidence_columns", []))
+            keys_payload = row.get("cited_keys", {})
+            if not isinstance(keys_payload, dict):
+                keys_payload = {}
+            lines.append(f"## {idx}. {test_id}")
+            lines.append(f"- status: `{status}`")
+            lines.append(f"- fraud_type: `{fraud_type}`")
+            lines.append(f"- finding_count: `{finding_count}`")
+            lines.append(f"- cited_evidence_columns: `{', '.join(evidence_cols) if evidence_cols else '-'}`")
+            if keys_payload:
+                lines.append(f"- cited_keys: `{json.dumps(keys_payload, ensure_ascii=False, sort_keys=True)}`")
+            if summary:
+                lines.append(f"- summary: {summary}")
+            acfe_reference = row.get("acfe_reference", {})
+            if isinstance(acfe_reference, dict):
+                acfe_status = str(acfe_reference.get("status", "")).strip()
+                if acfe_status:
+                    lines.append(f"- acfe_reference_status: `{acfe_status}`")
+            lines.append("")
+    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
 def _collect_alphacodium_artifacts(run_dir: Path) -> dict[str, Any]:
@@ -935,6 +1860,8 @@ def persist_node(state: GraphState) -> GraphState:
         "selected_tests_json": graph_dir / "selected_tests.json",
         "findings_json": graph_dir / "findings.json",
         "explanations_json": graph_dir / "explanations.json",
+        "explanations_md": graph_dir / "explanations.md",
+        "score_json": graph_dir / "score.json",
         "scores_json": graph_dir / "scores.json",
         "graph_state_json": graph_dir / "graph_state.json",
         "manifest_json": graph_dir / "manifest.json",
@@ -944,6 +1871,11 @@ def persist_node(state: GraphState) -> GraphState:
     _write_json(paths["selected_tests_json"], state.selected_tests)
     _write_json(paths["findings_json"], state.findings)
     _write_json(paths["explanations_json"], state.explanations)
+    _write_explanations_markdown(
+        paths["explanations_md"],
+        [row for row in state.explanations if isinstance(row, dict)],
+    )
+    _write_json(paths["score_json"], state.scores)
     _write_json(paths["scores_json"], state.scores)
 
     state_payload = {

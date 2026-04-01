@@ -69,7 +69,11 @@ def test_rf14_executor_node_runs_selected_tests(monkeypatch: Any, tmp_path: Path
     assert out.run_metadata["executor_status"] == "OK"
     assert out.run_metadata["executor_tests_count"] == 1
     assert out.run_metadata["executor_findings_total"] == 2
+    assert out.run_metadata["executor_test_runs_count"] == 1
+    assert out.run_metadata["executor_result_schema_version"] == "1.0.0"
     assert len(out.findings) == 1
+    assert len(out.test_runs) == 1
+    assert out.test_runs[0]["test_id"] == "TST-SPLIT-PAYMENTS-NEAR-LIMIT"
 
 
 def test_rf14_executor_node_skips_when_no_selected_tests() -> None:
@@ -79,7 +83,7 @@ def test_rf14_executor_node_skips_when_no_selected_tests() -> None:
     out = executor_node(state)
 
     assert out.findings == []
+    assert out.test_runs == []
     assert out.run_metadata["executor_status"] == "SKIPPED_NO_SELECTED_TESTS"
     assert out.run_metadata["executor_tests_count"] == 0
     assert out.run_metadata["executor_findings_total"] == 0
-
