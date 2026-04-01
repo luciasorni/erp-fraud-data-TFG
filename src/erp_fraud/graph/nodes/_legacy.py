@@ -803,27 +803,36 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     if max_hypotheses <= 0:
         max_hypotheses = 1
 
-    enforcer = _build_graph_policy_enforcer(state)
-    catalog_out = enforcer.enforce_and_call(
-        agent_id=agent_id,
-        tool_id="TestCatalog",
-        tool_callable=_tool_test_catalog,
-        node_id=node_id,
-        catalog_path=catalog_path,
-    )
-    schema_out = enforcer.enforce_and_call(
-        agent_id=agent_id,
-        tool_id="Schema",
-        tool_callable=lambda: _tool_schema(state),
-        node_id=node_id,
-    )
-    data_catalog_out = enforcer.enforce_and_call(
-        agent_id=agent_id,
-        tool_id="DataCatalog",
-        tool_callable=_tool_data_catalog,
-        node_id=node_id,
-        data_dictionary_path=data_dictionary_path,
-    )
+    enforcer: PolicyEnforcer | None = None
+    catalog_out: dict[str, Any] = {"tests": [], "count": 0}
+    schema_out: dict[str, Any] = {"payload": {"table_names": [], "count": 0, "columns_by_table": {}}}
+    data_catalog_out: dict[str, Any] = {"payload": {"entries": [], "count": 0, "status": "MISSING"}}
+    try:
+        enforcer = _build_graph_policy_enforcer(state)
+        catalog_out = enforcer.enforce_and_call(
+            agent_id=agent_id,
+            tool_id="TestCatalog",
+            tool_callable=_tool_test_catalog,
+            node_id=node_id,
+            catalog_path=catalog_path,
+        )
+        schema_out = enforcer.enforce_and_call(
+            agent_id=agent_id,
+            tool_id="Schema",
+            tool_callable=lambda: _tool_schema(state),
+            node_id=node_id,
+        )
+        data_catalog_out = enforcer.enforce_and_call(
+            agent_id=agent_id,
+            tool_id="DataCatalog",
+            tool_callable=_tool_data_catalog,
+            node_id=node_id,
+            data_dictionary_path=data_dictionary_path,
+        )
+        metadata["hypothesis_tooling_status"] = "OK"
+    except Exception as exc:
+        # RF14 stub mode: nunca bloquear planificación por problemas de policy/config en CI.
+        metadata["hypothesis_tooling_status"] = f"ERROR: {type(exc).__name__}: {exc}"
     catalog_tests = catalog_out.get("tests", []) if isinstance(catalog_out, dict) else []
     if not isinstance(catalog_tests, list):
         catalog_tests = []
@@ -909,18 +918,23 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             max_iter=2,
         )
 
-    try:
-        runstore_out = enforcer.enforce_and_call(
-            agent_id=agent_id,
-            tool_id="RunStore",
-            tool_callable=_tool_runstore_write_stub,
-            node_id=node_id,
-            run_id=str(state.run_id),
-            hypotheses=state.hypotheses,
-        )
-        metadata["hypothesis_runstore_status"] = str(runstore_out.get("status", "UNKNOWN"))
-    except ToolPolicyDeniedError:
-        metadata["hypothesis_runstore_status"] = "DENIED"
+    if enforcer is None:
+        metadata["hypothesis_runstore_status"] = "SKIPPED_NO_ENFORCER"
+    else:
+        try:
+            runstore_out = enforcer.enforce_and_call(
+                agent_id=agent_id,
+                tool_id="RunStore",
+                tool_callable=_tool_runstore_write_stub,
+                node_id=node_id,
+                run_id=str(state.run_id),
+                hypotheses=state.hypotheses,
+            )
+            metadata["hypothesis_runstore_status"] = str(runstore_out.get("status", "UNKNOWN"))
+        except ToolPolicyDeniedError:
+            metadata["hypothesis_runstore_status"] = "DENIED"
+        except Exception as exc:
+            metadata["hypothesis_runstore_status"] = f"ERROR: {type(exc).__name__}: {exc}"
 
     return state
 
