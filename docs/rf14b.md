@@ -76,3 +76,20 @@ Ya está instrumentado en el runner del grafo:
 Objetivo práctico:
 - Aunque todavía no hagamos evaluación de experimentos en LangSmith, ya tienes trazabilidad
   uniforme por nodo para depurar y para mapear 1:1 con trazas externas en los siguientes pasos.
+
+## RF14b-03 (estado implementado en código)
+
+Versionado de prompts + hash en metadata:
+
+- Registro central: `config/prompt_versions.yaml`
+  - `node_id -> file + version`
+- Cargador de prompts: `src/erp_fraud/graph/prompt_registry.py`
+- Registro por run en `run_metadata`:
+  - `hypothesis_prompt_path|version|hash|status`
+  - `test_planner_prompt_path|version|hash|status`
+  - `explainer_prompt_path|version|hash|status`
+  - `scoring_prompt_path|version|hash|status`
+
+Además, la validación de esquema/config ahora comprueba que:
+- existe `config/prompt_versions.yaml`
+- cada prompt referenciado existe y tiene `version`.

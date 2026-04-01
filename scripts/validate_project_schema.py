@@ -130,6 +130,26 @@ def _validate_prompt_naming() -> None:
             _fail(f"Nombre de prompt inválido: {path.name}")
 
 
+def _validate_prompt_registry() -> None:
+    path = Path("config/prompt_versions.yaml")
+    payload = _load_yaml(path)
+    nodes = payload.get("nodes")
+    if not isinstance(nodes, dict) or not nodes:
+        _fail(f"{path}: falta objeto 'nodes' no vacío")
+    for node_id, entry in nodes.items():
+        if not isinstance(entry, dict):
+            _fail(f"{path}: nodes.{node_id} debe ser objeto")
+        prompt_file = str(entry.get("file", "")).strip()
+        version = str(entry.get("version", "")).strip()
+        if not prompt_file:
+            _fail(f"{path}: nodes.{node_id}.file vacío")
+        if not version:
+            _fail(f"{path}: nodes.{node_id}.version vacío")
+        file_path = Path(prompt_file)
+        if not file_path.exists():
+            _fail(f"{path}: prompt file no existe: {prompt_file}")
+
+
 def _validate_data_dictionary_json() -> None:
     path = Path("data_dictionary.json")
     if not path.exists():
@@ -162,6 +182,7 @@ def main() -> int:
         _validate_catalog_yaml()
         _validate_red_flags_mapping()
         _validate_prompt_naming()
+        _validate_prompt_registry()
         _validate_data_dictionary_json()
         _validate_env_example()
     except Exception as exc:

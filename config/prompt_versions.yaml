@@ -1,0 +1,15 @@
+schema_version: "1.0"
+
+nodes:
+  hypothesis_planner:
+    file: prompts/hypothesis_planner.md
+    version: "v002"
+  test_planner:
+    file: prompts/test_planner.md
+    version: "v002"
+  expert_explainer:
+    file: prompts/explainer.md
+    version: "v002"
+  scoring:
+    file: prompts/scoring.md
+    version: "v002"

@@ -46,3 +46,12 @@ def test_rf14_run_graph_stub_updates_state_and_node_status() -> None:
     langsmith = state.run_metadata.get("langsmith", {})
     assert isinstance(langsmith, dict)
     assert "configured" in langsmith
+
+    for key in (
+        "hypothesis_prompt_hash",
+        "test_planner_prompt_hash",
+        "explainer_prompt_hash",
+        "scoring_prompt_hash",
+    ):
+        value = str(state.run_metadata.get(key, "")).strip()
+        assert value

@@ -46,6 +46,7 @@ from ...config import (
     DEFAULT_TEST_PLANNER_TOP_N,
     DEFAULT_WEIGHTS_CONFIG,
 )
+from ..prompt_registry import load_node_prompt
 from ..state import GraphState
 from ..observability import append_error_event
 
@@ -885,6 +886,18 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             kb_status = f"ERROR:{type(exc).__name__}"
 
     if not state.hypotheses:
+        prompt_info = load_node_prompt(
+            node_id="hypothesis_planner",
+            fallback_text=(
+                "Genera hipótesis iniciales P2P con sources trazables usando TestCatalog, "
+                "Schema/DataCatalog y KB opcional."
+            ),
+            registry_path=metadata.get("prompt_registry_path"),
+        )
+        metadata["hypothesis_prompt_path"] = str(prompt_info.get("path", "")).strip()
+        metadata["hypothesis_prompt_version"] = str(prompt_info.get("version", "")).strip()
+        metadata["hypothesis_prompt_hash"] = str(prompt_info.get("hash", "")).strip()
+        metadata["hypothesis_prompt_status"] = str(prompt_info.get("status", "")).strip()
         default_hypotheses = _build_hypotheses_from_tools(
             catalog_out=catalog_out,
             schema_out=schema_out,
@@ -898,10 +911,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
         state.hypotheses = _run_alpha_loop_for_node(
             state=state,
             node_id="hypothesis_planner",
-            prompt_text=(
-                "Genera hipótesis iniciales P2P con sources trazables usando TestCatalog, "
-                "Schema/DataCatalog y KB opcional."
-            ),
+            prompt_text=str(prompt_info.get("text", "")),
             input_payload={
                 "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
                 "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
@@ -1211,10 +1221,20 @@ def test_planner_node(state: GraphState) -> GraphState:
             }
         )
 
+    prompt_info = load_node_prompt(
+        node_id="test_planner",
+        fallback_text="Selecciona tests allowlist del catálogo para cada hipótesis.",
+        registry_path=metadata.get("prompt_registry_path"),
+    )
+    metadata["test_planner_prompt_path"] = str(prompt_info.get("path", "")).strip()
+    metadata["test_planner_prompt_version"] = str(prompt_info.get("version", "")).strip()
+    metadata["test_planner_prompt_hash"] = str(prompt_info.get("hash", "")).strip()
+    metadata["test_planner_prompt_status"] = str(prompt_info.get("status", "")).strip()
+
     state.selected_tests = _run_alpha_loop_for_node(
         state=state,
         node_id="test_planner",
-        prompt_text="Selecciona tests allowlist del catálogo para cada hipótesis.",
+        prompt_text=str(prompt_info.get("text", "")),
         input_payload={
             "allowlist_ids": sorted(allowlist_ids),
             "hypotheses_count": len(state.hypotheses),
@@ -1895,10 +1915,20 @@ def explainer_node(state: GraphState) -> GraphState:
                 )
         return base
 
+    prompt_info = load_node_prompt(
+        node_id="expert_explainer",
+        fallback_text="Genera explicación auditora con evidencia real sin alucinaciones.",
+        registry_path=metadata.get("prompt_registry_path"),
+    )
+    metadata["explainer_prompt_path"] = str(prompt_info.get("path", "")).strip()
+    metadata["explainer_prompt_version"] = str(prompt_info.get("version", "")).strip()
+    metadata["explainer_prompt_hash"] = str(prompt_info.get("hash", "")).strip()
+    metadata["explainer_prompt_status"] = str(prompt_info.get("status", "")).strip()
+
     state.explanations = _run_alpha_loop_for_node(
         state=state,
         node_id="expert_explainer",
-        prompt_text="Genera explicación auditora con evidencia real sin alucinaciones.",
+        prompt_text=str(prompt_info.get("text", "")),
         input_payload={
             "findings": findings,
             "catalog_test_ids": sorted(catalog_test_ids),
@@ -1962,10 +1992,19 @@ def scoring_node(state: GraphState) -> GraphState:
         scoring_compare_profiles = [str(item).strip() for item in scoring_compare_profiles_raw if str(item).strip()]
     else:
         scoring_compare_profiles = []
-    scoring_prompt_text = (
-        "Calcula score por tipología de fraude usando hypotheses + findings + acfe_snippets "
-        "y devuelve ScoreSchema válido."
+    scoring_prompt_info = load_node_prompt(
+        node_id="scoring",
+        fallback_text=(
+            "Calcula score por tipología de fraude usando hypotheses + findings + acfe_snippets "
+            "y devuelve ScoreSchema válido."
+        ),
+        registry_path=metadata.get("prompt_registry_path"),
     )
+    scoring_prompt_text = str(scoring_prompt_info.get("text", ""))
+    metadata["scoring_prompt_path"] = str(scoring_prompt_info.get("path", "")).strip()
+    metadata["scoring_prompt_version"] = str(scoring_prompt_info.get("version", "")).strip()
+    metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip()
+    metadata["scoring_prompt_status"] = str(scoring_prompt_info.get("status", "")).strip()
 
     if not findings:
         state.ranking = []
@@ -1994,7 +2033,9 @@ def scoring_node(state: GraphState) -> GraphState:
         metadata["scoring_status"] = "NO_FINDINGS"
         metadata["scoring_entities"] = 0
         metadata["scoring_model_used"] = str(empty_score.get("model_used", "")).strip()
-        metadata["scoring_prompt_hash"] = _sha256_text(scoring_prompt_text)
+        metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
+            scoring_prompt_text
+        )
         metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0]))
         return state
 
@@ -2227,7 +2268,9 @@ def scoring_node(state: GraphState) -> GraphState:
     metadata["scoring_top_k"] = top_k
     metadata["scoring_fraud_types"] = len(fraud_type_probs)
     metadata["scoring_model_used"] = str(base_score_schema.get("model_used", "")).strip()
-    metadata["scoring_prompt_hash"] = _sha256_text(scoring_prompt_text)
+    metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
+        scoring_prompt_text
+    )
     metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0] if state.scores else {}))
 
     if len(scoring_compare_profiles) >= 2:
