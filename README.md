@@ -19,6 +19,8 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf15b.md`
 - `docs/rf15c.md`
 - `docs/rf15e.md`
+- `docs/scoring.md`
+- `docs/rf18_verification.md`
 - `docs/agents.md`
 - `docs/langgraph_architecture.md`
 - `docs/alphacodium_workflow.md`
@@ -305,6 +307,28 @@ Documentación principal:
 Nota:
 
 - LangSmith es opcional; el flujo funciona sin LangSmith configurado.
+
+## Scoring RF18
+
+Se reforzó el módulo de scoring como contrato explícito (`ScoreSchema`) con validación y trazabilidad.
+
+Piezas clave:
+
+- contrato: `src/erp_fraud/catalog/score_schema.py`
+- agente: `src/erp_fraud/catalog/scoring_agent.py`
+- nodo grafo: `src/erp_fraud/graph/nodes.py` (`scoring_node`)
+- perfiles de modelo: `config/models.yaml`
+- documentación técnica: `docs/scoring.md`
+
+Capacidades actuales:
+
+- salida estructurada con `score_schema_version`, `fraud_type_probs`, `final_label`, `confidence`, `model_used`
+- autocorrección por validación fallida (retry)
+- selección de perfil/modelo por config sin tocar código
+- comparación de dos perfiles:
+  - `score_compare.json`
+- integración opcional LangSmith no bloqueante:
+  - `score_experiment.json` (`READY` o `SKIPPED`)
 
 Componentes:
 

@@ -20,6 +20,7 @@ Prompts iniciales:
 - `test_planner__v001.md`
 - `expert_explainer__v001.md`
 - `scoring__v001.md`
+- `scoring__v002.md` (RF18 ScoreSchema)
 
 Entrypoints estables (RF15c-02):
 

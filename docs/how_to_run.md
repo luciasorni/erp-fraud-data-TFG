@@ -226,6 +226,22 @@ python3 -m pytest -q \
   tests/test_rf15c_manual_e2e_script.py
 ```
 
+Verificación RF18 (scoring):
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf18_score_schema.py \
+  tests/test_rf18_scoring_prompt.py \
+  tests/test_rf18_scoring_agent.py \
+  tests/test_rf18_scoring_end_to_end.py \
+  tests/test_rf15c_scoring_node.py \
+  tests/test_rf15c_persist_node.py
+```
+
+Referencia funcional:
+
+- `docs/scoring.md`
+
 Nota:
 
 - LangSmith no es obligatorio para ejecutar RF15c en local; la traza puede quedar en `N/A`.

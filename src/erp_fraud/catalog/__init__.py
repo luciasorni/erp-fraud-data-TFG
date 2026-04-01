@@ -38,6 +38,14 @@ from .result_schema import (
     get_result_schema,
     get_result_schema_required_fields,
 )
+from .score_schema import (
+    SCORE_SCHEMA,
+    SCORE_SCHEMA_FIELD_TYPES,
+    SCORE_SCHEMA_REQUIRED_FIELDS,
+    SCORE_SCHEMA_VERSION,
+    get_score_schema,
+    get_score_schema_required_fields,
+)
 from .result_schema_validator import RESULT_DF_REQUIRED_COLUMNS, validate_result_schema
 from .entity_key import (
     ENTITY_KEY_ASSIGN_SEPARATOR,
@@ -70,6 +78,7 @@ from .scoring import (
     resolve_ranking_top_k,
     resolve_test_weight,
 )
+from .scoring_agent import ScoringAgent, load_models_config, resolve_scoring_model
 from .ranking import aggregate_findings_by_entity
 from .ranking_writer import (
     sort_ranking_rows_stable,
@@ -91,6 +100,10 @@ __all__ = [
     "RESULT_SCHEMA_FIELD_TYPES",
     "RESULT_SCHEMA_REQUIRED_FIELDS",
     "RESULT_SCHEMA_VERSION",
+    "SCORE_SCHEMA",
+    "SCORE_SCHEMA_FIELD_TYPES",
+    "SCORE_SCHEMA_REQUIRED_FIELDS",
+    "SCORE_SCHEMA_VERSION",
     "RESULT_DF_REQUIRED_COLUMNS",
     "ENTITY_KEY_ASSIGN_SEPARATOR",
     "ENTITY_KEY_SEPARATOR",
@@ -108,6 +121,9 @@ __all__ = [
     "load_weights_config",
     "resolve_ranking_top_k",
     "resolve_test_weight",
+    "ScoringAgent",
+    "load_models_config",
+    "resolve_scoring_model",
     "aggregate_findings_by_entity",
     "sort_ranking_rows_stable",
     "write_ranking_json",
@@ -115,6 +131,8 @@ __all__ = [
     "write_ranking_parquet",
     "get_result_schema",
     "get_result_schema_required_fields",
+    "get_score_schema",
+    "get_score_schema_required_fields",
     "load_test_specs_from_catalog",
     "get_drilldown_min_keys_by_test_id",
     "get_drilldown_query_id_for_test_id",

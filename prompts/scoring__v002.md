@@ -36,7 +36,3 @@ Calcular probabilidad por tipología de fraude y etiqueta final usando:
   "evidence_summary": "string",
   "model_used": "string"
 }
-
-# Versioning
-Plantilla estable para ejecución del grafo.
-Versión canónica equivalente: `scoring__v002.md`.

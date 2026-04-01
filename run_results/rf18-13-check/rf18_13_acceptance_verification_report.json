@@ -1,0 +1,22 @@
+{
+  "artifacts": {
+    "score_doc": "docs/scoring.md",
+    "verification_doc": "docs/rf18_verification.md"
+  },
+  "generated_at_utc": "2026-04-01T20:06:06+00:00",
+  "langsmith": {
+    "api_key_present": false,
+    "endpoint": "",
+    "project": "",
+    "trace_link": "N/A",
+    "tracing_enabled": false
+  },
+  "pytest": {
+    "command": "python3 -m pytest -q tests/test_rf18_score_schema.py tests/test_rf18_scoring_prompt.py tests/test_rf18_scoring_agent.py tests/test_rf18_scoring_end_to_end.py tests/test_rf15c_scoring_node.py tests/test_rf15c_persist_node.py",
+    "result": "17 passed",
+    "stderr_log": "run_results/rf18-13-check/pytest_rf18.stderr.log",
+    "stdout_log": "run_results/rf18-13-check/pytest_rf18.stdout.log"
+  },
+  "rf_task": "RF18-13",
+  "status": "OK"
+}

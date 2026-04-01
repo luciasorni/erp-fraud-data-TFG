@@ -118,6 +118,7 @@ Salida principal:
 Prompt:
 
 - `prompts/scoring.md`
+- metodología y limitaciones: `docs/scoring.md`
 
 ## Tools permitidas (resumen)
 

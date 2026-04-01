@@ -1,0 +1,19 @@
+schema_version: "1.0"
+
+defaults:
+  scoring_profile: default
+
+scoring:
+  profiles:
+    default:
+      model_used: scoring-stub-v2
+      temperature: 0.0
+      max_tokens: 800
+    conservative:
+      model_used: scoring-stub-conservative-v1
+      temperature: 0.0
+      max_tokens: 600
+    exploratory:
+      model_used: scoring-stub-exploratory-v1
+      temperature: 0.2
+      max_tokens: 1200

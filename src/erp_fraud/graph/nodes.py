@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import os
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Callable
@@ -11,7 +13,14 @@ from ..agents import alpha_loop, alpha_loop_result_to_dict
 from ..agents.kb_index import build_kb_index
 from ..agents.kb_search import KBSearchTool
 from ..agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
-from ..catalog import aggregate_findings_by_entity, load_test_specs_from_catalog
+from ..catalog import (
+    SCORE_SCHEMA_REQUIRED_FIELDS,
+    ScoringAgent,
+    aggregate_findings_by_entity,
+    load_test_specs_from_catalog,
+    load_models_config,
+    resolve_scoring_model,
+)
 from ..catalog import RESULT_SCHEMA_VERSION, get_result_schema_required_fields
 from ..catalog.scoring import load_weights_config, resolve_ranking_top_k
 from ..catalog.test_runner import TestRunner
@@ -20,6 +29,36 @@ from ..storage.schema_summary import build_schema_summary
 from .state import GraphState
 
 GraphNode = Callable[[GraphState], GraphState]
+
+
+def _stable_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str)
+
+
+def _sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _langsmith_snapshot() -> dict[str, Any]:
+    tracing_raw = str(os.getenv("LANGSMITH_TRACING", "")).strip().lower()
+    tracing_v2_raw = str(os.getenv("LANGCHAIN_TRACING_V2", "")).strip().lower()
+    tracing_enabled = tracing_raw in {"1", "true", "yes", "on"} or tracing_v2_raw in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    api_key_present = bool(str(os.getenv("LANGSMITH_API_KEY", "")).strip())
+    project = str(os.getenv("LANGSMITH_PROJECT", "")).strip()
+    endpoint = str(os.getenv("LANGSMITH_ENDPOINT", "")).strip()
+    trace_link = str(os.getenv("LANGSMITH_TRACE_LINK", "")).strip()
+    return {
+        "tracing_enabled": tracing_enabled,
+        "api_key_present": api_key_present,
+        "project": project,
+        "endpoint": endpoint,
+        "trace_link": trace_link,
+    }
 
 
 def _set_node_status(
@@ -568,6 +607,12 @@ def _validate_scores_output(output: Any, _input_payload: dict[str, Any]) -> dict
     first = output[0]
     if not isinstance(first, dict):
         return {"passed": False, "errors": ["scores[0] debe ser objeto"]}
+    missing_schema_fields = [field for field in SCORE_SCHEMA_REQUIRED_FIELDS if field not in first]
+    if missing_schema_fields:
+        return {
+            "passed": False,
+            "errors": [f"scores[0] no cumple ScoreSchema, faltan: {missing_schema_fields}"],
+        }
     ranking = first.get("ranking", [])
     if not isinstance(ranking, list):
         return {"passed": False, "errors": ["scores[0].ranking debe ser lista"]}
@@ -609,7 +654,12 @@ def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: d
     findings = input_payload.get("findings", [])
     if not isinstance(findings, list):
         findings = []
+    hypotheses = input_payload.get("hypotheses", [])
+    if not isinstance(hypotheses, list):
+        hypotheses = []
     findings_by_fraud_type: dict[str, set[str]] = {}
+    all_test_ids: set[str] = set()
+    allowed_fraud_types: set[str] = set()
     for row in findings:
         if not isinstance(row, dict):
             continue
@@ -617,7 +667,15 @@ def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: d
         test_id = str(row.get("test_id", "")).strip()
         if not fraud_type or not test_id:
             continue
+        allowed_fraud_types.add(fraud_type)
+        all_test_ids.add(test_id)
         findings_by_fraud_type.setdefault(fraud_type, set()).add(test_id)
+    for row in hypotheses:
+        if not isinstance(row, dict):
+            continue
+        fraud_type = str(row.get("fraud_type", "")).strip()
+        if fraud_type:
+            allowed_fraud_types.add(fraud_type)
 
     errors: list[str] = []
     total_prob = 0.0
@@ -628,6 +686,8 @@ def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: d
         fraud_type = str(row.get("fraud_type", "")).strip()
         prob = float(row.get("probability", 0.0) or 0.0)
         total_prob += prob
+        if allowed_fraud_types and fraud_type not in allowed_fraud_types:
+            errors.append(f"fraud_type_probs[{idx}].fraud_type fuera de taxonomía permitida: {fraud_type}")
         source_test_ids = row.get("source_test_ids", [])
         if not isinstance(source_test_ids, list):
             errors.append(f"fraud_type_probs[{idx}].source_test_ids debe ser lista")
@@ -645,6 +705,24 @@ def _validate_scoring_evidence_and_probability_sum(output: Any, input_payload: d
 
     if abs(total_prob - 1.0) > 0.001:
         errors.append(f"fraud_type_probs.probability suma {total_prob:.6f} (esperado ~1.0)")
+
+    final_label = str(first.get("final_label", "")).strip()
+    if final_label:
+        known_labels = {
+            str(row.get("fraud_type", "")).strip()
+            for row in fraud_type_probs
+            if isinstance(row, dict) and str(row.get("fraud_type", "")).strip()
+        }
+        if final_label not in known_labels:
+            errors.append(f"final_label fuera de fraud_type_probs: {final_label}")
+        if allowed_fraud_types and final_label not in allowed_fraud_types:
+            errors.append(f"final_label fuera de taxonomía permitida: {final_label}")
+
+    evidence_summary = str(first.get("evidence_summary", "")).strip()
+    if all_test_ids:
+        references_known_test = any(test_id in evidence_summary for test_id in sorted(all_test_ids))
+        if not references_known_test:
+            errors.append("evidence_summary no referencia test_id real de findings")
     return {"passed": len(errors) == 0, "errors": errors}
 
 
@@ -1578,27 +1656,53 @@ def scoring_node(state: GraphState) -> GraphState:
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     findings = [row for row in state.findings if isinstance(row, dict)]
     weights_config_path = str(metadata.get("weights_config", "config/weights.yaml")).strip()
+    models_config_path = str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
+    scoring_model_profile = str(metadata.get("scoring_model_profile", "")).strip()
     top_k_override = metadata.get("scoring_top_k")
+    simulate_invalid_once = bool(metadata.get("scoring_simulate_invalid_once", False))
+    scoring_compare_profiles_raw = metadata.get("scoring_compare_profiles", [])
+    if isinstance(scoring_compare_profiles_raw, str):
+        scoring_compare_profiles = [
+            item.strip() for item in scoring_compare_profiles_raw.split(",") if item.strip()
+        ]
+    elif isinstance(scoring_compare_profiles_raw, list):
+        scoring_compare_profiles = [str(item).strip() for item in scoring_compare_profiles_raw if str(item).strip()]
+    else:
+        scoring_compare_profiles = []
+    scoring_prompt_text = (
+        "Calcula score por tipología de fraude usando hypotheses + findings + acfe_snippets "
+        "y devuelve ScoreSchema válido."
+    )
 
     if not findings:
         state.ranking = []
         state.fraud_type_predicho = []
+        empty_score = ScoringAgent(model_used="scoring-node-no-findings").parse_output(
+            ScoringAgent(model_used="scoring-node-no-findings").generate(
+                hypotheses=[row for row in state.hypotheses if isinstance(row, dict)],
+                findings=[],
+                acfe_snippets=[],
+            )
+        )
         state.scores = [
             {
+                **empty_score,
                 "ranking": [],
                 "fraud_type_distribution": {},
-                "fraud_type_probs": [],
                 "summary": {
                     "entities_scored": 0,
                     "findings_total": 0,
                     "top_k": int(top_k_override) if isinstance(top_k_override, int) and top_k_override > 0 else 0,
                 },
-                "method": "weighted_entity_ranking",
+                "method": "llm_score_schema",
                 "source": "scoring_node",
             }
         ]
         metadata["scoring_status"] = "NO_FINDINGS"
         metadata["scoring_entities"] = 0
+        metadata["scoring_model_used"] = str(empty_score.get("model_used", "")).strip()
+        metadata["scoring_prompt_hash"] = _sha256_text(scoring_prompt_text)
+        metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0]))
         return state
 
     weights_cfg = load_weights_config(weights_config_path)
@@ -1676,26 +1780,47 @@ def scoring_node(state: GraphState) -> GraphState:
             if chunk_id:
                 findings_by_fraud_type[fraud_type]["acfe_chunks"].add(chunk_id)
 
-    total_support = sum(max(0, int(entry["finding_count_total"])) for entry in findings_by_fraud_type.values())
+    acfe_snippets: list[dict[str, Any]] = []
+    for fraud_type in sorted(findings_by_fraud_type.keys()):
+        for chunk_id in sorted(findings_by_fraud_type[fraud_type]["acfe_chunks"]):
+            acfe_snippets.append({"fraud_type": fraud_type, "chunk_id": chunk_id})
+
+    resolved_model_used = str(metadata.get("scoring_model", "")).strip()
+    if not resolved_model_used:
+        try:
+            models_cfg = load_models_config(models_config_path)
+            resolved_model = resolve_scoring_model(models_config=models_cfg, profile=scoring_model_profile)
+            resolved_model_used = str(resolved_model.get("model_used", "")).strip() or "scoring-stub-v2"
+            metadata["scoring_model_profile"] = str(resolved_model.get("profile", "")).strip()
+            metadata["scoring_model_temperature"] = float(resolved_model.get("temperature", 0.0) or 0.0)
+            metadata["scoring_model_max_tokens"] = int(resolved_model.get("max_tokens", 0) or 0)
+            metadata["scoring_models_config"] = models_config_path
+        except Exception:
+            resolved_model_used = "scoring-stub-v2"
+    scoring_agent = ScoringAgent(model_used=resolved_model_used)
+    base_score_schema = scoring_agent.parse_output(
+        scoring_agent.generate(
+            hypotheses=[row for row in state.hypotheses if isinstance(row, dict)],
+            findings=findings,
+            acfe_snippets=acfe_snippets,
+        )
+    )
     fraud_type_probs: list[dict[str, Any]] = []
-    if total_support > 0:
-        for fraud_type in sorted(findings_by_fraud_type.keys()):
-            entry = findings_by_fraud_type[fraud_type]
-            support = max(0, int(entry["finding_count_total"]))
-            probability = float(support) / float(total_support)
-            fraud_type_probs.append(
-                {
-                    "fraud_type": fraud_type,
-                    "probability": probability,
-                    "evidence_summary": (
-                        f"support={support}; tests={sorted(entry['test_ids'])}; "
-                        f"hypotheses={sorted(entry['hypothesis_ids'])}"
-                    ),
-                    "source_test_ids": sorted(entry["test_ids"]),
-                    "source_hypothesis_ids": sorted(entry["hypothesis_ids"]),
-                    "acfe_chunk_ids": sorted(entry["acfe_chunks"]),
-                }
-            )
+    for row in base_score_schema.get("fraud_type_probs", []):
+        if not isinstance(row, dict):
+            continue
+        fraud_type = str(row.get("fraud_type", "")).strip()
+        entry = findings_by_fraud_type.get(fraud_type, {})
+        enriched = dict(row)
+        enriched["evidence_summary"] = (
+            f"support={int(entry.get('finding_count_total', 0) or 0)}; "
+            f"tests={sorted(entry.get('test_ids', set()))}; "
+            f"hypotheses={sorted(entry.get('hypothesis_ids', set()))}"
+        )
+        enriched["source_hypothesis_ids"] = sorted(entry.get("hypothesis_ids", set()))
+        enriched["acfe_chunk_ids"] = sorted(entry.get("acfe_chunks", set()))
+        fraud_type_probs.append(enriched)
+    base_score_schema["fraud_type_probs"] = fraud_type_probs
     state.fraud_type_predicho = [
         {"fraud_type": row["fraud_type"], "prob": row["probability"]}
         for row in fraud_type_probs
@@ -1705,9 +1830,9 @@ def scoring_node(state: GraphState) -> GraphState:
 
     scores_payload = [
         {
+            **base_score_schema,
             "ranking": top_rows,
             "fraud_type_distribution": dict(sorted(fraud_type_distribution.items(), key=lambda item: item[0])),
-            "fraud_type_probs": fraud_type_probs,
             "summary": {
                 "entities_scored": len(ranking_rows),
                 "entities_returned": len(top_rows),
@@ -1716,16 +1841,88 @@ def scoring_node(state: GraphState) -> GraphState:
                 "weights_config": weights_config_path,
                 "fraud_types_scored": len(fraud_type_probs),
             },
-            "method": "weighted_entity_ranking",
+            "method": "llm_score_schema",
             "source": "scoring_node",
         }
     ]
+
+    def _autocorrect_score_payload(
+        payload: dict[str, Any],
+        *,
+        findings_payload: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        corrected = dict(payload)
+        probs_raw = corrected.get("fraud_type_probs", [])
+        probs = [dict(row) for row in probs_raw if isinstance(row, dict)]
+        total = sum(max(0.0, float(row.get("probability", 0.0) or 0.0)) for row in probs)
+        if probs and total > 0:
+            for row in probs:
+                row["probability"] = max(0.0, float(row.get("probability", 0.0) or 0.0)) / total
+        corrected["fraud_type_probs"] = probs
+
+        known_labels = [str(row.get("fraud_type", "")).strip() for row in probs if str(row.get("fraud_type", "")).strip()]
+        final_label = str(corrected.get("final_label", "")).strip()
+        if not final_label or final_label not in known_labels:
+            winner = max(probs, key=lambda row: float(row.get("probability", 0.0) or 0.0), default={})
+            corrected["final_label"] = str(winner.get("fraud_type", "")).strip() or "unknown"
+
+        all_test_ids = sorted(
+            {
+                str(row.get("test_id", "")).strip()
+                for row in findings_payload
+                if isinstance(row, dict) and str(row.get("test_id", "")).strip()
+            }
+        )
+        evidence_summary = str(corrected.get("evidence_summary", "")).strip()
+        if all_test_ids and not any(test_id in evidence_summary for test_id in all_test_ids):
+            corrected["evidence_summary"] = f"Evidence from tests: {', '.join(all_test_ids)}"
+
+        try:
+            corrected["confidence"] = max(0.0, min(1.0, float(corrected.get("confidence", 0.0) or 0.0)))
+        except (TypeError, ValueError):
+            corrected["confidence"] = 0.0
+        return corrected
+
+    def _generate_scores(
+        _prompt: str,
+        input_payload: dict[str, Any],
+        repair_feedback: list[str],
+        iteration: int,
+    ) -> list[dict[str, Any]]:
+        base = dict(scores_payload[0]) if scores_payload and isinstance(scores_payload[0], dict) else {}
+        if iteration == 1 and not repair_feedback and simulate_invalid_once and base:
+            # Fuerza un primer intento inválido para probar la ruta de autocorrección.
+            bad = dict(base)
+            bad["final_label"] = "invalid_label"
+            bad["evidence_summary"] = "No references"
+            bad_probs = [dict(row) for row in bad.get("fraud_type_probs", []) if isinstance(row, dict)]
+            if bad_probs:
+                for row in bad_probs:
+                    row["probability"] = float(row.get("probability", 0.0) or 0.0) * 1.1
+                bad["fraud_type_probs"] = bad_probs
+            return [bad]
+
+        if repair_feedback and base:
+            findings_payload = input_payload.get("findings", [])
+            if not isinstance(findings_payload, list):
+                findings_payload = []
+            repaired = _autocorrect_score_payload(base, findings_payload=[row for row in findings_payload if isinstance(row, dict)])
+            return [repaired]
+
+        return [base]
+
     state.scores = _run_alpha_loop_for_node(
         state=state,
         node_id="scoring",
-        prompt_text="Calcula ranking por entidad y distribución por tipología de fraude.",
-        input_payload={"findings_count": len(findings), "top_k": top_k, "findings": findings},
-        generate_fn=lambda _p, _i, _f, _it: list(scores_payload),
+        prompt_text=scoring_prompt_text,
+        input_payload={
+            "hypotheses": [row for row in state.hypotheses if isinstance(row, dict)],
+            "findings_count": len(findings),
+            "findings": findings,
+            "acfe_snippets": acfe_snippets,
+            "top_k": top_k,
+        },
+        generate_fn=_generate_scores,
         validators={
             "scores_schema": _validate_scores_output,
             "scores_probabilities": _validate_scoring_evidence_and_probability_sum,
@@ -1736,6 +1933,109 @@ def scoring_node(state: GraphState) -> GraphState:
     metadata["scoring_entities"] = len(ranking_rows)
     metadata["scoring_top_k"] = top_k
     metadata["scoring_fraud_types"] = len(fraud_type_probs)
+    metadata["scoring_model_used"] = str(base_score_schema.get("model_used", "")).strip()
+    metadata["scoring_prompt_hash"] = _sha256_text(scoring_prompt_text)
+    metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0] if state.scores else {}))
+
+    if len(scoring_compare_profiles) >= 2:
+        try:
+            models_cfg = load_models_config(models_config_path)
+            baseline_profile = scoring_compare_profiles[0]
+            candidate_profile = scoring_compare_profiles[1]
+            baseline_model = resolve_scoring_model(models_config=models_cfg, profile=baseline_profile)
+            candidate_model = resolve_scoring_model(models_config=models_cfg, profile=candidate_profile)
+            baseline_agent = ScoringAgent(model_used=str(baseline_model.get("model_used", "")).strip())
+            candidate_agent = ScoringAgent(model_used=str(candidate_model.get("model_used", "")).strip())
+            baseline_score = baseline_agent.parse_output(
+                baseline_agent.generate(
+                    hypotheses=[row for row in state.hypotheses if isinstance(row, dict)],
+                    findings=findings,
+                    acfe_snippets=acfe_snippets,
+                )
+            )
+            candidate_score = candidate_agent.parse_output(
+                candidate_agent.generate(
+                    hypotheses=[row for row in state.hypotheses if isinstance(row, dict)],
+                    findings=findings,
+                    acfe_snippets=acfe_snippets,
+                )
+            )
+            baseline_probs = {
+                str(row.get("fraud_type", "")).strip(): float(row.get("probability", 0.0) or 0.0)
+                for row in baseline_score.get("fraud_type_probs", [])
+                if isinstance(row, dict) and str(row.get("fraud_type", "")).strip()
+            }
+            candidate_probs = {
+                str(row.get("fraud_type", "")).strip(): float(row.get("probability", 0.0) or 0.0)
+                for row in candidate_score.get("fraud_type_probs", [])
+                if isinstance(row, dict) and str(row.get("fraud_type", "")).strip()
+            }
+            fraud_types = sorted(set(baseline_probs.keys()) | set(candidate_probs.keys()))
+            deltas = [
+                {
+                    "fraud_type": fraud_type,
+                    "baseline_probability": float(baseline_probs.get(fraud_type, 0.0)),
+                    "candidate_probability": float(candidate_probs.get(fraud_type, 0.0)),
+                    "delta_probability": float(candidate_probs.get(fraud_type, 0.0))
+                    - float(baseline_probs.get(fraud_type, 0.0)),
+                }
+                for fraud_type in fraud_types
+            ]
+            score_compare = {
+                "version": "1.0.0",
+                "baseline_profile": str(baseline_model.get("profile", baseline_profile)).strip(),
+                "candidate_profile": str(candidate_model.get("profile", candidate_profile)).strip(),
+                "baseline_model_used": str(baseline_score.get("model_used", "")).strip(),
+                "candidate_model_used": str(candidate_score.get("model_used", "")).strip(),
+                "baseline_final_label": str(baseline_score.get("final_label", "")).strip(),
+                "candidate_final_label": str(candidate_score.get("final_label", "")).strip(),
+                "baseline_confidence": float(baseline_score.get("confidence", 0.0) or 0.0),
+                "candidate_confidence": float(candidate_score.get("confidence", 0.0) or 0.0),
+                "confidence_delta": float(candidate_score.get("confidence", 0.0) or 0.0)
+                - float(baseline_score.get("confidence", 0.0) or 0.0),
+                "final_label_changed": str(baseline_score.get("final_label", "")).strip()
+                != str(candidate_score.get("final_label", "")).strip(),
+                "deltas_by_fraud_type": deltas,
+            }
+            metadata["score_compare"] = score_compare
+            metadata["scoring_compare_status"] = "OK"
+            metadata["scoring_compare_profiles"] = [
+                str(baseline_model.get("profile", baseline_profile)).strip(),
+                str(candidate_model.get("profile", candidate_profile)).strip(),
+            ]
+        except Exception as exc:
+            metadata["scoring_compare_status"] = f"ERROR: {type(exc).__name__}: {exc}"
+
+    # RF18-09: integración LangSmith opcional/no bloqueante (sin depender de RF14b).
+    ls = _langsmith_snapshot()
+    score_compare_payload = metadata.get("score_compare")
+    if not isinstance(score_compare_payload, dict) or not score_compare_payload:
+        metadata["scoring_experiment"] = {
+            "status": "SKIPPED",
+            "reason": "missing_score_compare",
+            "platform": "langsmith",
+            "run_id": str(state.run_id),
+            "langsmith": ls,
+        }
+    elif not (bool(ls.get("tracing_enabled")) and bool(ls.get("api_key_present")) and str(ls.get("project", "")).strip()):
+        metadata["scoring_experiment"] = {
+            "status": "SKIPPED",
+            "reason": "langsmith_not_configured",
+            "platform": "langsmith",
+            "run_id": str(state.run_id),
+            "score_compare_hash": _sha256_text(_stable_json(score_compare_payload)),
+            "langsmith": ls,
+        }
+    else:
+        metadata["scoring_experiment"] = {
+            "status": "READY",
+            "reason": "",
+            "platform": "langsmith",
+            "run_id": str(state.run_id),
+            "score_compare_hash": _sha256_text(_stable_json(score_compare_payload)),
+            "trace_link": str(ls.get("trace_link", "")).strip(),
+            "langsmith": ls,
+        }
     return state
 
 
@@ -1866,6 +2166,12 @@ def persist_node(state: GraphState) -> GraphState:
         "graph_state_json": graph_dir / "graph_state.json",
         "manifest_json": graph_dir / "manifest.json",
     }
+    score_compare_payload = metadata.get("score_compare")
+    if isinstance(score_compare_payload, dict) and score_compare_payload:
+        paths["score_compare_json"] = graph_dir / "score_compare.json"
+    score_experiment_payload = metadata.get("scoring_experiment")
+    if isinstance(score_experiment_payload, dict) and score_experiment_payload:
+        paths["score_experiment_json"] = graph_dir / "score_experiment.json"
 
     _write_json(paths["hypotheses_json"], state.hypotheses)
     _write_json(paths["selected_tests_json"], state.selected_tests)
@@ -1877,6 +2183,10 @@ def persist_node(state: GraphState) -> GraphState:
     )
     _write_json(paths["score_json"], state.scores)
     _write_json(paths["scores_json"], state.scores)
+    if "score_compare_json" in paths and isinstance(score_compare_payload, dict):
+        _write_json(paths["score_compare_json"], score_compare_payload)
+    if "score_experiment_json" in paths and isinstance(score_experiment_payload, dict):
+        _write_json(paths["score_experiment_json"], score_experiment_payload)
 
     state_payload = {
         "run_id": state.run_id,

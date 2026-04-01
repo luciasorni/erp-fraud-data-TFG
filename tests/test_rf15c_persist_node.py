@@ -23,6 +23,24 @@ def test_rf15c_persist_node_writes_rf15c_artifacts() -> None:
         }
     ]
     state.scores = [{"fraud_type_probs": [{"fraud_type": "duplicate_payment", "probability": 1.0}]}]
+    state.run_metadata["score_compare"] = {
+        "version": "1.0.0",
+        "baseline_profile": "default",
+        "candidate_profile": "conservative",
+        "deltas_by_fraud_type": [
+            {
+                "fraud_type": "duplicate_payment",
+                "baseline_probability": 1.0,
+                "candidate_probability": 1.0,
+                "delta_probability": 0.0,
+            }
+        ],
+    }
+    state.run_metadata["scoring_experiment"] = {
+        "status": "SKIPPED",
+        "reason": "langsmith_not_configured",
+        "platform": "langsmith",
+    }
 
     out = persist_node(state)
     graph_dir = Path(out.run_metadata["persist_graph_dir"])
@@ -31,6 +49,8 @@ def test_rf15c_persist_node_writes_rf15c_artifacts() -> None:
     assert (graph_dir / "explanations.json").exists()
     assert (graph_dir / "explanations.md").exists()
     assert (graph_dir / "score.json").exists()
+    assert (graph_dir / "score_compare.json").exists()
+    assert (graph_dir / "score_experiment.json").exists()
 
     md = (graph_dir / "explanations.md").read_text(encoding="utf-8")
     assert "TST-DUPLICATE-POSTINGS" in md
@@ -39,4 +59,6 @@ def test_rf15c_persist_node_writes_rf15c_artifacts() -> None:
     manifest = json.loads((graph_dir / "manifest.json").read_text(encoding="utf-8"))
     artifacts = manifest["artifacts"]
     assert "score_json" in artifacts
+    assert "score_compare_json" in artifacts
+    assert "score_experiment_json" in artifacts
     assert "explanations_md" in artifacts
