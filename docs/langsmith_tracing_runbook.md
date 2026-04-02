@@ -21,6 +21,14 @@ Validación:
 python3 scripts/validate_required_env.py --profile langsmith
 ```
 
+Dependencia necesaria:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+(`langsmith` debe estar instalado para publicar runs en la UI)
+
 ## 2) Ejecución local (pipeline grafo)
 
 ### 2.1 Run estándar
@@ -29,6 +37,16 @@ python3 scripts/validate_required_env.py --profile langsmith
 python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --run-id rf14b-local
+```
+
+### 2.1.b Run real controlado (OpenAI)
+
+```bash
+export OPENAI_API_KEY="<tu_api_key>"
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --run-id rf14b-real \
+  --llm-mode real
 ```
 
 ### 2.2 Experimentos de modelos (RF14b-08)
@@ -59,6 +77,8 @@ En `run_metadata`:
 - `node_trace_events` (traza local por nodo)
 - `rf14b_evaluation`
 - `langsmith_eval_dataset`
+- `llm_runtime_by_node` (latencia/tokens/coste/retries/fallback por nodo)
+- `node_llm_mode` y `langsmith_tags` (incluye `llm_mode:real` cuando aplica)
 
 ## 4) Publicación de dataset (opcional)
 

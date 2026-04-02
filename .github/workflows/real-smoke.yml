@@ -1,0 +1,65 @@
+name: real-smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * *"
+
+jobs:
+  real-openai-smoke:
+    runs-on: ubuntu-latest
+    if: ${{ secrets.OPENAI_API_KEY != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Create minimal schema_summary fixture
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("run_results/real_smoke_schema_summary.json")
+          p.parent.mkdir(parents=True, exist_ok=True)
+          p.write_text(json.dumps({
+              "schema_name": "main",
+              "table_count": 1,
+              "tables": [{"table_name": "fraud_1", "columns": [{"name": "kreditor"}]}]
+          }, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(p)
+          PY
+
+      - name: Run real smoke (low-cost)
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LANGSMITH_TRACING: "true"
+          LANGCHAIN_TRACING_V2: "true"
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: erp-fraud-tfg
+          LANGSMITH_ENDPOINT: https://api.smith.langchain.com
+          OPENAI_PRICE_INPUT_PER_1M_USD: "0"
+          OPENAI_PRICE_OUTPUT_PER_1M_USD: "0"
+        run: |
+          python scripts/run_rf15c_e2e_manual.py \
+            --run-id real-smoke-${{ github.run_id }} \
+            --schema-summary-path run_results/real_smoke_schema_summary.json \
+            --catalog-path tests/catalog \
+            --persist-base-dir run_results \
+            --llm-mode real
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-smoke-artifacts
+          path: run_results/real-smoke-${{ github.run_id }}
+          if-no-files-found: ignore

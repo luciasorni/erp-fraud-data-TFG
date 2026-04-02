@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
 from time import perf_counter
 from typing import Any
 
 from .langsmith_dataset import publish_langsmith_eval_dataset, write_langsmith_eval_dataset_jsonl
+from .langsmith_runs import publish_langsmith_node_runs
 from .nodes import run_node_by_id
 from .evaluators import evaluate_rf14b_automatic
 from .observability import (
@@ -282,6 +285,8 @@ def run_graph(
                 state = _execute_node_with_policy(state=state, node_id="persist")
             _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
             _attach_langsmith_eval_dataset(state)
+            _attach_langsmith_runs(state)
+            _refresh_persisted_graph_state(state)
             return state
         try:
             state = _execute_node_with_policy(state=state, node_id=node_id)
@@ -294,6 +299,8 @@ def run_graph(
                     pass
             _meta(state)["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
             _attach_langsmith_eval_dataset(state)
+            _attach_langsmith_runs(state)
+            _refresh_persisted_graph_state(state)
             return state
 
     metadata = _meta(state)
@@ -301,6 +308,8 @@ def run_graph(
         metadata["graph_status"] = "OK"
     metadata["rf14b_evaluation"] = evaluate_rf14b_automatic(state)
     _attach_langsmith_eval_dataset(state)
+    _attach_langsmith_runs(state)
+    _refresh_persisted_graph_state(state)
     return state
 
 
@@ -345,6 +354,40 @@ def _attach_langsmith_eval_dataset(state: GraphState) -> None:
     )
     metadata["langsmith_eval_dataset"]["publish"] = publish_result
     metadata["langsmith_eval_dataset"]["published"] = bool(publish_result.get("status") == "OK")
+
+
+def _attach_langsmith_runs(state: GraphState) -> None:
+    metadata = _meta(state)
+    result = publish_langsmith_node_runs(state=state)
+    metadata["langsmith_runs"] = result
+    if isinstance(result, dict):
+        link = str(result.get("trace_link", "")).strip()
+        if link:
+            metadata["langsmith_trace_link"] = link
+
+
+def _refresh_persisted_graph_state(state: GraphState) -> None:
+    metadata = _meta(state)
+    artifacts = metadata.get("persist_artifacts", {})
+    if not isinstance(artifacts, dict):
+        return
+    graph_state_path = str(artifacts.get("graph_state_json", "")).strip()
+    if not graph_state_path:
+        return
+    path = Path(graph_state_path)
+    if not path.exists():
+        return
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if not isinstance(payload, dict):
+        return
+    payload["run_metadata"] = metadata
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def run_graph_stub(

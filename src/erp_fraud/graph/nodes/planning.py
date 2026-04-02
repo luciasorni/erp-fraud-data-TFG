@@ -5,16 +5,31 @@ from __future__ import annotations
 # ruff: noqa: F401,F403,F405,F821
 
 from . import _legacy as _legacy
+from .common import annotate_node_llm_mode
+from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 
 globals().update(vars(_legacy))
 
 def hypothesis_planner_node(state: GraphState) -> GraphState:
     """Genera hipótesis con trazabilidad de fuentes (RF15c-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    llm_mode = annotate_node_llm_mode(metadata=metadata, node_id="hypothesis_planner")
+    runtime_target = resolve_node_runtime_target(
+        node_id="hypothesis_planner",
+        metadata=metadata,
+        default_model_used="gpt-5.4-mini",
+    )
     _record_graph_node_model_config(
         node_id="hypothesis_planner",
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
+        overrides={
+            "mode_effective": str(runtime_target.get("mode_effective", "stub_runtime")),
+            "llm_mode": llm_mode,
+            "real_mode_requested": llm_mode == "real",
+            "provider": str(runtime_target.get("provider", "")).strip(),
+            "model_used": str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+        },
     )
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
@@ -136,25 +151,90 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             kb_hits=kb_hits,
             max_hypotheses=max_hypotheses,
         )
-        state.hypotheses = _run_alpha_loop_for_node(
-            state=state,
-            node_id="hypothesis_planner",
-            prompt_text=str(prompt_info.get("text", "")),
-            input_payload={
-                "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
-                "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
-                "data_catalog_fields_count": int(data_catalog_out.get("payload", {}).get("count", 0) or 0),
-                "kb_search_status": kb_status,
-                "kb_hits_count": len(kb_hits),
-                "kb_top_k": kb_top_k,
-                "allowed_fraud_types": allowed_fraud_types,
-                "allowed_process_steps": allowed_process_steps,
-                "schema_columns_by_table": schema_columns_by_table,
-            },
-            generate_fn=lambda _p, _i, _f, _it: list(default_hypotheses),
-            validators={"hypothesis_schema": _validate_hypotheses_output},
-            max_iter=2,
-        )
+        prompt_text = str(prompt_info.get("text", ""))
+
+        runtime_by_node = metadata.setdefault("llm_runtime_by_node", {})
+        if not isinstance(runtime_by_node, dict):
+            runtime_by_node = {}
+            metadata["llm_runtime_by_node"] = runtime_by_node
+
+        def _generate_hypotheses(
+            _prompt: str,
+            _input_payload: dict[str, Any],
+            repair_feedback: list[str],
+            _iteration: int,
+        ) -> list[dict[str, Any]]:
+            fallback = list(default_hypotheses)
+            if not bool(runtime_target.get("enabled", False)):
+                metadata["hypothesis_llm_call_status"] = "SKIPPED"
+                runtime_by_node["hypothesis_planner"] = {
+                    "model_used": str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+                    "llm_mode": llm_mode,
+                    "latency_ms": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_tokens": 0,
+                    "cost_estimated_usd": 0.0,
+                    "retries_done": 0,
+                    "fallback_used": True,
+                    "status": "SKIPPED",
+                }
+                return fallback
+            llm_output, llm_meta = call_openai_json(
+                model_used=str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+                temperature=float(runtime_target.get("temperature", 0.0) or 0.0),
+                max_tokens=int(runtime_target.get("max_tokens", 0) or 0),
+                prompt_text=prompt_text,
+                input_payload=_input_payload,
+                repair_feedback=repair_feedback,
+                timeout_s=float(metadata.get("llm_timeout_s", 30.0) or 30.0),
+                max_retries=int(metadata.get("llm_max_retries", 1) or 1),
+                retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
+            )
+            metadata["hypothesis_llm_call_status"] = str(llm_meta.get("status", "ERROR")).strip()
+            runtime_by_node["hypothesis_planner"] = {
+                "model_used": str(llm_meta.get("model_used", "")).strip()
+                or str(runtime_target.get("model_used", "")).strip()
+                or "gpt-5.4-mini",
+                "llm_mode": llm_mode,
+                "latency_ms": int(llm_meta.get("latency_ms", 0) or 0),
+                "input_tokens": int(llm_meta.get("input_tokens", 0) or 0),
+                "output_tokens": int(llm_meta.get("output_tokens", 0) or 0),
+                "total_tokens": int(llm_meta.get("total_tokens", 0) or 0),
+                "cost_estimated_usd": float(llm_meta.get("cost_estimated_usd", 0.0) or 0.0),
+                "retries_done": int(llm_meta.get("retries_done", 0) or 0),
+                "fallback_used": bool(llm_meta.get("fallback_used", llm_output is None)),
+                "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
+            }
+            if isinstance(llm_output, list):
+                return [row for row in llm_output if isinstance(row, dict)]
+            return fallback
+
+        hypothesis_input_payload = {
+            "catalog_tests_count": int(catalog_out.get("count", 0) or 0),
+            "schema_tables_count": int(schema_out.get("payload", {}).get("count", 0) or 0),
+            "data_catalog_fields_count": int(data_catalog_out.get("payload", {}).get("count", 0) or 0),
+            "kb_search_status": kb_status,
+            "kb_hits_count": len(kb_hits),
+            "kb_top_k": kb_top_k,
+            "allowed_fraud_types": allowed_fraud_types,
+            "allowed_process_steps": allowed_process_steps,
+            "schema_columns_by_table": schema_columns_by_table,
+        }
+        try:
+            state.hypotheses = _run_alpha_loop_for_node(
+                state=state,
+                node_id="hypothesis_planner",
+                prompt_text=prompt_text,
+                input_payload=hypothesis_input_payload,
+                generate_fn=_generate_hypotheses,
+                validators={"hypothesis_schema": _validate_hypotheses_output},
+                max_iter=2,
+            )
+        except Exception as exc:
+            state.hypotheses = list(default_hypotheses)
+            metadata["hypothesis_fallback_used"] = True
+            metadata["hypothesis_fallback_reason"] = f"{type(exc).__name__}: {exc}"
 
     if enforcer is None:
         metadata["hypothesis_runstore_status"] = "SKIPPED_NO_ENFORCER"
@@ -179,10 +259,23 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
 def test_planner_node(state: GraphState) -> GraphState:
     """Selecciona test_ids allowlist del catálogo para cada hipótesis (RF14-06/RF15c-05)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    llm_mode = annotate_node_llm_mode(metadata=metadata, node_id="test_planner")
+    runtime_target = resolve_node_runtime_target(
+        node_id="test_planner",
+        metadata=metadata,
+        default_model_used="gpt-5.4-mini",
+    )
     _record_graph_node_model_config(
         node_id="test_planner",
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
+        overrides={
+            "mode_effective": str(runtime_target.get("mode_effective", "stub_runtime")),
+            "llm_mode": llm_mode,
+            "real_mode_requested": llm_mode == "real",
+            "provider": str(runtime_target.get("provider", "")).strip(),
+            "model_used": str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+        },
     )
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
@@ -324,19 +417,84 @@ def test_planner_node(state: GraphState) -> GraphState:
     metadata["test_planner_prompt_hash"] = str(prompt_info.get("hash", "")).strip()
     metadata["test_planner_prompt_status"] = str(prompt_info.get("status", "")).strip()
 
-    state.selected_tests = _run_alpha_loop_for_node(
-        state=state,
-        node_id="test_planner",
-        prompt_text=str(prompt_info.get("text", "")),
-        input_payload={
-            "allowlist_ids": sorted(allowlist_ids),
-            "hypotheses_count": len(state.hypotheses),
-            "top_n": top_n,
-        },
-        generate_fn=lambda _p, _i, _f, _it: list(selected_rows),
-        validators={"selected_tests_schema": _validate_selected_tests_output},
-        max_iter=2,
-    )
+    prompt_text = str(prompt_info.get("text", ""))
+
+    runtime_by_node = metadata.setdefault("llm_runtime_by_node", {})
+    if not isinstance(runtime_by_node, dict):
+        runtime_by_node = {}
+        metadata["llm_runtime_by_node"] = runtime_by_node
+
+    def _generate_selected_tests(
+        _prompt: str,
+        input_payload: dict[str, Any],
+        repair_feedback: list[str],
+        _iteration: int,
+    ) -> list[dict[str, Any]]:
+        fallback = list(selected_rows)
+        if not bool(runtime_target.get("enabled", False)):
+            metadata["test_planner_llm_call_status"] = "SKIPPED"
+            runtime_by_node["test_planner"] = {
+                "model_used": str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+                "llm_mode": llm_mode,
+                "latency_ms": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "cost_estimated_usd": 0.0,
+                "retries_done": 0,
+                "fallback_used": True,
+                "status": "SKIPPED",
+            }
+            return fallback
+        llm_output, llm_meta = call_openai_json(
+            model_used=str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+            temperature=float(runtime_target.get("temperature", 0.0) or 0.0),
+            max_tokens=int(runtime_target.get("max_tokens", 0) or 0),
+            prompt_text=prompt_text,
+            input_payload=input_payload,
+            repair_feedback=repair_feedback,
+            timeout_s=float(metadata.get("llm_timeout_s", 30.0) or 30.0),
+            max_retries=int(metadata.get("llm_max_retries", 1) or 1),
+            retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
+        )
+        metadata["test_planner_llm_call_status"] = str(llm_meta.get("status", "ERROR")).strip()
+        runtime_by_node["test_planner"] = {
+            "model_used": str(llm_meta.get("model_used", "")).strip()
+            or str(runtime_target.get("model_used", "")).strip()
+            or "gpt-5.4-mini",
+            "llm_mode": llm_mode,
+            "latency_ms": int(llm_meta.get("latency_ms", 0) or 0),
+            "input_tokens": int(llm_meta.get("input_tokens", 0) or 0),
+            "output_tokens": int(llm_meta.get("output_tokens", 0) or 0),
+            "total_tokens": int(llm_meta.get("total_tokens", 0) or 0),
+            "cost_estimated_usd": float(llm_meta.get("cost_estimated_usd", 0.0) or 0.0),
+            "retries_done": int(llm_meta.get("retries_done", 0) or 0),
+            "fallback_used": bool(llm_meta.get("fallback_used", llm_output is None)),
+            "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
+        }
+        if isinstance(llm_output, list):
+            return [row for row in llm_output if isinstance(row, dict)]
+        return fallback
+
+    planner_input_payload = {
+        "allowlist_ids": sorted(allowlist_ids),
+        "hypotheses_count": len(state.hypotheses),
+        "top_n": top_n,
+    }
+    try:
+        state.selected_tests = _run_alpha_loop_for_node(
+            state=state,
+            node_id="test_planner",
+            prompt_text=prompt_text,
+            input_payload=planner_input_payload,
+            generate_fn=_generate_selected_tests,
+            validators={"selected_tests_schema": _validate_selected_tests_output},
+            max_iter=2,
+        )
+    except Exception as exc:
+        state.selected_tests = list(selected_rows)
+        metadata["test_planner_fallback_used"] = True
+        metadata["test_planner_fallback_reason"] = f"{type(exc).__name__}: {exc}"
     state.recomendaciones = [
         {
             "hypothesis_id": str(row.get("hypothesis_id", "")).strip(),

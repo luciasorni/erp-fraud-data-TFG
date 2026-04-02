@@ -15,6 +15,7 @@ import yaml
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+VALID_LLM_MODES: tuple[str, str] = ("stub", "real")
 
 
 def resolve_project_path(path_value: str | Path) -> str:
@@ -82,21 +83,41 @@ def resolve_graph_node_model_config(
         node_cfg = {}
 
     model_used = str(node_cfg.get("model_used", "")).strip() or default_model_used
+    provider = str(node_cfg.get("provider", "")).strip().lower() or "stub"
+    real_model_used = (
+        str(node_cfg.get("real_model_used", "")).strip()
+        or str(node_cfg.get("model_used_real", "")).strip()
+        or model_used
+    )
     try:
         temperature = float(node_cfg.get("temperature", 0.0) or 0.0)
     except (TypeError, ValueError):
         temperature = 0.0
     try:
+        real_temperature = float(
+            node_cfg.get("real_temperature", node_cfg.get("temperature_real", temperature)) or temperature
+        )
+    except (TypeError, ValueError):
+        real_temperature = temperature
+    try:
         max_tokens = int(node_cfg.get("max_tokens", 0) or 0)
     except (TypeError, ValueError):
         max_tokens = 0
+    try:
+        real_max_tokens = int(node_cfg.get("real_max_tokens", node_cfg.get("max_tokens_real", max_tokens)) or max_tokens)
+    except (TypeError, ValueError):
+        real_max_tokens = max_tokens
 
     return {
         "node_id": node_id,
         "mode": str(node_cfg.get("mode", "stub")).strip() or "stub",
+        "provider": provider,
         "model_used": model_used,
+        "real_model_used": real_model_used,
         "temperature": temperature,
+        "real_temperature": real_temperature,
         "max_tokens": max_tokens,
+        "real_max_tokens": real_max_tokens,
         "models_config_path": models_config_path,
         "source": "config" if node_cfg else "fallback",
     }
@@ -122,3 +143,27 @@ def record_graph_node_model_config(
     if isinstance(overrides, dict):
         config.update(overrides)
     agent_model_config[node_id] = config
+
+
+def resolve_llm_mode(metadata: dict[str, Any], *, default: str = "stub") -> str:
+    raw = str(metadata.get("llm_mode", default)).strip().lower()
+    if raw in VALID_LLM_MODES:
+        return raw
+    return default
+
+
+def annotate_node_llm_mode(*, metadata: dict[str, Any], node_id: str) -> str:
+    mode = resolve_llm_mode(metadata)
+    metadata["llm_mode"] = mode
+    by_node = metadata.setdefault("node_llm_mode", {})
+    if isinstance(by_node, dict):
+        by_node[node_id] = mode
+    tags = metadata.setdefault("langsmith_tags", [])
+    if isinstance(tags, list):
+        llm_tag = f"llm_mode:{mode}"
+        if llm_tag not in tags:
+            tags.append(llm_tag)
+        node_tag = f"node:{node_id}"
+        if node_tag not in tags:
+            tags.append(node_tag)
+    return mode

@@ -81,8 +81,8 @@ def resolve_scoring_model(
 class ScoringAgent:
     """Agente de scoring con contrato estable (ScoreSchema)."""
 
-    def __init__(self, *, model_used: str = "scoring-stub-v2") -> None:
-        self.model_used = str(model_used).strip() or "scoring-stub-v2"
+    def __init__(self, *, model_used: str = "scoring-deterministic-v2") -> None:
+        self.model_used = str(model_used).strip() or "scoring-deterministic-v2"
 
     def generate(
         self,

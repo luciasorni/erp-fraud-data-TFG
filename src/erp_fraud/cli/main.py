@@ -229,6 +229,13 @@ def _parse_select_values(raw_value: Any) -> list[str] | None:
     return values or None
 
 
+def _normalize_llm_mode(raw_value: Any) -> str:
+    mode = str(raw_value if raw_value is not None else "stub").strip().lower()
+    if mode not in {"stub", "real"}:
+        return "stub"
+    return mode
+
+
 def _filter_catalog_test_ids(
     *,
     test_specs: list[dict[str, Any]],
@@ -313,6 +320,7 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_KB_SOURCES_CONFIG)),
         "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_KB_CHUNKING_CONFIG)),
         "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
+        "llm_mode": _normalize_llm_mode(_pick("llm_mode", "stub")),
     }
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
@@ -457,6 +465,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             db_path=settings["db_path"],
             catalog_path=settings["catalog"],
             out_dir=settings["out_dir"],
+            llm_mode=settings["llm_mode"],
         )
         validar_ficheros_esperados_joint_datasets(settings["input_zip"])
         files = listar_ficheros_joint_datasets(settings["input_zip"])
@@ -519,6 +528,16 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             dataset_hash=dataset_hash,
             project_root=".",
         )
+        try:
+            run_metadata_payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
+            if isinstance(run_metadata_payload, dict):
+                run_metadata_payload["llm_mode"] = settings["llm_mode"]
+                run_metadata_path.write_text(
+                    json.dumps(run_metadata_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+        except Exception:
+            pass
 
         test_specs = load_test_specs_from_catalog(settings["catalog"], validate_schema=True)
         schema_summary_payload = json.loads(schema_summary_path.read_text(encoding="utf-8"))
@@ -711,6 +730,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 "kb_sources_config": settings["kb_sources_config"],
                 "kb_chunking_config": settings["kb_chunking_config"],
                 "kb_chroma_config": settings["kb_chroma_config"],
+                "llm_mode": settings["llm_mode"],
             },
         )
         report_json_path = write_report_json(
@@ -961,6 +981,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--kb-chroma-config",
         default=None,
         help=f"Config de Chroma KB (default: {DEFAULT_KB_CHROMA_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--llm-mode",
+        default=None,
+        choices=["stub", "real"],
+        help="Modo de nodos LLM del grafo (stub|real). Default: stub",
     )
     run_parser.set_defaults(handler=_run_pipeline)
     return parser

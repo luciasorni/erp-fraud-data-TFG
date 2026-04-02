@@ -6,36 +6,55 @@ defaults:
 graph_nodes:
   hypothesis_planner:
     mode: stub
+    provider: openai
     model_used: gpt-5.4-mini
     temperature: 0.0
     max_tokens: 800
+    real_model_used: gpt-5.4-mini
+    real_temperature: 0.1
+    real_max_tokens: 1200
   test_planner:
     mode: stub
+    provider: openai
     model_used: gpt-5.4-mini
     temperature: 0.0
     max_tokens: 600
+    real_model_used: gpt-5.4-mini
+    real_temperature: 0.0
+    real_max_tokens: 900
   expert_explainer:
     mode: stub
+    provider: openai
     model_used: gpt-5.4-mini
     temperature: 0.0
     max_tokens: 1000
+    real_model_used: gpt-5.4-mini
+    real_temperature: 0.2
+    real_max_tokens: 1600
   scoring:
     mode: stub
-    model_used: scoring-stub-v2
+    provider: openai
+    model_used: scoring-deterministic-v2
     temperature: 0.0
     max_tokens: 800
+    real_model_used: gpt-5.4-mini
+    real_temperature: 0.0
+    real_max_tokens: 900
 
 scoring:
   profiles:
     default:
-      model_used: scoring-stub-v2
+      provider: stub
+      model_used: scoring-deterministic-v2
       temperature: 0.0
       max_tokens: 800
     conservative:
-      model_used: scoring-stub-conservative-v1
+      provider: stub
+      model_used: scoring-deterministic-conservative-v1
       temperature: 0.0
       max_tokens: 600
     exploratory:
-      model_used: scoring-stub-exploratory-v1
+      provider: stub
+      model_used: scoring-deterministic-exploratory-v1
       temperature: 0.2
       max_tokens: 1200

@@ -40,8 +40,8 @@ Interpretación:
 
 ### Experimento 2: Scoring
 
-- baseline profile: `default` (`scoring-stub-v2`)
-- candidate profile: `conservative` (`scoring-stub-conservative-v1`)
+- baseline profile: `default` (`scoring-deterministic-v2`)
+- candidate profile: `conservative` (`scoring-deterministic-conservative-v1`)
 - `scoring_compare_status`: `OK`
 - `final_label_changed`: `false`
 - `confidence_delta`: `0.0`

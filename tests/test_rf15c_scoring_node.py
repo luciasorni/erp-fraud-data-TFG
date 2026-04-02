@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from typing import Any
+from pathlib import Path
+
+import yaml
 
 from src.erp_fraud.graph import create_initial_graph_state, scoring_node
 from src.erp_fraud.graph.nodes import _validate_scoring_evidence_and_probability_sum
@@ -215,7 +218,7 @@ def test_rf18_scoring_node_uses_models_yaml_profile() -> None:
     ]
     out = scoring_node(state)
     payload = out.scores[0]
-    assert payload["model_used"] == "scoring-stub-conservative-v1"
+    assert payload["model_used"] == "scoring-deterministic-conservative-v1"
     assert out.run_metadata["scoring_model_profile"] == "conservative"
 
 
@@ -319,3 +322,97 @@ def test_rf18_scoring_experiment_ready_when_langsmith_env_configured(monkeypatch
     assert experiment["status"] == "READY"
     assert experiment["platform"] == "langsmith"
     assert len(str(experiment.get("score_compare_hash", ""))) == 64
+
+
+def test_rf18_scoring_node_uses_real_llm_runtime_when_enabled(monkeypatch: Any, tmp_path: Path) -> None:
+    import src.erp_fraud.graph.nodes.scoring as scoring_mod
+
+    models_path = tmp_path / "models.yaml"
+    models_path.write_text(
+        yaml.safe_dump(
+            {
+                "graph_nodes": {
+                    "scoring": {
+                        "provider": "openai",
+                        "model_used": "scoring-deterministic-v2",
+                        "real_model_used": "gpt-5.4-mini",
+                        "real_temperature": 0.0,
+                        "real_max_tokens": 900,
+                    }
+                },
+                "scoring": {
+                    "profiles": {
+                        "default": {
+                            "model_used": "scoring-deterministic-v2",
+                            "temperature": 0.0,
+                            "max_tokens": 800,
+                        }
+                    }
+                },
+            },
+            sort_keys=False,
+            allow_unicode=True,
+        ),
+        encoding="utf-8",
+    )
+
+    def _fake_call_openai_json(**_kwargs: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+        return (
+            {
+                "score_schema_version": "1.0.0",
+                "generated_at_utc": "2026-01-01T00:00:00Z",
+                "fraud_type_probs": [
+                    {
+                        "fraud_type": "duplicate_payment",
+                        "probability": 1.0,
+                        "source_test_ids": ["TST-DUPLICATE-POSTINGS"],
+                    }
+                ],
+                "final_label": "duplicate_payment",
+                "confidence": 1.0,
+                "evidence_summary": "Evidence from tests: TST-DUPLICATE-POSTINGS",
+                "model_used": "gpt-5.4-mini",
+            },
+            {
+                "status": "OK",
+                "provider": "openai",
+                "model_used": "gpt-5.4-mini",
+                "retries_done": 0,
+                "latency_ms": 123,
+                "input_tokens": 20,
+                "output_tokens": 40,
+                "total_tokens": 60,
+                "cost_estimated_usd": 0.001,
+                "fallback_used": False,
+            },
+        )
+
+    monkeypatch.setattr(scoring_mod, "call_openai_json", _fake_call_openai_json)
+
+    state = create_initial_graph_state(run_id="rf18-real-scoring")
+    state.run_metadata["llm_mode"] = "real"
+    state.run_metadata["models_config"] = str(models_path)
+    state.findings = [
+        {
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "test_version": "1.0.0",
+            "fraud_type": "duplicate_payment",
+            "status": "OK",
+            "finding_count": 1,
+            "rows": [
+                {
+                    "entity_key": "kreditor=V1|belegnummer=D1",
+                    "keys": {"kreditor": "V1", "belegnummer": "D1"},
+                    "evidence_columns": ["kreditor", "belegnummer"],
+                    "metrics": {"duplicate_count": 2},
+                }
+            ],
+        }
+    ]
+    out = scoring_node(state)
+    assert out.run_metadata["scoring_llm_call_status"] == "OK"
+    runtime = out.run_metadata.get("llm_runtime_by_node", {}).get("scoring", {})
+    assert runtime.get("status") == "OK"
+    assert runtime.get("fallback_used") is False
+    assert int(runtime.get("total_tokens", 0) or 0) == 60
+    assert out.scores and out.scores[0]["model_used"] == "gpt-5.4-mini"

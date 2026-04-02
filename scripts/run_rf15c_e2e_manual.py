@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """RF15c-14: ejecución manual E2E + evidencia de trazas (LangSmith opcional)."""
 
 from __future__ import annotations
@@ -6,10 +7,15 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.erp_fraud.graph import run_graph_full
 
@@ -102,7 +108,7 @@ def parse_args() -> argparse.Namespace:
         "--llm-mode",
         default="stub",
         choices=["stub", "real"],
-        help="Modo reportado en evidencia (el runtime actual usa stub interno).",
+        help="Modo de ejecución LLM para nodos habilitados.",
     )
     parser.add_argument("--notes", default="", help="Notas libres para contexto del tutor.")
     return parser.parse_args()
@@ -114,6 +120,16 @@ def main() -> int:
     schema_summary_path = Path(str(args.schema_summary_path).strip())
     if not schema_summary_path.exists():
         raise FileNotFoundError(f"No existe schema_summary_path: {schema_summary_path}")
+    try:
+        schema_payload = json.loads(schema_summary_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(
+            f"schema_summary_path inválido (debe ser JSON no vacío): {schema_summary_path}"
+        ) from exc
+    if not isinstance(schema_payload, dict):
+        raise ValueError(
+            f"schema_summary_path inválido (raíz JSON debe ser objeto): {schema_summary_path}"
+        )
 
     out = run_graph_full(
         run_id=run_id,
@@ -124,6 +140,7 @@ def main() -> int:
             "catalog_path": str(args.catalog_path).strip(),
             "persist_base_dir": str(args.persist_base_dir).strip(),
             "weights_config": str(args.weights_config).strip(),
+            "llm_mode": str(args.llm_mode).strip(),
             "kb_index_enabled": bool(args.kb_index_enabled),
             "kb_search_enabled": bool(args.kb_search_enabled),
             "scoring_top_k": 20,
@@ -146,10 +163,20 @@ def main() -> int:
     evidence_path = run_dir / "rf15c_14_manual_evidence.json"
     _write_json(evidence_path, evidence)
     print(f"RF15c-14 evidence: {evidence_path}")
-    if langsmith.trace_link:
-        print(f"LangSmith trace link: {langsmith.trace_link}")
+    trace_link = (
+        str(metadata.get("langsmith_trace_link", "")).strip()
+        or str(metadata.get("langsmith_runs", {}).get("trace_link", "")).strip()
+        or str(langsmith.trace_link).strip()
+    )
+    if trace_link:
+        print(f"LangSmith trace link: {trace_link}")
     else:
         print("LangSmith trace link: N/A")
+        ls_runs = metadata.get("langsmith_runs", {})
+        if isinstance(ls_runs, dict):
+            status = str(ls_runs.get("status", "")).strip() or "UNKNOWN"
+            reason = str(ls_runs.get("reason", "")).strip() or "n/a"
+            print(f"LangSmith publish status: {status} ({reason})")
     return 0
 
 

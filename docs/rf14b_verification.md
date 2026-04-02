@@ -65,3 +65,36 @@ Resultado:
 
 - LangSmith cloud sigue siendo opcional para este cierre; RF14b queda validado con trazabilidad local + artefactos reproducibles.
 - La ejecución del script puede imprimir warnings de PyArrow/CPU en macOS sandboxed (`sysctlbyname`), sin impacto funcional.
+
+## Checklist “Listos Para Cloud”
+
+Se considera preparado para paso a cloud cuando se cumpla:
+
+1. 3 runs reales consecutivos `llm_mode=real` con el mismo dataset y `graph_status=OK`.
+2. Guardrails sin alucinaciones críticas (sin columnas/test_ids inventados).
+3. Coste y latencia medidos por nodo en `run_metadata.llm_runtime_by_node`.
+4. Playbook de errores actualizado y probado (`docs/langsmith_tracing_runbook.md`).
+
+Comprobación automática (cuando tengas 3 run_ids reales):
+
+```bash
+python3 scripts/check_real_cloud_readiness.py \
+  --base-dir run_results \
+  --run-ids <run_id_1> <run_id_2> <run_id_3> \
+  --output run_results/cloud_readiness_check.json
+```
+
+Inspección funcional de un run real (para demo/presentación):
+
+```bash
+python3 scripts/show_run_summary.py --run-id <run_id_real>
+```
+
+Interpretación rápida:
+
+1. `Hypotheses`: qué hipótesis construyó el planner.
+2. `Selected Tests`: qué tests de catálogo aplicó a cada hipótesis.
+3. `Findings`: dónde detectó señales de riesgo.
+4. `Score`: tipología de fraude final (`final_label`) y confianza.
+5. `Explanations`: narrativa de evidencia por entidad.
+6. `LLM Runtime`: si cada nodo fue `OK` real o cayó en fallback.

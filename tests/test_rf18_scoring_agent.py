@@ -41,4 +41,4 @@ def test_rf18_models_config_resolves_profile() -> None:
     cfg = load_models_config("config/models.yaml")
     resolved = resolve_scoring_model(models_config=cfg, profile="conservative")
     assert resolved["profile"] == "conservative"
-    assert resolved["model_used"] == "scoring-stub-conservative-v1"
+    assert resolved["model_used"] == "scoring-deterministic-conservative-v1"

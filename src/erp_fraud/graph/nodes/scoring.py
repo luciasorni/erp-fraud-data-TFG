@@ -5,17 +5,36 @@ from __future__ import annotations
 # ruff: noqa: F401,F403,F405,F821
 
 from . import _legacy as _legacy
+from .common import annotate_node_llm_mode
+from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 
 globals().update(vars(_legacy))
 
 def scoring_node(state: GraphState) -> GraphState:
     """Scoring por entidad/transacción + tipología de fraude (RF14-09)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    llm_mode = annotate_node_llm_mode(metadata=metadata, node_id="scoring")
+    runtime_target = resolve_node_runtime_target(
+        node_id="scoring",
+        metadata=metadata,
+        default_model_used="scoring-deterministic-v2",
+    )
     _record_graph_node_model_config(
         node_id="scoring",
         metadata=metadata,
-        default_model_used="scoring-stub-v2",
+        default_model_used="scoring-deterministic-v2",
+        overrides={
+            "mode_effective": str(runtime_target.get("mode_effective", "stub_runtime")),
+            "llm_mode": llm_mode,
+            "real_mode_requested": llm_mode == "real",
+            "provider": str(runtime_target.get("provider", "")).strip(),
+            "model_used": str(runtime_target.get("model_used", "")).strip() or "scoring-deterministic-v2",
+        },
     )
+    runtime_by_node = metadata.setdefault("llm_runtime_by_node", {})
+    if not isinstance(runtime_by_node, dict):
+        runtime_by_node = {}
+        metadata["llm_runtime_by_node"] = runtime_by_node
     findings = [row for row in state.findings if isinstance(row, dict)]
     weights_config_path = _resolve_project_path(
         str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip() or DEFAULT_WEIGHTS_CONFIG
@@ -179,13 +198,13 @@ def scoring_node(state: GraphState) -> GraphState:
         try:
             models_cfg = load_models_config(models_config_path)
             resolved_model = resolve_scoring_model(models_config=models_cfg, profile=scoring_model_profile)
-            resolved_model_used = str(resolved_model.get("model_used", "")).strip() or "scoring-stub-v2"
+            resolved_model_used = str(resolved_model.get("model_used", "")).strip() or "scoring-deterministic-v2"
             metadata["scoring_model_profile"] = str(resolved_model.get("profile", "")).strip()
             metadata["scoring_model_temperature"] = float(resolved_model.get("temperature", 0.0) or 0.0)
             metadata["scoring_model_max_tokens"] = int(resolved_model.get("max_tokens", 0) or 0)
             metadata["scoring_models_config"] = models_config_path
         except Exception:
-            resolved_model_used = "scoring-stub-v2"
+            resolved_model_used = "scoring-deterministic-v2"
     scoring_agent = ScoringAgent(model_used=resolved_model_used)
     base_score_schema = scoring_agent.parse_output(
         scoring_agent.generate(
@@ -239,10 +258,88 @@ def scoring_node(state: GraphState) -> GraphState:
         payload: dict[str, Any],
         *,
         findings_payload: list[dict[str, Any]],
+        hypotheses_payload: list[dict[str, Any]],
     ) -> dict[str, Any]:
         corrected = dict(payload)
         probs_raw = corrected.get("fraud_type_probs", [])
-        probs = [dict(row) for row in probs_raw if isinstance(row, dict)]
+        probs_in = [dict(row) for row in probs_raw if isinstance(row, dict)]
+
+        allowed_fraud_types: set[str] = set()
+        findings_test_ids_by_fraud_type: dict[str, set[str]] = {}
+        finding_counts_by_fraud_type: dict[str, int] = {}
+
+        for row in findings_payload:
+            if not isinstance(row, dict):
+                continue
+            fraud_type = str(row.get("fraud_type", "")).strip()
+            test_id = str(row.get("test_id", "")).strip()
+            if not fraud_type:
+                continue
+            allowed_fraud_types.add(fraud_type)
+            finding_counts_by_fraud_type[fraud_type] = finding_counts_by_fraud_type.get(fraud_type, 0) + int(
+                row.get("finding_count", 0) or 0
+            )
+            if test_id:
+                findings_test_ids_by_fraud_type.setdefault(fraud_type, set()).add(test_id)
+
+        for row in hypotheses_payload:
+            if not isinstance(row, dict):
+                continue
+            fraud_type = str(row.get("fraud_type", "")).strip()
+            if fraud_type:
+                allowed_fraud_types.add(fraud_type)
+
+        fallback_fraud_type = ""
+        if finding_counts_by_fraud_type:
+            fallback_fraud_type = max(
+                finding_counts_by_fraud_type.items(),
+                key=lambda item: (int(item[1]), str(item[0])),
+            )[0]
+        if not fallback_fraud_type and allowed_fraud_types:
+            fallback_fraud_type = sorted(allowed_fraud_types)[0]
+
+        # 1) Normaliza/remepea etiquetas fuera de taxonomía.
+        remapped: list[dict[str, Any]] = []
+        for row in probs_in:
+            fraud_type = str(row.get("fraud_type", "")).strip()
+            if allowed_fraud_types and fraud_type not in allowed_fraud_types:
+                fraud_type = fallback_fraud_type or fraud_type
+            if not fraud_type:
+                fraud_type = fallback_fraud_type or "unknown"
+            row["fraud_type"] = fraud_type
+            remapped.append(row)
+
+        # 2) Fusiona duplicados tras remapeo y repara source_test_ids.
+        by_fraud_type: dict[str, dict[str, Any]] = {}
+        for row in remapped:
+            fraud_type = str(row.get("fraud_type", "")).strip()
+            if not fraud_type:
+                continue
+            prob = max(0.0, float(row.get("probability", 0.0) or 0.0))
+            source_test_ids_raw = row.get("source_test_ids", [])
+            source_test_ids = (
+                [str(item).strip() for item in source_test_ids_raw if str(item).strip()]
+                if isinstance(source_test_ids_raw, list)
+                else []
+            )
+            allowed_tests = findings_test_ids_by_fraud_type.get(fraud_type, set())
+            source_test_ids = [tid for tid in source_test_ids if tid in allowed_tests] if allowed_tests else source_test_ids
+            if not source_test_ids and allowed_tests:
+                source_test_ids = sorted(allowed_tests)
+
+            if fraud_type not in by_fraud_type:
+                out = dict(row)
+                out["probability"] = prob
+                out["source_test_ids"] = source_test_ids
+                by_fraud_type[fraud_type] = out
+            else:
+                by_fraud_type[fraud_type]["probability"] = float(by_fraud_type[fraud_type].get("probability", 0.0) or 0.0) + prob
+                existing = by_fraud_type[fraud_type].get("source_test_ids", [])
+                merged_ids = set(existing if isinstance(existing, list) else [])
+                merged_ids.update(source_test_ids)
+                by_fraud_type[fraud_type]["source_test_ids"] = sorted(str(item).strip() for item in merged_ids if str(item).strip())
+
+        probs = list(by_fraud_type.values())
         total = sum(max(0.0, float(row.get("probability", 0.0) or 0.0)) for row in probs)
         if probs and total > 0:
             for row in probs:
@@ -279,6 +376,53 @@ def scoring_node(state: GraphState) -> GraphState:
         iteration: int,
     ) -> list[dict[str, Any]]:
         base = dict(scores_payload[0]) if scores_payload and isinstance(scores_payload[0], dict) else {}
+        if bool(runtime_target.get("enabled", False)):
+            llm_output, llm_meta = call_openai_json(
+                model_used=str(runtime_target.get("model_used", "")).strip() or resolved_model_used,
+                temperature=float(runtime_target.get("temperature", 0.0) or 0.0),
+                max_tokens=int(runtime_target.get("max_tokens", 0) or 0),
+                prompt_text=scoring_prompt_text,
+                input_payload=input_payload,
+                repair_feedback=repair_feedback,
+                timeout_s=float(metadata.get("llm_timeout_s", 30.0) or 30.0),
+                max_retries=int(metadata.get("llm_max_retries", 1) or 1),
+                retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
+            )
+            metadata["scoring_llm_call_status"] = str(llm_meta.get("status", "ERROR")).strip()
+            runtime_by_node["scoring"] = {
+                "model_used": str(llm_meta.get("model_used", "")).strip()
+                or str(runtime_target.get("model_used", "")).strip()
+                or resolved_model_used,
+                "llm_mode": llm_mode,
+                "latency_ms": int(llm_meta.get("latency_ms", 0) or 0),
+                "input_tokens": int(llm_meta.get("input_tokens", 0) or 0),
+                "output_tokens": int(llm_meta.get("output_tokens", 0) or 0),
+                "total_tokens": int(llm_meta.get("total_tokens", 0) or 0),
+                "cost_estimated_usd": float(llm_meta.get("cost_estimated_usd", 0.0) or 0.0),
+                "retries_done": int(llm_meta.get("retries_done", 0) or 0),
+                "fallback_used": bool(llm_meta.get("fallback_used", llm_output is None)),
+                "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
+            }
+            if isinstance(llm_output, dict):
+                try:
+                    llm_score = scoring_agent.parse_output(llm_output)
+                    base.update(llm_score)
+                except Exception:
+                    pass
+        else:
+            metadata["scoring_llm_call_status"] = "SKIPPED"
+            runtime_by_node["scoring"] = {
+                "model_used": str(runtime_target.get("model_used", "")).strip() or resolved_model_used,
+                "llm_mode": llm_mode,
+                "latency_ms": 0,
+                "input_tokens": 0,
+                "output_tokens": 0,
+                "total_tokens": 0,
+                "cost_estimated_usd": 0.0,
+                "retries_done": 0,
+                "fallback_used": True,
+                "status": "STUB_SCORING",
+            }
         if iteration == 1 and not repair_feedback and simulate_invalid_once and base:
             # Fuerza un primer intento inválido para probar la ruta de autocorrección.
             bad = dict(base)
@@ -295,29 +439,50 @@ def scoring_node(state: GraphState) -> GraphState:
             findings_payload = input_payload.get("findings", [])
             if not isinstance(findings_payload, list):
                 findings_payload = []
-            repaired = _autocorrect_score_payload(base, findings_payload=[row for row in findings_payload if isinstance(row, dict)])
+            hypotheses_payload = input_payload.get("hypotheses", [])
+            if not isinstance(hypotheses_payload, list):
+                hypotheses_payload = []
+            repaired = _autocorrect_score_payload(
+                base,
+                findings_payload=[row for row in findings_payload if isinstance(row, dict)],
+                hypotheses_payload=[row for row in hypotheses_payload if isinstance(row, dict)],
+            )
             return [repaired]
 
         return [base]
 
-    state.scores = _run_alpha_loop_for_node(
-        state=state,
-        node_id="scoring",
-        prompt_text=scoring_prompt_text,
-        input_payload={
-            "hypotheses": [row for row in state.hypotheses if isinstance(row, dict)],
-            "findings_count": len(findings),
-            "findings": findings,
-            "acfe_snippets": acfe_snippets,
-            "top_k": top_k,
-        },
-        generate_fn=_generate_scores,
-        validators={
-            "scores_schema": _validate_scores_output,
-            "scores_probabilities": _validate_scoring_evidence_and_probability_sum,
-        },
-        max_iter=2,
-    )
+    scoring_input_payload = {
+        "hypotheses": [row for row in state.hypotheses if isinstance(row, dict)],
+        "findings_count": len(findings),
+        "findings": findings,
+        "acfe_snippets": acfe_snippets,
+        "top_k": top_k,
+    }
+    try:
+        state.scores = _run_alpha_loop_for_node(
+            state=state,
+            node_id="scoring",
+            prompt_text=scoring_prompt_text,
+            input_payload=scoring_input_payload,
+            generate_fn=_generate_scores,
+            validators={
+                "scores_schema": _validate_scores_output,
+                "scores_probabilities": _validate_scoring_evidence_and_probability_sum,
+            },
+            max_iter=2,
+        )
+    except Exception as exc:
+        fallback_payload = dict(scores_payload[0]) if scores_payload and isinstance(scores_payload[0], dict) else {}
+        state.scores = [fallback_payload] if fallback_payload else []
+        metadata["scoring_fallback_used"] = True
+        metadata["scoring_fallback_reason"] = f"{type(exc).__name__}: {exc}"
+        if isinstance(runtime_by_node, dict):
+            row = runtime_by_node.get("scoring", {})
+            if not isinstance(row, dict):
+                row = {}
+            row["fallback_used"] = True
+            row["status"] = row.get("status") or "FALLBACK_AFTER_VALIDATION_ERROR"
+            runtime_by_node["scoring"] = row
     metadata["scoring_status"] = "OK"
     metadata["scoring_entities"] = len(ranking_rows)
     metadata["scoring_top_k"] = top_k
@@ -326,10 +491,14 @@ def scoring_node(state: GraphState) -> GraphState:
     _record_graph_node_model_config(
         node_id="scoring",
         metadata=metadata,
-        default_model_used=str(base_score_schema.get("model_used", "")).strip() or "scoring-stub-v2",
+        default_model_used=str(base_score_schema.get("model_used", "")).strip() or "scoring-deterministic-v2",
         overrides={
-            "mode": "stub",
-            "model_used": str(base_score_schema.get("model_used", "")).strip() or "scoring-stub-v2",
+            "mode": "real" if bool(runtime_target.get("enabled", False)) else "stub",
+            "mode_effective": str(runtime_target.get("mode_effective", "stub_runtime")),
+            "provider": str(runtime_target.get("provider", "")).strip(),
+            "model_used": str(state.scores[0].get("model_used", "")).strip()
+            if state.scores and isinstance(state.scores[0], dict)
+            else (str(base_score_schema.get("model_used", "")).strip() or "scoring-deterministic-v2"),
             "temperature": float(metadata.get("scoring_model_temperature", 0.0) or 0.0),
             "max_tokens": int(metadata.get("scoring_model_max_tokens", 0) or 0),
             "profile": str(metadata.get("scoring_model_profile", "")).strip(),

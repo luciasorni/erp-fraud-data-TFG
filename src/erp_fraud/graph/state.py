@@ -82,6 +82,7 @@ def create_initial_graph_state(
         "run_id": resolved_run_id,
         "dataset_hash": str(dataset_hash).strip(),
         "input_zip": str(input_zip).strip(),
+        "llm_mode": "stub",
         "created_at_utc": _utc_now_iso(),
         "updated_at_utc": _utc_now_iso(),
         "node_status": {},

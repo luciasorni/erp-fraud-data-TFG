@@ -217,6 +217,33 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --llm-mode stub
 ```
 
+Ejecutar RF15c con proveedor real OpenAI (nodos planner/explainer):
+
+```bash
+export OPENAI_API_KEY="<tu_api_key>"
+python3 scripts/run_rf15c_e2e_manual.py \
+  --run-id rf15c14-real \
+  --schema-summary-path schema_summary.json \
+  --catalog-path tests/catalog \
+  --persist-base-dir run_results \
+  --llm-mode real
+```
+
+Ver resumen legible del run (hipótesis, tests, hallazgos, score y explicación):
+
+```bash
+python3 scripts/show_run_summary.py --run-id rf15c14-real
+```
+
+Archivos clave para inspección manual:
+
+- Hipótesis: `run_results/<run_id>/graph/hypotheses.json`
+- Tests seleccionados: `run_results/<run_id>/graph/selected_tests.json`
+- Hallazgos por test: `run_results/<run_id>/graph/findings.json`
+- Clasificación final: `run_results/<run_id>/graph/scores.json`
+- Explicación auditora: `run_results/<run_id>/graph/explanations.json`
+- Runtime LLM por nodo: `run_results/<run_id>/graph/graph_state.json` en `run_metadata.llm_runtime_by_node`
+
 Verificación RF15c (suite completa):
 
 ```bash
@@ -260,6 +287,7 @@ python3 scripts/run_rf14b_experiments.py \
 Referencia RF14b:
 
 - `docs/rf14b.md`
+- `scripts/check_real_cloud_readiness.py` (cierre cloud-readiness con 3 runs reales)
 - `docs/langsmith_experiments.md`
 - `docs/langsmith_tracing_runbook.md`
 

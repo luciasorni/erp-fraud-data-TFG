@@ -6,3 +6,5 @@ markdown
 pytest
 pypdf
 chromadb
+openai
+langsmith

@@ -57,3 +57,35 @@ def test_rf15c_explainer_adds_acfe_reference_from_kb_when_enabled(monkeypatch: A
     assert acfe_ref["status"] == "OK"
     assert acfe_ref["hits"][0]["chunk_id"] == "acfe-chunk-1"
     assert "data_analytics_tests.pdf" in acfe_ref["hits"][0]["source_path"]
+
+
+def test_rf15c_explainer_falls_back_when_alpha_loop_fails(monkeypatch: Any) -> None:
+    import src.erp_fraud.graph.nodes.explainer as explainer_mod
+
+    def _raise_alpha_loop(**_kwargs: Any) -> Any:
+        raise RuntimeError("validator failed")
+
+    monkeypatch.setattr(explainer_mod, "_run_alpha_loop_for_node", _raise_alpha_loop)
+
+    state = create_initial_graph_state(run_id="rf15c-08-explainer-fallback")
+    state.findings = [
+        {
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "fraud_type": "duplicate_payment",
+            "status": "OK",
+            "finding_count": 1,
+            "columns": ["kreditor", "betrag"],
+            "rows": [
+                {
+                    "entity_key": "kreditor=V1",
+                    "keys": {"kreditor": "V1"},
+                    "evidence_columns": ["kreditor", "betrag"],
+                }
+            ],
+        }
+    ]
+
+    out = explainer_node(state)
+    assert out.run_metadata["explainer_status"] == "OK"
+    assert out.run_metadata["explainer_fallback_used"] is True
+    assert len(out.explanations) >= 1

@@ -251,3 +251,24 @@ Verificación ejecutada y evidencia guardada en:
 - `run_results/rf14b-13-check/verification_summary.json`
 - `run_results/rf14b-13-check-rf14b08/rf14b_experiments.json`
 - `run_results/pre_langsmith_gate.json`
+
+## Endurecimiento runtime real (actualización)
+
+Se añadió fallback seguro para modo real:
+
+- Llamadas OpenAI con `timeout + retries` controlados.
+- Si falla llamada LLM o validación de guardrails en nodo LLM:
+  - reintenta via Alpha loop,
+  - si sigue fallando, cae a salida determinista (fallback),
+  - **no aborta el run completo**.
+
+Observabilidad por nodo en `run_metadata["llm_runtime_by_node"]`:
+
+- `model_used`, `llm_mode`, `latency_ms`
+- `input_tokens`, `output_tokens`, `total_tokens`
+- `cost_estimated_usd`, `retries_done`, `fallback_used`, `status`
+
+CI en dos carriles:
+
+- `ci.yml`: carril normal/stub (estable y barato).
+- `real-smoke.yml`: carril real separado (manual/nightly, coste controlado).
