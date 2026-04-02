@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import _legacy
+from . import deps as _deps
 from .executor import executor_node as _executor_node_impl
 from .explainer import (
     explainer_node as _explainer_node_impl,
@@ -30,62 +30,42 @@ from .scoring import (
 )
 
 # Dependencias parcheables en tests (compatibilidad retroactiva).
-KBSearchTool = _legacy.KBSearchTool
-TestRunner = _legacy.TestRunner
-build_kb_index = _legacy.build_kb_index
-alpha_loop = _legacy.alpha_loop
-alpha_loop_result_to_dict = _legacy.alpha_loop_result_to_dict
-_tool_test_catalog = _legacy._tool_test_catalog
+KBSearchTool = _deps.KBSearchTool
+TestRunner = _deps.TestRunner
+build_kb_index = _deps.build_kb_index
+alpha_loop = _deps.alpha_loop
+alpha_loop_result_to_dict = _deps.alpha_loop_result_to_dict
+_tool_test_catalog = _deps.tool_test_catalog
 
 
-def _sync_legacy_dependencies() -> None:
-    from . import executor as _executor_module
-    from . import explainer as _explainer_module
-    from . import ingest as _ingest_module
-    from . import persist as _persist_module
-    from . import planning as _planning_module
-    from . import scoring as _scoring_module
+def _sync_runtime_dependencies() -> None:
+    from . import deps as _deps_module
 
-    _legacy.KBSearchTool = KBSearchTool
-    _legacy.TestRunner = TestRunner
-    _legacy.build_kb_index = build_kb_index
-    _legacy.alpha_loop = alpha_loop
-    _legacy.alpha_loop_result_to_dict = alpha_loop_result_to_dict
-    _legacy._tool_test_catalog = _tool_test_catalog
-
-    for module in (
-        _planning_module,
-        _ingest_module,
-        _executor_module,
-        _explainer_module,
-        _scoring_module,
-        _persist_module,
-    ):
-        module.KBSearchTool = KBSearchTool
-        module.TestRunner = TestRunner
-        module.build_kb_index = build_kb_index
-        module.alpha_loop = alpha_loop
-        module.alpha_loop_result_to_dict = alpha_loop_result_to_dict
-        module._tool_test_catalog = _tool_test_catalog
+    _deps_module.KBSearchTool = KBSearchTool
+    _deps_module.TestRunner = TestRunner
+    _deps_module.build_kb_index = build_kb_index
+    _deps_module.alpha_loop = alpha_loop
+    _deps_module.alpha_loop_result_to_dict = alpha_loop_result_to_dict
+    _deps_module.tool_test_catalog = _tool_test_catalog
 
 
 def ingest_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _ingest_node_impl(state)
 
 
 def kb_index_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _kb_index_node_impl(state)
 
 
 def hypothesis_planner_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _hypothesis_planner_node_impl(state)
 
 
 def test_planner_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _test_planner_node_impl(state)
 
 # Evita que pytest intente colectar esta función como test por su prefijo.
@@ -93,45 +73,45 @@ test_planner_node.__test__ = False  # type: ignore[attr-defined]
 
 
 def executor_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _executor_node_impl(state)
 
 
 def explainer_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _explainer_node_impl(state)
 
 
 def expert_explainer_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _expert_explainer_node_impl(state)
 
 
 def scoring_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _scoring_node_impl(state)
 
 
 def persist_node(state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _persist_node_impl(state)
 
 
 def run_node_by_id(*, node_id: str, state):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _run_node_by_id_impl(node_id=node_id, state=state)
 
 
 # Validadores expuestos para tests RF14/RF15/RF15c.
 def _validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _validate_hypotheses_output_impl(output, input_payload)
 
 
 def _validate_explanations_guardrails(
     *, explanations: list[dict], findings: list[dict], catalog_test_ids=None, schema_columns=None
 ):
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _validate_explanations_guardrails_impl(
         explanations=explanations,
         findings=findings,
@@ -143,7 +123,7 @@ def _validate_explanations_guardrails(
 def _validate_scoring_evidence_and_probability_sum(
     output: Any, input_payload: dict[str, Any]
 ) -> dict[str, Any]:
-    _sync_legacy_dependencies()
+    _sync_runtime_dependencies()
     return _validate_scoring_evidence_and_probability_sum_impl(output, input_payload)
 
 

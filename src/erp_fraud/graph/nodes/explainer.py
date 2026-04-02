@@ -2,13 +2,33 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+from typing import Any
 
-from . import _legacy as _legacy
+from ...catalog import load_test_specs_from_catalog
+from ...config import (
+    DEFAULT_BASE_DIR,
+    DEFAULT_CATALOG_PATH,
+    DEFAULT_EXPLAINER_KB_TOP_K,
+    DEFAULT_EXPLAINER_TOP_K,
+    DEFAULT_KB_CHROMA_CONFIG,
+)
+from .common import resolve_project_path
+from .persist_utils import normalize_columns
+from ..state import GraphState
+from .alpha_runtime import load_node_prompt, record_graph_node_model_config, run_alpha_loop_for_node
 from .common import annotate_node_llm_mode
+from .finding_utils import (
+    build_acfe_reference_via_kb,
+    build_explanation_from_finding,
+    build_explanations_for_ranked_entities,
+    build_structured_explainer_feedback,
+    sanitize_explanations_against_findings,
+)
+from .validators import validate_explanations_output
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 
-globals().update(vars(_legacy))
+# Compat tests: permitir monkeypatch del nombre legacy.
+_run_alpha_loop_for_node = run_alpha_loop_for_node
 
 def explainer_node(state: GraphState) -> GraphState:
     """Nodo explicador con guardrails (RF14-08)."""
@@ -19,7 +39,7 @@ def explainer_node(state: GraphState) -> GraphState:
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
     )
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="expert_explainer",
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
@@ -60,11 +80,11 @@ def explainer_node(state: GraphState) -> GraphState:
     explainer_top_k = int(metadata.get("explainer_top_k", DEFAULT_EXPLAINER_TOP_K) or DEFAULT_EXPLAINER_TOP_K)
     if explainer_top_k <= 0:
         explainer_top_k = DEFAULT_EXPLAINER_TOP_K
-    kb_chroma_config_path = _resolve_project_path(
+    kb_chroma_config_path = resolve_project_path(
         str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip() or DEFAULT_KB_CHROMA_CONFIG
     )
-    base_dir = _resolve_project_path(str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR)
-    catalog_path = _resolve_project_path(
+    base_dir = resolve_project_path(str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR)
+    catalog_path = resolve_project_path(
         str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     )
 
@@ -96,13 +116,13 @@ def explainer_node(state: GraphState) -> GraphState:
             if name:
                 schema_columns.add(name)
 
-    ranked_explanations = _build_explanations_for_ranked_entities(
+    ranked_explanations = build_explanations_for_ranked_entities(
         findings=findings,
         ranking=[row for row in state.ranking if isinstance(row, dict)],
         top_k=explainer_top_k,
     )
     seed_explanations = ranked_explanations if ranked_explanations else [
-        _build_explanation_from_finding(row) for row in findings
+        build_explanation_from_finding(row) for row in findings
     ]
 
     explanations = []
@@ -116,7 +136,7 @@ def explainer_node(state: GraphState) -> GraphState:
             f"ACFE anti-fraud data analytics test {test_id} {fraud_type} "
             f"evidence columns {' '.join(item.get('cited_evidence_columns', []))}"
         ).strip()
-        item["acfe_reference"] = _build_acfe_reference_via_kb(
+        item["acfe_reference"] = build_acfe_reference_via_kb(
             kb_enabled=kb_enabled,
             kb_query=acfe_query,
             kb_top_k=kb_top_k,
@@ -192,19 +212,19 @@ def explainer_node(state: GraphState) -> GraphState:
                 "status": "SKIPPED",
             }
         if iteration == 1 and not repair_feedback and simulate_hallucination_once and base:
-            base[0]["referenced_columns"] = list(_normalize_columns(base[0].get("referenced_columns", []))) + [
+            base[0]["referenced_columns"] = list(normalize_columns(base[0].get("referenced_columns", []))) + [
                 "NO_EXISTE_COL"
             ]
             base[0]["cited_keys"] = {"NO_KEY": "X"}
             base[0]["cited_evidence_columns"] = list(
-                _normalize_columns(base[0].get("cited_evidence_columns", []))
+                normalize_columns(base[0].get("cited_evidence_columns", []))
             ) + ["NO_EVIDENCE"]
             return base
         if repair_feedback:
             findings_payload = input_payload.get("findings", [])
             if isinstance(findings_payload, list):
-                metadata["explainer_last_repair_feedback"] = _build_structured_explainer_feedback(repair_feedback)
-                return _sanitize_explanations_against_findings(
+                metadata["explainer_last_repair_feedback"] = build_structured_explainer_feedback(repair_feedback)
+                return sanitize_explanations_against_findings(
                     explanations=base,
                     findings=[row for row in findings_payload if isinstance(row, dict)],
                 )
@@ -222,7 +242,7 @@ def explainer_node(state: GraphState) -> GraphState:
             prompt_text=prompt_text,
             input_payload=explainer_input_payload,
             generate_fn=_generate_explanations,
-            validators={"explanations_guardrails": _validate_explanations_output},
+            validators={"explanations_guardrails": validate_explanations_output},
             max_iter=2,
         )
     except Exception as exc:
@@ -292,8 +312,8 @@ def _validate_explanations_guardrails(
                 f"Guardrail: explicación {test_id} debe citar el mismo test_id en cited_test_id"
             )
 
-        allowed_columns = set(_normalize_columns(findings_by_test[test_id].get("columns", [])))
-        referenced = _normalize_columns(item.get("referenced_columns", []))
+        allowed_columns = set(normalize_columns(findings_by_test[test_id].get("columns", [])))
+        referenced = normalize_columns(item.get("referenced_columns", []))
         unknown = [col for col in referenced if col not in allowed_columns]
         if unknown:
             raise ValueError(
@@ -323,8 +343,8 @@ def _validate_explanations_guardrails(
         allowed_evidence = []
         maybe_evidence = first_row.get("evidence_columns", []) if isinstance(first_row, dict) else []
         if isinstance(maybe_evidence, list):
-            allowed_evidence = _normalize_columns(maybe_evidence)
-        cited_evidence = _normalize_columns(item.get("cited_evidence_columns", []))
+            allowed_evidence = normalize_columns(maybe_evidence)
+        cited_evidence = normalize_columns(item.get("cited_evidence_columns", []))
         if cited_evidence:
             unknown_evidence = [col for col in cited_evidence if col not in set(allowed_evidence)]
             if unknown_evidence:

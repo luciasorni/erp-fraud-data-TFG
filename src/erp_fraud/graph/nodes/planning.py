@@ -2,13 +2,40 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+from typing import Any
 
-from . import _legacy as _legacy
+from ...agents.policy_enforcer import PolicyEnforcer, ToolPolicyDeniedError
+from ...config import (
+    DEFAULT_BASE_DIR,
+    DEFAULT_CATALOG_PATH,
+    DEFAULT_HYPOTHESIS_KB_TOP_K,
+    DEFAULT_HYPOTHESIS_MAX_ITEMS,
+    DEFAULT_KB_CHROMA_CONFIG,
+    DEFAULT_TEST_PLANNER_TOP_N,
+)
+from .common import resolve_project_path
+from ..state import GraphState
+from . import deps
+from .alpha_runtime import load_node_prompt, record_graph_node_model_config, run_alpha_loop_for_node
 from .common import annotate_node_llm_mode
+from .finding_utils import (
+    build_hypotheses_from_tools,
+    build_schema_columns_lookup,
+    score_test_against_hypothesis,
+    test_spec_is_schema_compatible,
+)
+from .tooling import (
+    build_graph_policy_enforcer,
+    tool_data_catalog,
+    tool_runstore_write_stub,
+    tool_schema,
+    tool_test_catalog,
+)
+from .validators import validate_hypotheses_output, validate_selected_tests_output
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 
-globals().update(vars(_legacy))
+# Compat tests: permitir monkeypatch del nombre legacy.
+_run_alpha_loop_for_node = run_alpha_loop_for_node
 
 def hypothesis_planner_node(state: GraphState) -> GraphState:
     """Genera hipótesis con trazabilidad de fuentes (RF15c-03)."""
@@ -19,7 +46,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
     )
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="hypothesis_planner",
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
@@ -33,10 +60,10 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     )
     agent_id = str(metadata.get("graph_agent_id", "expert_recommender")).strip() or "expert_recommender"
     node_id = "hypothesis_planner"
-    catalog_path = _resolve_project_path(
+    catalog_path = resolve_project_path(
         str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     )
-    data_dictionary_path = _resolve_project_path(
+    data_dictionary_path = resolve_project_path(
         str(metadata.get("data_dictionary_path", "data_dictionary.json")).strip() or "data_dictionary.json"
     )
     kb_search_enabled = bool(metadata.get("kb_search_enabled", False))
@@ -52,24 +79,24 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     schema_out: dict[str, Any] = {"payload": {"table_names": [], "count": 0, "columns_by_table": {}}}
     data_catalog_out: dict[str, Any] = {"payload": {"entries": [], "count": 0, "status": "MISSING"}}
     try:
-        enforcer = _build_graph_policy_enforcer(state)
+        enforcer = build_graph_policy_enforcer(state)
         catalog_out = enforcer.enforce_and_call(
             agent_id=agent_id,
             tool_id="TestCatalog",
-            tool_callable=_tool_test_catalog,
+            tool_callable=tool_test_catalog,
             node_id=node_id,
             catalog_path=catalog_path,
         )
         schema_out = enforcer.enforce_and_call(
             agent_id=agent_id,
             tool_id="Schema",
-            tool_callable=lambda: _tool_schema(state),
+            tool_callable=lambda: tool_schema(state),
             node_id=node_id,
         )
         data_catalog_out = enforcer.enforce_and_call(
             agent_id=agent_id,
             tool_id="DataCatalog",
-            tool_callable=_tool_data_catalog,
+            tool_callable=tool_data_catalog,
             node_id=node_id,
             data_dictionary_path=data_dictionary_path,
         )
@@ -112,12 +139,12 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
     kb_query = str(metadata.get("hypothesis_query", "split payments authorization threshold")).strip()
     if kb_search_enabled:
         try:
-            tool = KBSearchTool(
-                kb_chroma_config_path=_resolve_project_path(
+            tool = deps.KBSearchTool(
+                kb_chroma_config_path=resolve_project_path(
                     str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
                     or DEFAULT_KB_CHROMA_CONFIG
                 ),
-                base_dir=_resolve_project_path(
+                base_dir=resolve_project_path(
                     str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
                 ),
             )
@@ -141,7 +168,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
         metadata["hypothesis_prompt_version"] = str(prompt_info.get("version", "")).strip()
         metadata["hypothesis_prompt_hash"] = str(prompt_info.get("hash", "")).strip()
         metadata["hypothesis_prompt_status"] = str(prompt_info.get("status", "")).strip()
-        default_hypotheses = _build_hypotheses_from_tools(
+        default_hypotheses = build_hypotheses_from_tools(
             catalog_out=catalog_out,
             schema_out=schema_out,
             data_catalog_out=data_catalog_out,
@@ -228,7 +255,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
                 prompt_text=prompt_text,
                 input_payload=hypothesis_input_payload,
                 generate_fn=_generate_hypotheses,
-                validators={"hypothesis_schema": _validate_hypotheses_output},
+                validators={"hypothesis_schema": validate_hypotheses_output},
                 max_iter=2,
             )
         except Exception as exc:
@@ -243,7 +270,7 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             runstore_out = enforcer.enforce_and_call(
                 agent_id=agent_id,
                 tool_id="RunStore",
-                tool_callable=_tool_runstore_write_stub,
+                tool_callable=tool_runstore_write_stub,
                 node_id=node_id,
                 run_id=str(state.run_id),
                 hypotheses=state.hypotheses,
@@ -265,7 +292,7 @@ def test_planner_node(state: GraphState) -> GraphState:
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
     )
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="test_planner",
         metadata=metadata,
         default_model_used="gpt-5.4-mini",
@@ -280,7 +307,7 @@ def test_planner_node(state: GraphState) -> GraphState:
     agent_id = str(metadata.get("graph_test_planner_agent_id", "expert_recommender")).strip()
     agent_id = agent_id or "expert_recommender"
     node_id = "test_planner"
-    catalog_path = _resolve_project_path(
+    catalog_path = resolve_project_path(
         str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     )
     top_n = int(metadata.get("test_planner_top_n", DEFAULT_TEST_PLANNER_TOP_N) or DEFAULT_TEST_PLANNER_TOP_N)
@@ -289,11 +316,11 @@ def test_planner_node(state: GraphState) -> GraphState:
 
     catalog_out: dict[str, Any] = {"tests": [], "count": 0}
     try:
-        enforcer = _build_graph_policy_enforcer(state)
+        enforcer = build_graph_policy_enforcer(state)
         catalog_out = enforcer.enforce_and_call(
             agent_id=agent_id,
             tool_id="TestCatalog",
-            tool_callable=_tool_test_catalog,
+            tool_callable=tool_test_catalog,
             node_id=node_id,
             catalog_path=catalog_path,
         )
@@ -301,7 +328,7 @@ def test_planner_node(state: GraphState) -> GraphState:
     except Exception as exc:
         metadata["test_planner_tooling_status"] = f"ERROR: {type(exc).__name__}: {exc}"
         try:
-            catalog_out = _tool_test_catalog(catalog_path=catalog_path)
+            catalog_out = tool_test_catalog(catalog_path=catalog_path)
             metadata["test_planner_tooling_fallback"] = "DIRECT_CATALOG"
         except Exception as inner_exc:
             metadata["test_planner_tooling_fallback"] = f"ERROR: {type(inner_exc).__name__}: {inner_exc}"
@@ -309,7 +336,7 @@ def test_planner_node(state: GraphState) -> GraphState:
     catalog_tests = catalog_out.get("tests", []) if isinstance(catalog_out, dict) else []
     if not isinstance(catalog_tests, list):
         catalog_tests = []
-    schema_lookup = _build_schema_columns_lookup(state.schema if isinstance(state.schema, dict) else {})
+    schema_lookup = build_schema_columns_lookup(state.schema if isinstance(state.schema, dict) else {})
     compatible_catalog_tests: list[dict[str, Any]] = []
     filtered_out: list[str] = []
     if not schema_lookup:
@@ -318,7 +345,7 @@ def test_planner_node(state: GraphState) -> GraphState:
         for test_spec in catalog_tests:
             if not isinstance(test_spec, dict):
                 continue
-            compatible, reason = _test_spec_is_schema_compatible(
+            compatible, reason = test_spec_is_schema_compatible(
                 test_spec=test_spec,
                 schema_columns_lookup=schema_lookup,
             )
@@ -359,7 +386,7 @@ def test_planner_node(state: GraphState) -> GraphState:
                 continue
             if requested_allowlist and test_id not in requested_allowlist:
                 continue
-            score, reasons = _score_test_against_hypothesis(
+            score, reasons = score_test_against_hypothesis(
                 hypothesis_text=hypothesis_text,
                 test_spec=test_spec,
             )
@@ -488,7 +515,7 @@ def test_planner_node(state: GraphState) -> GraphState:
             prompt_text=prompt_text,
             input_payload=planner_input_payload,
             generate_fn=_generate_selected_tests,
-            validators={"selected_tests_schema": _validate_selected_tests_output},
+            validators={"selected_tests_schema": validate_selected_tests_output},
             max_iter=2,
         )
     except Exception as exc:
@@ -525,88 +552,7 @@ def test_planner_node(state: GraphState) -> GraphState:
 # Evita que pytest lo recoja como test por nombre.
 test_planner_node.__test__ = False
 
+
 def _validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
-    if not isinstance(output, list) or not output:
-        return {"passed": False, "errors": ["hypotheses debe ser lista no vacía"]}
-    allowed_fraud_types = {
-        str(value).strip()
-        for value in input_payload.get("allowed_fraud_types", [])
-        if str(value).strip()
-    }
-    allowed_process_steps = {
-        str(value).strip()
-        for value in input_payload.get("allowed_process_steps", [])
-        if str(value).strip()
-    }
-    schema_columns_by_table_raw = input_payload.get("schema_columns_by_table", {})
-    schema_columns_by_table: dict[str, set[str]] = {}
-    if isinstance(schema_columns_by_table_raw, dict):
-        for table, columns in schema_columns_by_table_raw.items():
-            table_name = str(table).strip()
-            if not table_name:
-                continue
-            if isinstance(columns, list):
-                schema_columns_by_table[table_name] = {
-                    str(col).strip() for col in columns if str(col).strip()
-                }
-
-    errors: list[str] = []
-    for idx, item in enumerate(output):
-        if not isinstance(item, dict):
-            errors.append(f"hypotheses[{idx}] debe ser objeto")
-            continue
-        hypothesis_id = str(item.get("hypothesis_id", "")).strip()
-        title = str(item.get("title", "")).strip()
-        if not hypothesis_id:
-            errors.append(f"hypotheses[{idx}].hypothesis_id vacío")
-        if not title:
-            errors.append(f"hypotheses[{idx}].title vacío")
-        fraud_type = str(item.get("fraud_type", "")).strip()
-        process_step = str(item.get("process_step", "")).strip()
-        if not fraud_type:
-            errors.append(f"hypotheses[{idx}].fraud_type vacío")
-        elif allowed_fraud_types and fraud_type not in allowed_fraud_types:
-            errors.append(f"hypotheses[{idx}].fraud_type fuera de catálogo: {fraud_type}")
-        if not process_step:
-            errors.append(f"hypotheses[{idx}].process_step vacío")
-        elif allowed_process_steps and process_step not in allowed_process_steps:
-            errors.append(f"hypotheses[{idx}].process_step fuera de catálogo: {process_step}")
-
-        evidence_requirements = item.get("evidence_requirements", [])
-        if not isinstance(evidence_requirements, list):
-            errors.append(f"hypotheses[{idx}].evidence_requirements debe ser lista")
-            evidence_requirements = []
-        for req_idx, req in enumerate(evidence_requirements):
-            if not isinstance(req, dict):
-                errors.append(f"hypotheses[{idx}].evidence_requirements[{req_idx}] debe ser objeto")
-                continue
-            table = str(req.get("table", "")).strip()
-            column = str(req.get("column", "")).strip()
-            if not table or not column:
-                errors.append(
-                    f"hypotheses[{idx}].evidence_requirements[{req_idx}] requiere table/column no vacíos"
-                )
-                continue
-            if schema_columns_by_table:
-                table_cols = schema_columns_by_table.get(table)
-                if table_cols is None:
-                    errors.append(f"hypotheses[{idx}] evidencia usa tabla no existente: {table}")
-                    continue
-                if column not in table_cols:
-                    errors.append(
-                        f"hypotheses[{idx}] evidencia usa columna no existente: {table}.{column}"
-                    )
-        sources = item.get("sources", [])
-        if not isinstance(sources, list) or not sources:
-            errors.append(f"hypotheses[{idx}].sources debe ser lista no vacía")
-            continue
-        source_types = {
-            str(source.get("type", "")).strip()
-            for source in sources
-            if isinstance(source, dict)
-        }
-        if "test_catalog" not in source_types:
-            errors.append(f"hypotheses[{idx}].sources sin test_catalog")
-        if "schema_summary" not in source_types:
-            errors.append(f"hypotheses[{idx}].sources sin schema_summary")
-    return {"passed": len(errors) == 0, "errors": errors}
+    """Compat alias: mantener API histórica durante la migración de nodos."""
+    return validate_hypotheses_output(output, input_payload)

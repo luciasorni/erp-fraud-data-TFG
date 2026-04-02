@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+from pathlib import Path
 
-from . import _legacy as _legacy
-
-globals().update(vars(_legacy))
+from .io_utils import (
+    collect_alphacodium_artifacts,
+    run_dir_from_id,
+    write_explanations_markdown,
+    write_json,
+)
+from ..state import GraphState
 
 def persist_node(state: GraphState) -> GraphState:
     """Nodo de persistencia de artefactos de grafo (RF14-10)."""
@@ -19,7 +23,7 @@ def persist_node(state: GraphState) -> GraphState:
     if persist_base_dir:
         run_dir = Path(persist_base_dir) / run_id
     else:
-        run_dir = ruta_run(run_id)
+        run_dir = run_dir_from_id(run_id)
 
     graph_dir = run_dir / "graph"
     graph_dir.mkdir(parents=True, exist_ok=True)
@@ -44,25 +48,25 @@ def persist_node(state: GraphState) -> GraphState:
     if isinstance(score_experiment_payload, dict) and score_experiment_payload:
         paths["score_experiment_json"] = graph_dir / "score_experiment.json"
 
-    _write_json(paths["hypotheses_json"], state.hypotheses)
-    _write_json(paths["selected_tests_json"], state.selected_tests)
-    _write_json(paths["findings_json"], state.findings)
-    _write_json(paths["explanation_json"], state.explanations)
-    _write_json(paths["explanations_json"], state.explanations)
-    _write_explanations_markdown(
+    write_json(paths["hypotheses_json"], state.hypotheses)
+    write_json(paths["selected_tests_json"], state.selected_tests)
+    write_json(paths["findings_json"], state.findings)
+    write_json(paths["explanation_json"], state.explanations)
+    write_json(paths["explanations_json"], state.explanations)
+    write_explanations_markdown(
         paths["explanation_md"],
         [row for row in state.explanations if isinstance(row, dict)],
     )
-    _write_explanations_markdown(
+    write_explanations_markdown(
         paths["explanations_md"],
         [row for row in state.explanations if isinstance(row, dict)],
     )
-    _write_json(paths["score_json"], state.scores)
-    _write_json(paths["scores_json"], state.scores)
+    write_json(paths["score_json"], state.scores)
+    write_json(paths["scores_json"], state.scores)
     if "score_compare_json" in paths and isinstance(score_compare_payload, dict):
-        _write_json(paths["score_compare_json"], score_compare_payload)
+        write_json(paths["score_compare_json"], score_compare_payload)
     if "score_experiment_json" in paths and isinstance(score_experiment_payload, dict):
-        _write_json(paths["score_experiment_json"], score_experiment_payload)
+        write_json(paths["score_experiment_json"], score_experiment_payload)
 
     state_payload = {
         "run_id": state.run_id,
@@ -75,16 +79,16 @@ def persist_node(state: GraphState) -> GraphState:
         "scores_count": len(state.scores),
         "run_metadata": metadata,
     }
-    _write_json(paths["graph_state_json"], state_payload)
+    write_json(paths["graph_state_json"], state_payload)
 
     manifest = {
         "version": "1.0.0",
         "run_id": run_id,
         "graph_dir": str(graph_dir),
         "artifacts": {key: str(value) for key, value in sorted(paths.items(), key=lambda item: item[0])},
-        "alphacodium": _collect_alphacodium_artifacts(run_dir),
+        "alphacodium": collect_alphacodium_artifacts(run_dir),
     }
-    _write_json(paths["manifest_json"], manifest)
+    write_json(paths["manifest_json"], manifest)
 
     metadata["persist_status"] = "OK"
     metadata["persist_graph_dir"] = str(graph_dir)

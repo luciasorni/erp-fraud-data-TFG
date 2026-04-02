@@ -1,6 +1,6 @@
 """Utilidades comunes para nodos de grafo.
 
-Extraídas de `_legacy.py` para reducir acoplamiento y tamaño del módulo.
+Módulo base compartido por nodos (sin dependencia legacy).
 """
 
 from __future__ import annotations

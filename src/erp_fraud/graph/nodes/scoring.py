@@ -2,13 +2,31 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+from typing import Any
 
-from . import _legacy as _legacy
+from ...catalog import (
+    ScoringAgent,
+    aggregate_findings_by_entity,
+    load_models_config,
+    resolve_scoring_model,
+)
+from ...catalog.scoring import load_weights_config, resolve_ranking_top_k
+from ...config import DEFAULT_WEIGHTS_CONFIG
+from .common import langsmith_snapshot, resolve_project_path
+from ..state import GraphState
+from .alpha_runtime import (
+    load_node_prompt,
+    record_graph_node_model_config,
+    run_alpha_loop_for_node,
+    sha256_text,
+    stable_json,
+)
 from .common import annotate_node_llm_mode
+from .validators import validate_scores_output
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 
-globals().update(vars(_legacy))
+# Compat tests: permitir monkeypatch del nombre legacy.
+_run_alpha_loop_for_node = run_alpha_loop_for_node
 
 def scoring_node(state: GraphState) -> GraphState:
     """Scoring por entidad/transacción + tipología de fraude (RF14-09)."""
@@ -19,7 +37,7 @@ def scoring_node(state: GraphState) -> GraphState:
         metadata=metadata,
         default_model_used="scoring-deterministic-v2",
     )
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="scoring",
         metadata=metadata,
         default_model_used="scoring-deterministic-v2",
@@ -36,10 +54,10 @@ def scoring_node(state: GraphState) -> GraphState:
         runtime_by_node = {}
         metadata["llm_runtime_by_node"] = runtime_by_node
     findings = [row for row in state.findings if isinstance(row, dict)]
-    weights_config_path = _resolve_project_path(
+    weights_config_path = resolve_project_path(
         str(metadata.get("weights_config", DEFAULT_WEIGHTS_CONFIG)).strip() or DEFAULT_WEIGHTS_CONFIG
     )
-    models_config_path = _resolve_project_path(
+    models_config_path = resolve_project_path(
         str(metadata.get("models_config", "config/models.yaml")).strip() or "config/models.yaml"
     )
     scoring_model_profile = str(metadata.get("scoring_model_profile", "")).strip()
@@ -95,7 +113,7 @@ def scoring_node(state: GraphState) -> GraphState:
         metadata["scoring_status"] = "NO_FINDINGS"
         metadata["scoring_entities"] = 0
         metadata["scoring_model_used"] = str(empty_score.get("model_used", "")).strip()
-        _record_graph_node_model_config(
+        record_graph_node_model_config(
             node_id="scoring",
             metadata=metadata,
             default_model_used=str(empty_score.get("model_used", "")).strip() or "scoring-node-no-findings",
@@ -107,10 +125,10 @@ def scoring_node(state: GraphState) -> GraphState:
                 "profile": str(scoring_model_profile).strip(),
             },
         )
-        metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
+        metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or sha256_text(
             scoring_prompt_text
         )
-        metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0]))
+        metadata["scoring_score_hash"] = sha256_text(stable_json(state.scores[0]))
         return state
 
     weights_cfg = load_weights_config(weights_config_path)
@@ -466,7 +484,7 @@ def scoring_node(state: GraphState) -> GraphState:
             input_payload=scoring_input_payload,
             generate_fn=_generate_scores,
             validators={
-                "scores_schema": _validate_scores_output,
+                "scores_schema": validate_scores_output,
                 "scores_probabilities": _validate_scoring_evidence_and_probability_sum,
             },
             max_iter=2,
@@ -488,7 +506,7 @@ def scoring_node(state: GraphState) -> GraphState:
     metadata["scoring_top_k"] = top_k
     metadata["scoring_fraud_types"] = len(fraud_type_probs)
     metadata["scoring_model_used"] = str(base_score_schema.get("model_used", "")).strip()
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="scoring",
         metadata=metadata,
         default_model_used=str(base_score_schema.get("model_used", "")).strip() or "scoring-deterministic-v2",
@@ -504,10 +522,10 @@ def scoring_node(state: GraphState) -> GraphState:
             "profile": str(metadata.get("scoring_model_profile", "")).strip(),
         },
     )
-    metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or _sha256_text(
+    metadata["scoring_prompt_hash"] = str(scoring_prompt_info.get("hash", "")).strip() or sha256_text(
         scoring_prompt_text
     )
-    metadata["scoring_score_hash"] = _sha256_text(_stable_json(state.scores[0] if state.scores else {}))
+    metadata["scoring_score_hash"] = sha256_text(stable_json(state.scores[0] if state.scores else {}))
 
     if len(scoring_compare_profiles) >= 2:
         try:
@@ -579,7 +597,7 @@ def scoring_node(state: GraphState) -> GraphState:
             metadata["scoring_compare_status"] = f"ERROR: {type(exc).__name__}: {exc}"
 
     # RF18-09: integración LangSmith opcional/no bloqueante (sin depender de RF14b).
-    ls = _langsmith_snapshot()
+    ls = langsmith_snapshot()
     langsmith_experiments_enabled = bool(metadata.get("enable_langsmith_experiments", False))
     score_compare_payload = metadata.get("score_compare")
     if not isinstance(score_compare_payload, dict) or not score_compare_payload:
@@ -596,7 +614,7 @@ def scoring_node(state: GraphState) -> GraphState:
             "reason": "langsmith_experiments_disabled",
             "platform": "langsmith",
             "run_id": str(state.run_id),
-            "score_compare_hash": _sha256_text(_stable_json(score_compare_payload)),
+            "score_compare_hash": sha256_text(stable_json(score_compare_payload)),
             "langsmith": ls,
         }
     elif not (bool(ls.get("tracing_enabled")) and bool(ls.get("api_key_present")) and str(ls.get("project", "")).strip()):
@@ -605,7 +623,7 @@ def scoring_node(state: GraphState) -> GraphState:
             "reason": "langsmith_not_configured",
             "platform": "langsmith",
             "run_id": str(state.run_id),
-            "score_compare_hash": _sha256_text(_stable_json(score_compare_payload)),
+            "score_compare_hash": sha256_text(stable_json(score_compare_payload)),
             "langsmith": ls,
         }
     else:
@@ -614,7 +632,7 @@ def scoring_node(state: GraphState) -> GraphState:
             "reason": "",
             "platform": "langsmith",
             "run_id": str(state.run_id),
-            "score_compare_hash": _sha256_text(_stable_json(score_compare_payload)),
+            "score_compare_hash": sha256_text(stable_json(score_compare_payload)),
             "trace_link": str(ls.get("trace_link", "")).strip(),
             "langsmith": ls,
         }

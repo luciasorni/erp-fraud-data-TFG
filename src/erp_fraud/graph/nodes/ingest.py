@@ -2,21 +2,34 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+import json
+from pathlib import Path
 
-from . import _legacy as _legacy
-
-globals().update(vars(_legacy))
+from ...config import (
+    DEFAULT_BASE_DIR,
+    DEFAULT_DB_PATH,
+    DEFAULT_KB_CHROMA_CONFIG,
+    DEFAULT_KB_CHUNKING_CONFIG,
+    DEFAULT_KB_ENABLED,
+    DEFAULT_KB_MANIFEST_PATH,
+    DEFAULT_KB_SOURCES_CONFIG,
+    DEFAULT_KB_STATE_PATH,
+    DEFAULT_SCHEMA_NAME,
+)
+from ...storage.schema_summary import build_schema_summary
+from .common import resolve_project_path
+from ..state import GraphState
+from . import deps
 
 def ingest_node(state: GraphState) -> GraphState:
     """Nodo de ingesta no-LLM: carga `schema_summary` en el estado (RF14-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
     schema_summary_path = str(metadata.get("schema_summary_path", "")).strip()
-    db_path = _resolve_project_path(str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH)
+    db_path = resolve_project_path(str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH)
     schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
 
     if schema_summary_path:
-        path = Path(_resolve_project_path(schema_summary_path))
+        path = Path(resolve_project_path(schema_summary_path))
         if not path.exists():
             raise FileNotFoundError(f"schema_summary_path no existe: {path}")
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -65,7 +78,7 @@ def kb_index_node(state: GraphState) -> GraphState:
     kb_index_state_path = str(metadata.get("kb_index_state_path", DEFAULT_KB_STATE_PATH)).strip()
 
     try:
-        manifest = build_kb_index(
+        manifest = deps.build_kb_index(
             kb_sources_config_path=kb_sources_config,
             kb_chunking_config_path=kb_chunking_config,
             kb_chroma_config_path=kb_chroma_config,

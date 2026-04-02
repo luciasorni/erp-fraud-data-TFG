@@ -2,27 +2,37 @@
 
 from __future__ import annotations
 
-# ruff: noqa: F401,F403,F405,F821
+from pathlib import Path
 
-from . import _legacy as _legacy
-
-globals().update(vars(_legacy))
+from ...catalog import RESULT_SCHEMA_VERSION
+from ...config import (
+    DEFAULT_CATALOG_PATH,
+    DEFAULT_DB_PATH,
+    DEFAULT_EXECUTOR_TIMEOUT_MS,
+    DEFAULT_SCHEMA_NAME,
+    DEFAULT_TABLE_NAME,
+)
+from .common import resolve_project_path
+from ..state import GraphState
+from . import deps
+from .alpha_runtime import record_graph_node_model_config
+from .finding_utils import normalize_result_schema_payload, to_test_run_record
 
 def executor_node(state: GraphState) -> GraphState:
     """Nodo no-LLM: ejecuta tests seleccionados y guarda findings (RF14-07)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
-    _record_graph_node_model_config(
+    record_graph_node_model_config(
         node_id="executor",
         metadata=metadata,
         default_model_used="deterministic-sql-runner",
         overrides={"mode": "deterministic"},
     )
-    db_path = _resolve_project_path(
+    db_path = resolve_project_path(
         str(metadata.get("db_path", DEFAULT_DB_PATH)).strip() or DEFAULT_DB_PATH
     )
     schema_name = str(metadata.get("schema_name", DEFAULT_SCHEMA_NAME)).strip() or DEFAULT_SCHEMA_NAME
     table_name = str(metadata.get("table_name", DEFAULT_TABLE_NAME)).strip() or DEFAULT_TABLE_NAME
-    catalog_path = _resolve_project_path(
+    catalog_path = resolve_project_path(
         str(metadata.get("catalog_path", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
     )
     timeout_ms = metadata.get("executor_timeout_ms")
@@ -41,7 +51,7 @@ def executor_node(state: GraphState) -> GraphState:
         seen.add(test_id)
         selected_ids.append(test_id)
 
-    runner = TestRunner(
+    runner = deps.TestRunner(
         db_path=db_path,
         schema_name=schema_name,
         table_name=table_name,
@@ -56,7 +66,7 @@ def executor_node(state: GraphState) -> GraphState:
         return state
 
     run_id = str(state.run_id).strip() or "unknown_run"
-    log_path = _resolve_project_path(
+    log_path = resolve_project_path(
         metadata.get(
             "executor_test_runner_log_path",
             f"run_results/{run_id}/graph_executor_test_runner_logs.jsonl",
@@ -103,9 +113,9 @@ def executor_node(state: GraphState) -> GraphState:
             }
         ]
 
-    normalized_results = [_normalize_result_schema_payload(row) for row in results if isinstance(row, dict)]
+    normalized_results = [normalize_result_schema_payload(row) for row in results if isinstance(row, dict)]
     state.findings = [dict(row) for row in normalized_results]
-    state.test_runs = [_to_test_run_record(row) for row in normalized_results]
+    state.test_runs = [to_test_run_record(row) for row in normalized_results]
     metadata["executor_status"] = "OK"
     metadata["executor_tests_count"] = len(state.findings)
     metadata["executor_findings_total"] = sum(
