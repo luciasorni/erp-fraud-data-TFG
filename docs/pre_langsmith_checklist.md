@@ -50,7 +50,7 @@ Se puede trazar en LangSmith sin ambigüedad de contratos, con salidas reproduci
 - Config centralizada:
   - `src/erp_fraud/config/run_defaults.py`
   - `src/erp_fraud/cli/main.py`
-  - `src/erp_fraud/graph/nodes/_legacy.py`
+  - `src/erp_fraud/graph/nodes/deps.py`
 - Observabilidad + taxonomy:
   - `src/erp_fraud/graph/observability.py`
   - `src/erp_fraud/graph/graph.py`

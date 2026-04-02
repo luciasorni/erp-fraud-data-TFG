@@ -13,7 +13,7 @@ Definir una forma estándar de trabajar con AlphaCodium con aprobación humana:
 Unión real en código:
 
 - Grafo: `src/erp_fraud/graph/graph.py`
-- Nodos: `src/erp_fraud/graph/nodes.py`
+- Nodos: `src/erp_fraud/graph/nodes/` (paquete modular)
 - Loop reusable: `src/erp_fraud/agents/alpha_loop.py`
 
 Punto de integración:
@@ -288,7 +288,9 @@ Integrado en:
 
 Código:
 
-- `src/erp_fraud/graph/nodes.py` (`_run_alpha_loop_for_node(...)`)
+- `src/erp_fraud/graph/nodes/planning.py` (`_run_alpha_loop_for_node(...)`)
+- `src/erp_fraud/graph/nodes/explainer.py` (`_run_alpha_loop_for_node(...)`)
+- `src/erp_fraud/graph/nodes/scoring.py` (`_run_alpha_loop_for_node(...)`)
 
 Test relacionado:
 
@@ -377,4 +379,4 @@ AG03-07 (estándar Plan->Draft->Validate->Repair):
 
 - Definido en sección `AlphaCodium Loop estándar (AG03-07)`.
 - Implementado en `src/erp_fraud/agents/alpha_loop.py`.
-- Integrado en nodos LLM del grafo vía `src/erp_fraud/graph/nodes.py`.
+- Integrado en nodos LLM del grafo vía `src/erp_fraud/graph/nodes/planning.py`, `src/erp_fraud/graph/nodes/explainer.py` y `src/erp_fraud/graph/nodes/scoring.py`.

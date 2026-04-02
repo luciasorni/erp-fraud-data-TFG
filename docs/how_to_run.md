@@ -75,6 +75,54 @@ python3 scripts/validate_required_env.py --profile pre_langsmith
 python3 scripts/validate_required_env.py --profile langsmith
 ```
 
+## Run real mínimo (check rápido pre-cloud)
+
+1) Cargar variables del `.env`:
+
+```bash
+set -a; source .env; set +a
+```
+
+2) Ejecutar run real:
+
+```bash
+python3 scripts/run_rf15c_e2e_manual.py \
+  --run-id real-check-$(date +%Y%m%d-%H%M%S) \
+  --schema-summary-path run_results/rf10-08-acceptance-run/schema_summary.json \
+  --catalog-path tests/catalog \
+  --persist-base-dir run_results \
+  --llm-mode real
+```
+
+3) Ver resumen funcional:
+
+```bash
+python3 scripts/show_run_summary.py --run-id <run_id>
+```
+
+4) Validar metadata crítica:
+
+```bash
+python3 - <<'PY'
+import json
+run_id = "<run_id>"
+p = f"run_results/{run_id}/graph/graph_state.json"
+m = json.load(open(p))["run_metadata"]
+print("graph_status:", m.get("graph_status"))
+print("llm_mode:", m.get("llm_mode"))
+print("llm_runtime_by_node:", m.get("llm_runtime_by_node"))
+print("langsmith_runs:", m.get("langsmith_runs"))
+print("langsmith_trace_link:", m.get("langsmith_trace_link"))
+PY
+```
+
+Resultado esperado mínimo:
+
+- `graph_status=OK`
+- `llm_mode=real`
+- nodos LLM con `status=OK` en `llm_runtime_by_node`
+- `langsmith_runs.status=OK` y `langsmith_trace_link` no vacío (si LangSmith está activo).
+
 ## Entorno limpio (RF10-06)
 
 Prueba recomendada en máquina con red:

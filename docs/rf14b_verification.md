@@ -61,6 +61,25 @@ Resultado:
 
 - `run_results/rf14b-13-check/verification_summary.json`
 
+## Baseline real congelado (golden run)
+
+Run de referencia para comparar regresiones antes de cloud:
+
+- `run_id`: `real-check-20260402-154238`
+- estado: `graph_status=OK`, `llm_mode=real`
+- runtime por nodo: `run_metadata["llm_runtime_by_node"]`
+- traza LangSmith:
+  - `https://eu.smith.langchain.com/o/erp-fraud-tfg/projects/p/erp-fraud-tfg/r/349d0507-7b06-4219-8ea5-6fdb2a56d644`
+
+Uso recomendado:
+
+1. Ejecutar un nuevo run real.
+2. Comparar contra este baseline:
+   - `graph_status`
+   - `fallback_used` por nodo
+   - `model_used`
+   - orden general de hipótesis/tests/hallazgos.
+
 ## Notas
 
 - LangSmith cloud sigue siendo opcional para este cierre; RF14b queda validado con trazabilidad local + artefactos reproducibles.

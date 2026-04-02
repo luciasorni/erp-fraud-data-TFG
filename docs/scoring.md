@@ -40,7 +40,7 @@ Responsabilidades:
 
 ### 2) Nodo de scoring del grafo
 
-- `src/erp_fraud/graph/nodes.py` (`scoring_node`)
+- `src/erp_fraud/graph/nodes/scoring.py` (`scoring_node`)
 
 Responsabilidades:
 
@@ -59,7 +59,7 @@ Responsabilidades:
 
 Validadores en:
 
-- `src/erp_fraud/graph/nodes.py`
+- `src/erp_fraud/graph/nodes/scoring.py`
 
 Reglas activas:
 

@@ -268,6 +268,16 @@ Observabilidad por nodo en `run_metadata["llm_runtime_by_node"]`:
 - `input_tokens`, `output_tokens`, `total_tokens`
 - `cost_estimated_usd`, `retries_done`, `fallback_used`, `status`
 
+Umbral operativo simple (monitorización, no bloqueo):
+
+- Objetivo: `fallback_used=False` en todos los nodos LLM.
+- Alerta: si más de 1 nodo LLM cae en fallback en un run real.
+- Criterio pre-cloud recomendado: en 3 runs reales consecutivos, fallback total <= 1 nodo acumulado.
+
+Nota:
+- Este umbral se usa para seguimiento operativo.
+- No bloquea CI normal (stub) ni runs locales; sirve para detectar degradación temprana.
+
 CI en dos carriles:
 
 - `ci.yml`: carril normal/stub (estable y barato).

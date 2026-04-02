@@ -20,6 +20,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/langsmith_experiments.md`
 - `docs/langsmith_tracing_runbook.md`
 - `docs/rf14b_verification.md`
+- `docs/cloud_aws.md`
 - `docs/rf15.md`
 - `docs/rf15_verification.md`
 - `docs/rf15b.md`
@@ -37,11 +38,13 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/how_to_run.md`
 - `docs/tools_and_policies.md`
 
-## Alcance actual (Fase 1 - RF01 en progreso)
+## Alcance actual (estado del proyecto)
 
 - Ingesta orientada a `joint_datasets/` (P2P, dataset plano)
 - No se usa `raw_data/` en esta fase
 - Carga a DuckDB local (`erp.duckdb`)
+- Grafo multiagente operativo (RF14/RF15/RF15c/RF18) con nodos modulares
+- Ejecución en `llm_mode=stub|real`, trazabilidad local y publicación opcional en LangSmith
 - Generación de artefactos reproducibles por ejecución:
   - `dataset_hash`
   - `schema_summary.json`
@@ -286,7 +289,7 @@ Validación de links:
 Se implementó un grafo multiagente con ejecución por nodos y trazabilidad por estado:
 
 - estado: `src/erp_fraud/graph/state.py`
-- nodos: `src/erp_fraud/graph/nodes.py`
+- nodos: `src/erp_fraud/graph/nodes/` (paquete modular)
 - orquestador/routing: `src/erp_fraud/graph/graph.py`
 - documentación técnica:
   - `docs/rf14.md`
@@ -379,7 +382,7 @@ Piezas clave:
 
 - contrato: `src/erp_fraud/catalog/score_schema.py`
 - agente: `src/erp_fraud/catalog/scoring_agent.py`
-- nodo grafo: `src/erp_fraud/graph/nodes.py` (`scoring_node`)
+- nodo grafo: `src/erp_fraud/graph/nodes/scoring.py` (`scoring_node`)
 - perfiles de modelo: `config/models.yaml`
 - documentación técnica: `docs/scoring.md`
 
@@ -396,7 +399,7 @@ Capacidades actuales:
 Componentes:
 
 - loop reusable: `src/erp_fraud/agents/alpha_loop.py`
-- integración en nodos: `src/erp_fraud/graph/nodes.py`
+- integración en nodos: `src/erp_fraud/graph/nodes/` (`planning.py`, `explainer.py`, `scoring.py`)
 - evidencias reales documentadas: `docs/ag03_iteraciones_reales.md`
 
 Verificación AG03:
@@ -413,7 +416,7 @@ python3 -m pytest -q \
 Flujo completo en un solo comando:
 
 ```bash
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --input-zip erp_fraud_data.zip
+python3 -m src.erp_fraud.cli.main run --input-zip erp_fraud_data.zip
 ```
 
 Atajo equivalente con Make:
@@ -485,7 +488,7 @@ Comportamiento esperado:
 Verificación rápida RF15b:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q \
+python3 -m pytest -q \
   tests/test_rf15b_tools.py \
   tests/test_rf15b_policy_and_schema_guard.py \
   tests/test_rf15b_tool_call_logging.py
@@ -503,7 +506,7 @@ Dónde ver resultados:
 Drilldown desde un hallazgo:
 
 ```bash
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main drilldown \
+python3 -m src.erp_fraud.cli.main drilldown \
   --run-id <run_id> \
   --test-id <TEST_ID> \
   --entity-key "<ENTITY_KEY>" \
@@ -520,7 +523,7 @@ make test-rf08
 Verificación mínima de RF10:
 
 ```bash
-/opt/anaconda3/bin/python -m src.erp_fraud.cli.main run --help
+python3 -m src.erp_fraud.cli.main run --help
 make test-rf08
 ```
 
@@ -535,15 +538,15 @@ Dependencias mínimas (si preparas un venv con red):
 Ejecutar tests unitarios de la base de ingesta/storage:
 
 ```bash
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf01_ingest_storage.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf02_data_dictionary.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf02b_data_validation.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf03_catalog.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf04_runner.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf05_result_schema_and_writer.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf07_ranking.py
-/opt/anaconda3/bin/python -m pytest -q tests/test_rf08_reporting.py
+python3 -m pytest -q tests/test_rf01_ingest_storage.py
+python3 -m pytest -q tests/test_rf02_data_dictionary.py
+python3 -m pytest -q tests/test_rf02b_data_validation.py
+python3 -m pytest -q tests/test_rf03_catalog.py
+python3 -m pytest -q tests/test_rf04_runner.py
+python3 -m pytest -q tests/test_rf05_result_schema_and_writer.py
+python3 -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
+python3 -m pytest -q tests/test_rf07_ranking.py
+python3 -m pytest -q tests/test_rf08_reporting.py
 ```
 
 Resultado esperado:
