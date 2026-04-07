@@ -8,7 +8,7 @@ Implementado hasta `RF15c-18`:
 - `RF15c-07`: executor no-LLM con salida normalizada y `test_runs`.
 - `RF15c-08..09`: explainer con citas obligatorias (`test_id`, `keys`, `evidence_columns`) + guardrails y reparación.
 - `RF15c-10..11`: scoring con `fraud_type_probs` y validador de suma/procedencia de evidencias.
-- `RF15c-12`: persistencia de `hypotheses.json`, `selected_tests.json`, `explanations.json/md`, `score.json`.
+- `RF15c-12`: persistencia de `hypotheses.json`, `selected_tests.json`, `explanations.json/md`, `scores.json`.
 - `RF15c-13`: integración CI con stubs (`LLM + KB + executor`).
 - `RF15c-14`: ejecución manual E2E y captura de evidencia (LangSmith opcional).
 - `RF15c-15`: documentación de agentes (`docs/agents.md`) con roles, tools, prompts y contratos.

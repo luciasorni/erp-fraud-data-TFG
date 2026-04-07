@@ -53,7 +53,7 @@ def test_rf15_07_explanation_markdown_snapshot(tmp_path: Path) -> None:
 
     out = persist_node(state)
     graph_dir = Path(str(out.run_metadata["persist_graph_dir"]))
-    generated = (graph_dir / "explanation.md").read_text(encoding="utf-8")
+    generated = (graph_dir / "explanations.md").read_text(encoding="utf-8")
     expected = Path("tests/fixtures/rf15/explanation_template_snapshot.md").read_text(encoding="utf-8")
 
     assert generated == expected

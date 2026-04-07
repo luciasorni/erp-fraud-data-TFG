@@ -240,7 +240,7 @@ def build_report_markdown_from_report_json_payload(
     lines.extend(["", "## Explicaciones del agente", ""])
     explanation_links: list[tuple[str, str]] = []
     if isinstance(artifact_paths, dict):
-        for key in ("explanation_json", "explanation_md", "explanations_json", "explanations_md"):
+        for key in ("explanations_json", "explanations_md"):
             value = artifact_paths.get(key)
             if isinstance(value, str) and value.strip():
                 explanation_links.append((key, value))

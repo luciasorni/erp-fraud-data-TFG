@@ -121,6 +121,15 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             if isinstance(row, dict) and str(row.get("process_step", "")).strip()
         }
     )
+    if llm_mode == "real":
+        min_hypotheses_target = min(max_hypotheses, 2 if len(allowed_fraud_types) >= 2 else 1)
+        min_distinct_fraud_types = min(2, len(allowed_fraud_types)) if allowed_fraud_types else 1
+    else:
+        min_hypotheses_target = 1
+        min_distinct_fraud_types = 1
+    metadata["hypothesis_max_items"] = max_hypotheses
+    metadata["hypothesis_min_items_target"] = min_hypotheses_target
+    metadata["hypothesis_min_distinct_fraud_types"] = min_distinct_fraud_types
     schema_columns_by_table = {}
     schema_payload = schema_out.get("payload", {}) if isinstance(schema_out, dict) else {}
     if isinstance(schema_payload, dict):
@@ -247,6 +256,9 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             "allowed_fraud_types": allowed_fraud_types,
             "allowed_process_steps": allowed_process_steps,
             "schema_columns_by_table": schema_columns_by_table,
+            "max_hypotheses": max_hypotheses,
+            "min_hypotheses": min_hypotheses_target,
+            "min_distinct_fraud_types": min_distinct_fraud_types,
         }
         try:
             state.hypotheses = _run_alpha_loop_for_node(

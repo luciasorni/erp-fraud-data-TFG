@@ -336,7 +336,7 @@ Se añadió el flujo multiagente completo de planificación/ejecución/explicaci
   - `selected_tests.json`
   - `explanations.json`
   - `explanations.md`
-  - `score.json`
+  - `scores.json`
 
 Documentación principal:
 
@@ -359,11 +359,8 @@ Se añadió la capa de explicación auditable sobre resultados reales del run:
 
 Artefactos por run:
 
-- `run_results/<run_id>/graph/explanation.json`
-- `run_results/<run_id>/graph/explanation.md`
-- alias de compatibilidad:
-  - `run_results/<run_id>/graph/explanations.json`
-  - `run_results/<run_id>/graph/explanations.md`
+- `run_results/<run_id>/graph/explanations.json`
+- `run_results/<run_id>/graph/explanations.md`
 
 Reporte:
 

@@ -41,8 +41,8 @@ Resultado:
 - Snapshot de plantilla de explicación:
   - `tests/fixtures/rf15/explanation_template_snapshot.md`
 - Persistencia de artefactos:
-  - `run_results/<run_id>/graph/explanation.json`
-  - `run_results/<run_id>/graph/explanation.md`
+  - `run_results/<run_id>/graph/explanations.json`
+  - `run_results/<run_id>/graph/explanations.md`
 - Enlace en reporte:
   - sección `Explicaciones del agente` en `report.md`
 

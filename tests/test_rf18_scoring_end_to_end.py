@@ -40,12 +40,12 @@ def test_rf18_end_to_end_scoring_compare_and_persist_artifacts(tmp_path: Path) -
 
     out = persist_node(scored)
     graph_dir = Path(out.run_metadata["persist_graph_dir"])
-    assert (graph_dir / "score.json").exists()
+    assert (graph_dir / "scores.json").exists()
     assert (graph_dir / "score_compare.json").exists()
     assert (graph_dir / "score_experiment.json").exists()
 
     manifest = json.loads((graph_dir / "manifest.json").read_text(encoding="utf-8"))
     artifacts = manifest.get("artifacts", {})
-    assert "score_json" in artifacts
+    assert "scores_json" in artifacts
     assert "score_compare_json" in artifacts
     assert "score_experiment_json" in artifacts

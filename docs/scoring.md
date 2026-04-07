@@ -141,7 +141,6 @@ Artefacto:
 
 ## Artefactos generados por run (grafo)
 
-- `run_results/<run_id>/graph/score.json`
 - `run_results/<run_id>/graph/scores.json`
 - `run_results/<run_id>/graph/score_compare.json` (si aplica)
 - `run_results/<run_id>/graph/score_experiment.json` (si aplica)

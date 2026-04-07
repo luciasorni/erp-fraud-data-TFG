@@ -10,6 +10,17 @@ from ...catalog import SCORE_SCHEMA_REQUIRED_FIELDS
 def validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(output, list) or not output:
         return {"passed": False, "errors": ["hypotheses debe ser lista no vacía"]}
+    min_hypotheses = int(input_payload.get("min_hypotheses", 1) or 1)
+    if min_hypotheses <= 0:
+        min_hypotheses = 1
+    min_distinct_fraud_types = int(input_payload.get("min_distinct_fraud_types", 1) or 1)
+    if min_distinct_fraud_types <= 0:
+        min_distinct_fraud_types = 1
+    if len(output) < min_hypotheses:
+        return {
+            "passed": False,
+            "errors": [f"hypotheses insuficientes: se requieren al menos {min_hypotheses}, recibidas {len(output)}"],
+        }
     allowed_fraud_types = {
         str(value).strip()
         for value in input_payload.get("allowed_fraud_types", [])
@@ -33,6 +44,7 @@ def validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> di
                 }
 
     errors: list[str] = []
+    fraud_types_observed: set[str] = set()
     for idx, item in enumerate(output):
         if not isinstance(item, dict):
             errors.append(f"hypotheses[{idx}] debe ser objeto")
@@ -49,6 +61,8 @@ def validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> di
             errors.append(f"hypotheses[{idx}].fraud_type vacío")
         elif allowed_fraud_types and fraud_type not in allowed_fraud_types:
             errors.append(f"hypotheses[{idx}].fraud_type fuera de catálogo: {fraud_type}")
+        else:
+            fraud_types_observed.add(fraud_type)
         if not process_step:
             errors.append(f"hypotheses[{idx}].process_step vacío")
         elif allowed_process_steps and process_step not in allowed_process_steps:
@@ -90,6 +104,11 @@ def validate_hypotheses_output(output: Any, input_payload: dict[str, Any]) -> di
             errors.append(f"hypotheses[{idx}].sources sin test_catalog")
         if "schema_summary" not in source_types:
             errors.append(f"hypotheses[{idx}].sources sin schema_summary")
+    if len(fraud_types_observed) < min_distinct_fraud_types:
+        errors.append(
+            "diversidad insuficiente de fraud_type: "
+            f"se requieren {min_distinct_fraud_types}, observados {len(fraud_types_observed)}"
+        )
     return {"passed": len(errors) == 0, "errors": errors}
 
 

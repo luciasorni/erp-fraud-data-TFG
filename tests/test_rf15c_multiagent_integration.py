@@ -196,5 +196,5 @@ def test_rf15c_13_multiagent_integration_with_llm_kb_duckdb_stubs(
     assert (graph_dir / "selected_tests.json").exists()
     assert (graph_dir / "explanations.json").exists()
     assert (graph_dir / "explanations.md").exists()
-    assert (graph_dir / "score.json").exists()
+    assert (graph_dir / "scores.json").exists()
     assert (graph_dir / "manifest.json").exists()

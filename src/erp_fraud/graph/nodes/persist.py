@@ -32,11 +32,8 @@ def persist_node(state: GraphState) -> GraphState:
         "hypotheses_json": graph_dir / "hypotheses.json",
         "selected_tests_json": graph_dir / "selected_tests.json",
         "findings_json": graph_dir / "findings.json",
-        "explanation_json": graph_dir / "explanation.json",
-        "explanation_md": graph_dir / "explanation.md",
         "explanations_json": graph_dir / "explanations.json",
         "explanations_md": graph_dir / "explanations.md",
-        "score_json": graph_dir / "score.json",
         "scores_json": graph_dir / "scores.json",
         "graph_state_json": graph_dir / "graph_state.json",
         "manifest_json": graph_dir / "manifest.json",
@@ -51,17 +48,11 @@ def persist_node(state: GraphState) -> GraphState:
     write_json(paths["hypotheses_json"], state.hypotheses)
     write_json(paths["selected_tests_json"], state.selected_tests)
     write_json(paths["findings_json"], state.findings)
-    write_json(paths["explanation_json"], state.explanations)
     write_json(paths["explanations_json"], state.explanations)
-    write_explanations_markdown(
-        paths["explanation_md"],
-        [row for row in state.explanations if isinstance(row, dict)],
-    )
     write_explanations_markdown(
         paths["explanations_md"],
         [row for row in state.explanations if isinstance(row, dict)],
     )
-    write_json(paths["score_json"], state.scores)
     write_json(paths["scores_json"], state.scores)
     if "score_compare_json" in paths and isinstance(score_compare_payload, dict):
         write_json(paths["score_compare_json"], score_compare_payload)

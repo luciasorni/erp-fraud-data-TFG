@@ -14,7 +14,7 @@ def test_rf15c_14_evidence_payload_contains_required_fields() -> None:
             "graph_status": "OK",
             "node_status": {"executor": "OK"},
             "persist_manifest_path": "run_results/rf15c14-test/graph/manifest.json",
-            "persist_artifacts": {"score_json": "run_results/rf15c14-test/graph/score.json"},
+            "persist_artifacts": {"scores_json": "run_results/rf15c14-test/graph/scores.json"},
         },
         langsmith=snapshot,
         llm_mode="stub",
@@ -25,4 +25,4 @@ def test_rf15c_14_evidence_payload_contains_required_fields() -> None:
     assert payload["graph_status"] == "OK"
     assert payload["langsmith"]["trace_link"] == "https://smith.langchain.com/public/trace"
     assert payload["llm_mode"] == "stub"
-    assert "score_json" in payload["persist_artifacts"]
+    assert "scores_json" in payload["persist_artifacts"]

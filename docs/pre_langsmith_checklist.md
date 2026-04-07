@@ -6,7 +6,7 @@ Checklist obligatorio antes de activar LangSmith y pasar a cloud.
 
 - [x] `GraphState` versionado y documentado (campos obligatorios + opcionales).
 - [x] `ExplanationSchema` y `ScoreSchema` congelados (version + required fields).
-- [x] Test de compatibilidad retro de artefactos (`report.json`, `explanation.json`, `score.json`).
+- [x] Test de compatibilidad retro de artefactos (`report.json`, `explanations.json`, `scores.json`).
 
 ## 2) Configuración única
 

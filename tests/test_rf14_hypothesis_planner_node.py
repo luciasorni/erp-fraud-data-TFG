@@ -19,7 +19,7 @@ def test_rf14_hypothesis_planner_uses_policy_tools_and_populates_context(tmp_pat
 
     out = hypothesis_planner_node(state)
 
-    assert len(out.hypotheses) == 1
+    assert len(out.hypotheses) >= 1
     tool_context = out.hypotheses[0]["tool_context"]
     assert tool_context["catalog_tests_count"] >= 1
     assert tool_context["schema_tables_count"] == 1
@@ -62,4 +62,3 @@ def test_rf14_hypothesis_planner_kb_enabled_uses_kb_tool(monkeypatch: Any, tmp_p
     tool_context = out.hypotheses[0]["tool_context"]
     assert tool_context["kb_search_status"] == "OK"
     assert tool_context["kb_hits_count"] == 2
-

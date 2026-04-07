@@ -159,16 +159,16 @@ def test_write_report_markdown_from_report_json_includes_explanation_links(tmp_p
         run_id="rf15-06-md",
         dataset_hash="hash-explanations",
         artifact_paths={
-            "explanation_json": "run_results/rf15-06-md/graph/explanation.json",
-            "explanation_md": "run_results/rf15-06-md/graph/explanation.md",
+            "explanations_json": "run_results/rf15-06-md/graph/explanations.json",
+            "explanations_md": "run_results/rf15-06-md/graph/explanations.md",
         },
     )
     write_report_json(output_path=report_json_path, payload=payload)
     report_md_path = write_report_markdown_from_report_json(report_json_path=report_json_path)
     content = report_md_path.read_text(encoding="utf-8")
     assert "## Explicaciones del agente" in content
-    assert "explanation_json" in content
-    assert "explanation.md" in content
+    assert "explanations_json" in content
+    assert "explanations.md" in content
 
 
 def test_write_report_markdown_from_report_json_explanations_section_empty_when_missing_links(
