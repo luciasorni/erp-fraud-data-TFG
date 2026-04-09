@@ -8,6 +8,22 @@ Secuencia (grafo full):
 
 `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist`
 
+## Clasificación oficial (actual)
+
+En RF15c hay **4 agentes**:
+
+1. `hypothesis_planner`
+2. `test_planner`
+3. `explainer`
+4. `scoring` (híbrido: determinista en `stub`, LLM en `real`)
+
+El resto son **nodos técnicos (no agentes)**:
+
+- `ingest`
+- `kb_index`
+- `executor`
+- `persist`
+
 ## Roles y nodos
 
 ### 1) Hypothesis Planner (`hypothesis_planner`)

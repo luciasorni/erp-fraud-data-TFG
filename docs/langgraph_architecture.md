@@ -113,15 +113,14 @@ Campos principales:
 - Salida:
   - `state.explanations` (resumen por test)
 
-### 7) `scoring`
+### 7) `scoring` (híbrido: determinista + LLM opcional)
 
 - Entrada:
   - `state.findings`
   - `weights.yaml`
 - Lógica:
-  - agrega por `entity_key` (transacción/entidad)
-  - calcula `score_total`
-  - genera distribución por `fraud_type`
+  - base determinista: agrega por `entity_key`, calcula `score_total` y distribución por `fraud_type`
+  - modo real opcional: usa LLM para clasificación/probabilidades con validación de contrato y fallback controlado
 - Salida:
   - `state.scores` con `ranking`, `fraud_type_distribution`, `summary`
 
@@ -140,8 +139,10 @@ Campos principales:
 En esta arquitectura, **agente = rol de decisión** dentro del nodo.  
 No todos los nodos son LLM:
 
-- Agentes/roles de decisión: `hypothesis_planner`, `test_planner`, `explainer`
-- Nodos deterministas/no-LLM: `ingest`, `kb_index`, `executor`, `scoring`, `persist`
+- Solo hay **4 agentes** en el flujo actual: `hypothesis_planner`, `test_planner`, `explainer`, `scoring`.
+- Agentes/roles de decisión: `hypothesis_planner`, `test_planner`, `explainer`, `scoring`
+- Nodos deterministas/no-LLM: `ingest`, `kb_index`, `executor`, `persist`
+- Nodo híbrido: `scoring` (determinista en `stub`, LLM en `real`)
 
 Esto permite control y auditabilidad: decisión asistida donde aporta valor, ejecución determinista donde hay riesgo.
 
@@ -168,4 +169,3 @@ Actualmente RF14 está implementado incrementalmente con tests por bloque y un i
 Referencia:
 
 - `docs/rf14.md`
-
