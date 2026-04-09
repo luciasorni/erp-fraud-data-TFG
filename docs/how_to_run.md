@@ -8,6 +8,10 @@
 
 ## Comandos útiles
 
+Registro unificado de tests de integración:
+
+- `docs/integration_tests_registry.md`
+
 Ejecución end-to-end (RF10):
 
 ```bash

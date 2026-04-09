@@ -37,6 +37,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/data.md`
 - `docs/how_to_run.md`
 - `docs/tools_and_policies.md`
+- `docs/integration_tests_registry.md`
 
 ## Alcance actual (estado del proyecto)
 

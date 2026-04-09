@@ -1,0 +1,29 @@
+version: 1.0.0
+source:
+  document: docs/external/fraud_type.pdf
+  citation: Mackevicius & Kazlauskiene (2009), The Fraud Tree and Its Investigation in Audit
+
+branches:
+  - id: material_misstatement_financial_statements
+    label: Material misstatements in financial statements
+  - id: asset_misappropriation
+    label: Asset misappropriation
+  - id: corruption
+    label: Corruption
+  - id: tax_evasion
+    label: Tax evasion
+  - id: other_frauds
+    label: Other frauds
+
+# Mapeo operativo entre los fraud_type del catálogo interno y la rama oficial del Fraud Tree.
+internal_fraud_type_to_branch:
+  duplicate_payment: material_misstatement_financial_statements
+  amount_anomaly: material_misstatement_financial_statements
+  suspicious_payment_pattern: material_misstatement_financial_statements
+  authorization_bypass: material_misstatement_financial_statements
+  invoice_number_anomaly: material_misstatement_financial_statements
+  duplicate_entry: material_misstatement_financial_statements
+  inventory_anomaly: asset_misappropriation
+  inventory_cost_outlier: asset_misappropriation
+  timing_anomaly: other_frauds
+  account_usage_anomaly: other_frauds

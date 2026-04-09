@@ -54,6 +54,9 @@ def test_rf15c_hypothesis_planner_includes_sources_from_catalog_schema_and_data_
     for req in hyp["evidence_requirements"]:
         assert req["table"] == "fraud_1"
         assert req["column"] in {"Kreditor", "Belegnummer", "Betrag"}
+    assert isinstance(hyp.get("fraud_tree_branch"), str) and hyp["fraud_tree_branch"]
+    assert isinstance(hyp.get("fraud_tree_branch_label"), str) and hyp["fraud_tree_branch_label"]
+    assert str(hyp.get("fraud_tree_source_document", "")).endswith("docs/external/fraud_type.pdf")
 
 
 def test_rf15c_hypothesis_planner_kb_sources_are_attached_when_enabled(

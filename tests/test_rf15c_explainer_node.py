@@ -57,6 +57,10 @@ def test_rf15c_explainer_adds_acfe_reference_from_kb_when_enabled(monkeypatch: A
     assert acfe_ref["status"] == "OK"
     assert acfe_ref["hits"][0]["chunk_id"] == "acfe-chunk-1"
     assert "data_analytics_tests.pdf" in acfe_ref["hits"][0]["source_path"]
+    assert out.explanations[0]["fraud_tree_branch"] == "material_misstatement_financial_statements"
+    assert str(out.explanations[0].get("fraud_tree_source_document", "")).endswith(
+        "docs/external/fraud_type.pdf"
+    )
 
 
 def test_rf15c_explainer_falls_back_when_alpha_loop_fails(monkeypatch: Any) -> None:

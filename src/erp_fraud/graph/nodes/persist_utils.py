@@ -43,6 +43,9 @@ def write_explanations_markdown(path: Path, explanations: list[dict[str, Any]]) 
             test_id = str(row.get("test_id", "")).strip() or "<unknown_test>"
             status = str(row.get("status", "")).strip() or "UNKNOWN"
             fraud_type = str(row.get("fraud_type", "")).strip() or "unknown"
+            fraud_tree_branch = str(row.get("fraud_tree_branch", "")).strip()
+            fraud_tree_branch_label = str(row.get("fraud_tree_branch_label", "")).strip()
+            fraud_tree_source_document = str(row.get("fraud_tree_source_document", "")).strip()
             finding_count = int(row.get("finding_count", 0) or 0)
             summary = str(row.get("summary", "")).strip()
             evidence_cols = normalize_columns(row.get("cited_evidence_columns", []))
@@ -52,6 +55,12 @@ def write_explanations_markdown(path: Path, explanations: list[dict[str, Any]]) 
             lines.append(f"## {idx}. {test_id}")
             lines.append(f"- status: `{status}`")
             lines.append(f"- fraud_type: `{fraud_type}`")
+            if fraud_tree_branch:
+                lines.append(f"- fraud_tree_branch: `{fraud_tree_branch}`")
+            if fraud_tree_branch_label:
+                lines.append(f"- fraud_tree_branch_label: `{fraud_tree_branch_label}`")
+            if fraud_tree_source_document:
+                lines.append(f"- fraud_tree_source_document: `{fraud_tree_source_document}`")
             lines.append(f"- finding_count: `{finding_count}`")
             lines.append(f"- cited_evidence_columns: `{', '.join(evidence_cols) if evidence_cols else '-'}`")
             if keys_payload:

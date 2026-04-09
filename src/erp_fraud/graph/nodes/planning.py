@@ -33,6 +33,7 @@ from .tooling import (
 )
 from .validators import validate_hypotheses_output, validate_selected_tests_output
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
+from ..fraud_taxonomy import branch_for_fraud_type, load_fraud_taxonomy
 
 # Compat tests: permitir monkeypatch del nombre legacy.
 _run_alpha_loop_for_node = run_alpha_loop_for_node
@@ -274,6 +275,24 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
             state.hypotheses = list(default_hypotheses)
             metadata["hypothesis_fallback_used"] = True
             metadata["hypothesis_fallback_reason"] = f"{type(exc).__name__}: {exc}"
+
+    fraud_taxonomy = load_fraud_taxonomy(
+        config_path=str(metadata.get("fraud_taxonomy_config", "")).strip() or None
+    )
+    fraud_source = str((fraud_taxonomy.get("source", {}) or {}).get("document", "")).strip()
+    branches = fraud_taxonomy.get("branches", []) if isinstance(fraud_taxonomy.get("branches"), list) else []
+    metadata["fraud_taxonomy_config_path"] = str(fraud_taxonomy.get("config_path", "")).strip()
+    metadata["fraud_taxonomy_source_document"] = fraud_source
+    metadata["fraud_taxonomy_branches_count"] = len([row for row in branches if isinstance(row, dict)])
+    for item in state.hypotheses:
+        if not isinstance(item, dict):
+            continue
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        branch = branch_for_fraud_type(fraud_type=fraud_type, taxonomy=fraud_taxonomy)
+        item["fraud_tree_branch"] = branch["id"]
+        item["fraud_tree_branch_label"] = branch["label"]
+        if fraud_source:
+            item["fraud_tree_source_document"] = fraud_source
 
     if enforcer is None:
         metadata["hypothesis_runstore_status"] = "SKIPPED_NO_ENFORCER"

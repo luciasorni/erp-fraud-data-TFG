@@ -26,6 +26,7 @@ from .finding_utils import (
 )
 from .validators import validate_explanations_output
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
+from ..fraud_taxonomy import branch_for_fraud_type, load_fraud_taxonomy
 
 # Compat tests: permitir monkeypatch del nombre legacy.
 _run_alpha_loop_for_node = run_alpha_loop_for_node
@@ -249,6 +250,21 @@ def explainer_node(state: GraphState) -> GraphState:
         state.explanations = [dict(row) for row in explanations if isinstance(row, dict)]
         metadata["explainer_fallback_used"] = True
         metadata["explainer_fallback_reason"] = f"{type(exc).__name__}: {exc}"
+
+    fraud_taxonomy = load_fraud_taxonomy(
+        config_path=str(metadata.get("fraud_taxonomy_config", "")).strip() or None
+    )
+    fraud_source = str((fraud_taxonomy.get("source", {}) or {}).get("document", "")).strip()
+    for item in state.explanations:
+        if not isinstance(item, dict):
+            continue
+        fraud_type = str(item.get("fraud_type", "")).strip()
+        branch = branch_for_fraud_type(fraud_type=fraud_type, taxonomy=fraud_taxonomy)
+        item["fraud_tree_branch"] = branch["id"]
+        item["fraud_tree_branch_label"] = branch["label"]
+        if fraud_source:
+            item["fraud_tree_source_document"] = fraud_source
+
     metadata["explainer_status"] = "OK"
     metadata["explainer_explanations_count"] = len(state.explanations)
     metadata["explainer_run_summary"] = {

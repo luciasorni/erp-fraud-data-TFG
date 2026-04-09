@@ -160,9 +160,15 @@ Mapa simplificado:
 Validadores clave:
 
 - hipótesis: `fraud_type/process_step/evidence_requirements` válidos,
+- hipótesis y explicaciones: `fraud_tree_branch` normalizado según taxonomía oficial,
 - selección: `test_id` allowlist + compatibilidad schema,
 - explicación: guardrails anti-alucinación + reparación,
 - scoring: `fraud_type_probs` suma ~1 y evidencia real.
+
+Taxonomía oficial de fraude:
+
+- `config/fraud_tree_taxonomy.yaml`
+- fuente documental: `docs/external/fraud_type.pdf`
 
 ## Ejemplo de ejecución
 
