@@ -1,0 +1,54 @@
+id: TST-LARGE-EVEN-DOLLAR-ENTRIES
+version: 1.0.0
+name: Large even-dollar entries
+fraud_type: suspicious_payment_pattern
+red_flag_id: RF-P2P-011
+process_step: invoice_posting
+description: Detecta asientos de importe elevado y cifra par/redonda para priorizar revisión.
+source:
+  catalog: acfe_coso
+  reference: large_even_dollar_entries
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+        - Sachkonto
+        - Soll/Haben-Kennz_
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+        - Sachkonto
+        - Soll/Haben-Kennz_
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - betrag
+    - sachkonto
+    - soll_haben_kennz
+    - is_round_amount
+    - is_even_amount
+  notes: Marca asientos con importe absoluto >= 10000, redondos y pares.
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Betrag
+  - Sachkonto
+  - Soll/Haben-Kennz_
+logic:
+  implementation_type: sql
+  description: Identificar asientos grandes con importe par y redondo.
+  sql_ref: sql/tests/tst_large_even_dollar_entries.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - amount
+  - pattern

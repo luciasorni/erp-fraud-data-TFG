@@ -556,42 +556,64 @@ requirements:
       logs/reportes)
     estimate_hours: 1.0
 - id: RF11
-  name: RF11 — Modelo canónico mínimo P2P/O2C
-  descripcion: '[Fase 2] Define modelo canónico y entidades mínimas para P2P/O2C con campos y claves.'
-  criterio_validacion: Existe canonical_schema.(yaml|json) y documento explicativo. Un mapper convierte el dataset P2P a tablas
-    canónicas y pasa validación.
-  estimador: 8
+  name: RF11 — Implementación O2C desde raw_data (modelo, mapping y ejecución)
+  descripcion: '[Fase 2] Extiende el pipeline de P2P a O2C usando fuentes raw_data del dataset ERP Fraud Data. Define modelo
+    canónico O2C, transforma raw a entidades O2C, habilita ejecución/validación sobre O2C y deja trazabilidad separada por proceso.'
+  criterio_validacion: Existe documentación funcional/técnica de O2C y su mapping desde raw_data. Se generan tablas canónicas
+    O2C en DuckDB con validación de calidad mínima, y al menos un run O2C completo produce artefactos estándar (findings/ranking/report)
+    sin romper el flujo P2P existente.
+  estimador: 21
   prioridad: Should
-  riesgo: Medio
+  riesgo: Alto
   tasks:
   - id: RF11-01
-    title: 'Definir entidades canónicas (P2P/O2C): invoice, payment, vendor, employee, customer (mínimas)'
-    estimate_hours: 1.5
+    title: Definir alcance O2C exacto (Order, Delivery, Invoice, Collection/Cash Application) y límites de fase
+    estimate_hours: 1.0
   - id: RF11-02
-    title: Definir claves primarias y foráneas canónicas y reglas de integridad (documentar)
-    estimate_hours: 1.2
+    title: Inventariar tablas/columnas en raw_data relevantes para O2C y documentar correspondencias preliminares
+    estimate_hours: 1.5
   - id: RF11-03
-    title: Crear canonical_schema.yaml con campos, tipos y obligatoriedad
-    estimate_hours: 1.5
-  - id: RF11-04
-    title: Implementar conversión del dataset a tablas canónicas en DuckDB (views o tablas)
+    title: Definir modelo canónico O2C (entidades, claves, relaciones, tipos, campos obligatorios) en canonical_schema_o2c.yaml
     estimate_hours: 2.0
+  - id: RF11-04
+    title: Definir business keys O2C y estrategia de deduplicación/normalización por entidad
+    estimate_hours: 1.2
   - id: RF11-05
-    title: 'Validar canónico: checks de campos obligatorios, tipos, y cardinalidades básicas'
-    estimate_hours: 1.5
+    title: Implementar transformaciones raw->canónico O2C en DuckDB (staging + tablas/vistas finales)
+    estimate_hours: 3.0
   - id: RF11-06
-    title: Actualizar tests existentes para leer del modelo canónico (cuando aplique)
-    estimate_hours: 1.5
+    title: Implementar validaciones técnicas O2C (missing required, parseos críticos, null ratios, cardinalidades básicas)
+    estimate_hours: 2.0
   - id: RF11-07
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
-    estimate_hours: 1.5
+    title: Integrar selector de proceso (`process_family`: p2p|o2c) en metadata/config para no mezclar ejecuciones
+    estimate_hours: 1.2
   - id: RF11-08
-    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: Adaptar ingest/orquestación para soportar run O2C sin romper backward compatibility de P2P
+    estimate_hours: 2.0
   - id: RF11-09
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
+    title: Crear mapping explícito raw_data->O2C canónico (column_mapping_o2c.yaml) con casts y defaults controlados
+    estimate_hours: 1.8
+  - id: RF11-10
+    title: Añadir data dictionary O2C mínimo (campos críticos por entidad O2C y fuente raw)
+    estimate_hours: 1.5
+  - id: RF11-11
+    title: Definir matriz O2C hipótesis→tests→evidencias (base para planner/explainer en proceso O2C)
+    estimate_hours: 1.5
+  - id: RF11-12
+    title: Incorporar taxonomía de fraude O2C y alinearla con Fraud Tree oficial y fraud_type internos
     estimate_hours: 1.0
+  - id: RF11-13
+    title: Escribir tests de integración O2C (run O2C end-to-end + persistencia + reporte) con fixtures raw
+    estimate_hours: 2.5
+  - id: RF11-14
+    title: Ejecutar prueba de regresión cruzada P2P vs O2C para asegurar no regresión funcional en P2P
+    estimate_hours: 1.5
+  - id: RF11-15
+    title: Actualizar documentación operativa (README + how_to_run + rf11.md) con comandos y evidencias O2C
+    estimate_hours: 1.5
+  - id: RF11-16
+    title: Ejecutar verificación final y guardar evidencias (run_results O2C + reporte de validación + lista de riesgos abiertos)
+    estimate_hours: 1.5
 - id: RF12
   name: RF12 — Mapping configurable por empresa (mapping.yaml)
   descripcion: '[Fase 2] Permite ajustar nombres de columnas/tablas y castings por empresa sin tocar código.'

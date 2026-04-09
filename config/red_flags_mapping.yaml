@@ -90,7 +90,8 @@ red_flags:
     fraud_type: timing_anomaly
     acfe_reference: unusual_posting_times
     process_step: invoice_posting
-    related_tests: []
+    related_tests:
+      - TST-UNUSUAL-POSTING-TIMES
 
   - red_flag_id: RF-P2P-011
     name: Large even-dollar entries
@@ -98,7 +99,8 @@ red_flags:
     fraud_type: suspicious_payment_pattern
     acfe_reference: large_even_dollar_entries
     process_step: invoice_posting
-    related_tests: []
+    related_tests:
+      - TST-LARGE-EVEN-DOLLAR-ENTRIES
 
   - red_flag_id: RF-P2P-012
     name: Activity in previously unused accounts
@@ -107,3 +109,48 @@ red_flags:
     acfe_reference: unused_account_activity
     process_step: invoice_posting
     related_tests: []
+
+  - red_flag_id: RF-O2C-001
+    name: O2C order price outlier
+    description: Importe de pedido atípico por cliente en Order-to-Cash.
+    fraud_type: price_manipulation
+    acfe_reference: unusual_transaction_amounts
+    process_step: sales_order
+    related_tests:
+      - TST-O2C-PRICE-OUTLIER
+
+  - red_flag_id: RF-O2C-002
+    name: O2C discount policy breach
+    description: Descuentos por encima de política en pedidos O2C.
+    fraud_type: discount_abuse
+    acfe_reference: unusual_discount_patterns
+    process_step: sales_order
+    related_tests:
+      - TST-O2C-DISCOUNT-POLICY-BREACH
+
+  - red_flag_id: RF-O2C-003
+    name: O2C delivery quantity mismatch
+    description: Divergencia entre cantidad pedida y entregada.
+    fraud_type: delivery_manipulation
+    acfe_reference: quantity_mismatch
+    process_step: delivery
+    related_tests:
+      - TST-O2C-DELIVERY-QUANTITY-MISMATCH
+
+  - red_flag_id: RF-O2C-004
+    name: O2C suspicious clearing anomaly
+    description: Patrón anómalo en clearing/cobro de cuentas por cobrar.
+    fraud_type: collection_manipulation
+    acfe_reference: suspicious_clearing_patterns
+    process_step: collection
+    related_tests:
+      - TST-O2C-CLEARING-ANOMALY
+
+  - red_flag_id: RF-O2C-005
+    name: O2C negative delivery quantity
+    description: Cantidades negativas en entregas O2C fuera de flujos normales de regularización.
+    fraud_type: quantity_manipulation
+    acfe_reference: negative_receipt_quantities
+    process_step: delivery
+    related_tests:
+      - TST-O2C-NEGATIVE-DELIVERY-QUANTITY

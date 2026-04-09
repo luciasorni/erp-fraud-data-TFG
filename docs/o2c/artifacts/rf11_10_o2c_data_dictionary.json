@@ -1,0 +1,933 @@
+{
+  "entries": [
+    {
+      "cast": "decimal(18,2)",
+      "column": "amount_local_currency",
+      "default": null,
+      "description": "Campo canónico O2C 'amount_local_currency' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 1,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": true,
+      "source_candidates": [
+        "BSEG.DMBTR"
+      ],
+      "table": "o2c_collection",
+      "type": "decimal(18,2)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "baseline_date",
+      "default": null,
+      "description": "Campo canónico O2C 'baseline_date' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 2,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": false,
+      "source_candidates": [
+        "BSEG.ZFBDT"
+      ],
+      "table": "o2c_collection",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "clearing_date",
+      "default": null,
+      "description": "Campo canónico O2C 'clearing_date' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 3,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": false,
+      "source_candidates": [
+        "BSEG.AUGDT"
+      ],
+      "table": "o2c_collection",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "clearing_document_id",
+      "default": null,
+      "description": "Campo canónico O2C 'clearing_document_id' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 4,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": false,
+      "source_candidates": [
+        "BSEG.AUGBL"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "company_code",
+      "default": null,
+      "description": "Campo canónico O2C 'company_code' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 5,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": true,
+      "source_candidates": [
+        "BSEG.BUKRS"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_id",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_id' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 6,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": true,
+      "source_candidates": [
+        "BSEG.KUNNR"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "fiscal_year",
+      "default": null,
+      "description": "Campo canónico O2C 'fiscal_year' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 7,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": true,
+      "source_candidates": [
+        "BSEG.GJAHR"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "payment_terms",
+      "default": null,
+      "description": "Campo canónico O2C 'payment_terms' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 8,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": false,
+      "source_candidates": [
+        "BSEG.ZTERM"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "posting_date",
+      "default": null,
+      "description": "Campo canónico O2C 'posting_date' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 9,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": false,
+      "source_candidates": [
+        "BKPF.BUDAT"
+      ],
+      "table": "o2c_collection",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "receivable_document_id",
+      "default": null,
+      "description": "Campo canónico O2C 'receivable_document_id' de la entidad 'o2c_collection' en el paso de proceso 'collection'.",
+      "examples": [],
+      "ordinal_position": 10,
+      "process_family": "o2c",
+      "process_step": "collection",
+      "required": true,
+      "source_candidates": [
+        "BSEG.BELNR"
+      ],
+      "table": "o2c_collection",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "account_group",
+      "default": null,
+      "description": "Campo canónico O2C 'account_group' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 1,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNA1.KTOKD"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "city",
+      "default": null,
+      "description": "Campo canónico O2C 'city' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 2,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNA1.ORT01"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "country",
+      "default": null,
+      "description": "Campo canónico O2C 'country' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 3,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNA1.LAND1"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_id",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_id' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 4,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": true,
+      "source_candidates": [
+        "KNA1.KUNNR"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_name",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_name' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 5,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": true,
+      "source_candidates": [
+        "KNA1.NAME1"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "dunning_procedure",
+      "default": null,
+      "description": "Campo canónico O2C 'dunning_procedure' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 6,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNB1.MAHNA"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "payment_terms",
+      "default": null,
+      "description": "Campo canónico O2C 'payment_terms' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 7,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNB1.ZTERM"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "reconciliation_account",
+      "default": null,
+      "description": "Campo canónico O2C 'reconciliation_account' de la entidad 'o2c_customer' en el paso de proceso 'master_data'.",
+      "examples": [],
+      "ordinal_position": 8,
+      "process_family": "o2c",
+      "process_step": "master_data",
+      "required": false,
+      "source_candidates": [
+        "KNB1.AKONT"
+      ],
+      "table": "o2c_customer",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,3)",
+      "column": "delivered_quantity",
+      "default": null,
+      "description": "Campo canónico O2C 'delivered_quantity' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 1,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": true,
+      "source_candidates": [
+        "LIPS.LFIMG"
+      ],
+      "table": "o2c_delivery",
+      "type": "decimal(18,3)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "delivery_date",
+      "default": null,
+      "description": "Campo canónico O2C 'delivery_date' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 2,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": false,
+      "source_candidates": [
+        "LIKP.LFDAT"
+      ],
+      "table": "o2c_delivery",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "delivery_id",
+      "default": null,
+      "description": "Campo canónico O2C 'delivery_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 3,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": true,
+      "source_candidates": [
+        "LIPS.VBELN",
+        "LIKP.VBELN"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "delivery_item_id",
+      "default": null,
+      "description": "Campo canónico O2C 'delivery_item_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 4,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": true,
+      "source_candidates": [
+        "LIPS.POSNR"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "goods_issue_date",
+      "default": null,
+      "description": "Campo canónico O2C 'goods_issue_date' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 5,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": false,
+      "source_candidates": [
+        "LIKP.WADAT_IST"
+      ],
+      "table": "o2c_delivery",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "material_id",
+      "default": null,
+      "description": "Campo canónico O2C 'material_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 6,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": false,
+      "source_candidates": [
+        "LIPS.MATNR"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "plant_id",
+      "default": null,
+      "description": "Campo canónico O2C 'plant_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 7,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": false,
+      "source_candidates": [
+        "LIPS.WERKS"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "reference_sales_order_id",
+      "default": null,
+      "description": "Campo canónico O2C 'reference_sales_order_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 8,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": true,
+      "source_candidates": [
+        "LIPS.VGBEL"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "reference_sales_order_item_id",
+      "default": null,
+      "description": "Campo canónico O2C 'reference_sales_order_item_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 9,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": true,
+      "source_candidates": [
+        "LIPS.VGPOS"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "ship_to_customer_id",
+      "default": null,
+      "description": "Campo canónico O2C 'ship_to_customer_id' de la entidad 'o2c_delivery' en el paso de proceso 'delivery'.",
+      "examples": [],
+      "ordinal_position": 10,
+      "process_family": "o2c",
+      "process_step": "delivery",
+      "required": false,
+      "source_candidates": [
+        "LIKP.KUNNR"
+      ],
+      "table": "o2c_delivery",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "accounting_document_id",
+      "default": null,
+      "description": "Campo canónico O2C 'accounting_document_id' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 1,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BKPF.BELNR",
+        "BSEG.BELNR"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,2)",
+      "column": "amount_local_currency",
+      "default": null,
+      "description": "Campo canónico O2C 'amount_local_currency' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 2,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BSEG.DMBTR"
+      ],
+      "table": "o2c_invoice",
+      "type": "decimal(18,2)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "baseline_date",
+      "default": null,
+      "description": "Campo canónico O2C 'baseline_date' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 3,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "BSEG.ZFBDT"
+      ],
+      "table": "o2c_invoice",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "clearing_date",
+      "default": null,
+      "description": "Campo canónico O2C 'clearing_date' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 4,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "BSEG.AUGDT"
+      ],
+      "table": "o2c_invoice",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "clearing_document_id",
+      "default": null,
+      "description": "Campo canónico O2C 'clearing_document_id' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 5,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "BSEG.AUGBL"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "company_code",
+      "default": null,
+      "description": "Campo canónico O2C 'company_code' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 6,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BKPF.BUKRS",
+        "BSEG.BUKRS"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_or_account_id",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_or_account_id' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 7,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BSEG.KUNNR",
+        "BSEG.HKONT"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "debit_credit_indicator",
+      "default": null,
+      "description": "Campo canónico O2C 'debit_credit_indicator' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 8,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "BSEG.SHKZG"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,2)",
+      "column": "document_currency_amount",
+      "default": null,
+      "description": "Campo canónico O2C 'document_currency_amount' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 9,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "BSEG.WRBTR"
+      ],
+      "table": "o2c_invoice",
+      "type": "decimal(18,2)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "fiscal_year",
+      "default": null,
+      "description": "Campo canónico O2C 'fiscal_year' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 10,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BKPF.GJAHR",
+        "BSEG.GJAHR"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "posting_date",
+      "default": null,
+      "description": "Campo canónico O2C 'posting_date' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 11,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": true,
+      "source_candidates": [
+        "BKPF.BUDAT"
+      ],
+      "table": "o2c_invoice",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "reference_delivery_id",
+      "default": null,
+      "description": "Campo canónico O2C 'reference_delivery_id' de la entidad 'o2c_invoice' en el paso de proceso 'invoice'.",
+      "examples": [],
+      "ordinal_position": 12,
+      "process_family": "o2c",
+      "process_step": "invoice",
+      "required": false,
+      "source_candidates": [
+        "LIPS.VBELN"
+      ],
+      "table": "o2c_invoice",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,2)",
+      "column": "condition_amount",
+      "default": null,
+      "description": "Campo canónico O2C 'condition_amount' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 1,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "KONV.KWERT"
+      ],
+      "table": "o2c_order",
+      "type": "decimal(18,2)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_group",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_group' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 2,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "KNA1.KDGRP"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "customer_id",
+      "default": null,
+      "description": "Campo canónico O2C 'customer_id' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 3,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": true,
+      "source_candidates": [
+        "VBAK.KUNNR",
+        "VBPA.KUNNR"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "distribution_channel",
+      "default": null,
+      "description": "Campo canónico O2C 'distribution_channel' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 4,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAK.VTWEG"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "division",
+      "default": null,
+      "description": "Campo canónico O2C 'division' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 5,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAK.SPART"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,4)",
+      "column": "item_net_price",
+      "default": null,
+      "description": "Campo canónico O2C 'item_net_price' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 6,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAP.NETPR"
+      ],
+      "table": "o2c_order",
+      "type": "decimal(18,4)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "material_id",
+      "default": null,
+      "description": "Campo canónico O2C 'material_id' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 7,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAP.MATNR"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,2)",
+      "column": "net_amount",
+      "default": null,
+      "description": "Campo canónico O2C 'net_amount' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 8,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": true,
+      "source_candidates": [
+        "VBAP.NETWR"
+      ],
+      "table": "o2c_order",
+      "type": "decimal(18,2)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "date",
+      "column": "order_created_date",
+      "default": null,
+      "description": "Campo canónico O2C 'order_created_date' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 9,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": true,
+      "source_candidates": [
+        "VBAK.ERDAT"
+      ],
+      "table": "o2c_order",
+      "type": "date",
+      "used_in_tests": []
+    },
+    {
+      "cast": "decimal(18,3)",
+      "column": "ordered_quantity",
+      "default": null,
+      "description": "Campo canónico O2C 'ordered_quantity' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 10,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAP.KWMENG"
+      ],
+      "table": "o2c_order",
+      "type": "decimal(18,3)",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "sales_order_id",
+      "default": null,
+      "description": "Campo canónico O2C 'sales_order_id' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 11,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": true,
+      "source_candidates": [
+        "VBAK.VBELN",
+        "VBAP.VBELN"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "sales_order_item_id",
+      "default": null,
+      "description": "Campo canónico O2C 'sales_order_item_id' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 12,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": true,
+      "source_candidates": [
+        "VBAP.POSNR"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    },
+    {
+      "cast": "string",
+      "column": "sales_org",
+      "default": null,
+      "description": "Campo canónico O2C 'sales_org' de la entidad 'o2c_order' en el paso de proceso 'sales_order'.",
+      "examples": [],
+      "ordinal_position": 13,
+      "process_family": "o2c",
+      "process_step": "sales_order",
+      "required": false,
+      "source_candidates": [
+        "VBAK.VKORG"
+      ],
+      "table": "o2c_order",
+      "type": "string",
+      "used_in_tests": []
+    }
+  ],
+  "entry_format": {
+    "required_fields": [
+      "table",
+      "column",
+      "type",
+      "description",
+      "examples",
+      "used_in_tests"
+    ]
+  },
+  "generated_from": {
+    "canonical_schema_config": "config/canonical_schema_o2c.yaml",
+    "generated_at_utc": "2026-04-09T22:37:33+00:00",
+    "mapping_config": "config/column_mapping_o2c.yaml"
+  },
+  "scope": {
+    "phase": "Fase2",
+    "process": "O2C",
+    "source": "ERP Fraud Data / raw_data"
+  },
+  "version": "1.0.0"
+}

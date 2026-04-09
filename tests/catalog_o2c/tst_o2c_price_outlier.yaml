@@ -1,0 +1,45 @@
+id: TST-O2C-PRICE-OUTLIER
+version: 1.0.0
+name: O2C order price outlier by customer
+fraud_type: price_manipulation
+red_flag_id: RF-O2C-001
+process_step: sales_order
+description: Detecta importes de pedido atípicos por cliente en O2C.
+source:
+  catalog: acfe_coso
+  reference: unusual_transaction_amounts
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_order
+      required_columns:
+        - sales_order_id
+        - sales_order_item_id
+        - customer_id
+        - net_amount
+expected_output:
+  primary_entity: sales_order_item
+  finding_fields:
+    - sales_order_id
+    - sales_order_item_id
+    - customer_id
+    - net_amount
+    - mean_amount
+    - std_amount
+    - z_score
+  notes: Señala pedidos con z-score elevado por cliente.
+evidence_columns:
+  - sales_order_id
+  - sales_order_item_id
+  - customer_id
+  - net_amount
+logic:
+  implementation_type: sql
+  description: Z-score por cliente sobre net_amount en o2c_order.
+  sql_ref: sql/tests/tst_o2c_price_outlier.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - pricing
+  - anomaly

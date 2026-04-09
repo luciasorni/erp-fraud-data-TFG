@@ -182,6 +182,7 @@ def test_run_metadata_and_json_logger_generate_files(tmp_path: Path, monkeypatch
         timestamp_utc="2026-02-24T00:00:00+00:00",
     )
     assert metadata["run_id"] == "run-001"
+    assert metadata["process_family"] == "p2p"
     assert metadata["versions"]["code"] == "code-v1"
 
     metadata_path = tmp_path / "run_results" / "run-001" / "run_metadata.json"
@@ -194,9 +195,11 @@ def test_run_metadata_and_json_logger_generate_files(tmp_path: Path, monkeypatch
         tests_version="tests-v1",
         config_version="cfg-v1",
         timestamp_utc="2026-02-24T00:00:00+00:00",
+        process_family="o2c",
     )
     loaded = json.loads(metadata_path.read_text(encoding="utf-8"))
     assert loaded["dataset_hash"] == "hash-123"
+    assert loaded["process_family"] == "o2c"
 
     logger = IngestJsonLogger.for_run("run-001")
     logger.log_ingest_start(dataset_hash="hash-123")

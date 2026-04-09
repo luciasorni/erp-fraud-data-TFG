@@ -110,6 +110,15 @@ def parse_args() -> argparse.Namespace:
         choices=["stub", "real"],
         help="Modo de ejecución LLM para nodos habilitados.",
     )
+    parser.add_argument(
+        "--process-family",
+        default="p2p",
+        choices=["p2p", "o2c"],
+        help="Familia de proceso para metadata/ruteo de catálogo.",
+    )
+    parser.add_argument("--db-path", default="erp.duckdb", help="Ruta DuckDB a usar por executor.")
+    parser.add_argument("--schema-name", default="main", help="Schema DuckDB a usar por executor.")
+    parser.add_argument("--table-name", default="fraud_1", help="Tabla por defecto de executor.")
     parser.add_argument("--notes", default="", help="Notas libres para contexto del tutor.")
     return parser.parse_args()
 
@@ -141,6 +150,10 @@ def main() -> int:
             "persist_base_dir": str(args.persist_base_dir).strip(),
             "weights_config": str(args.weights_config).strip(),
             "llm_mode": str(args.llm_mode).strip(),
+            "process_family": str(args.process_family).strip(),
+            "db_path": str(args.db_path).strip(),
+            "schema_name": str(args.schema_name).strip(),
+            "table_name": str(args.table_name).strip(),
             "kb_index_enabled": bool(args.kb_index_enabled),
             "kb_search_enabled": bool(args.kb_search_enabled),
             "scoring_top_k": 20,

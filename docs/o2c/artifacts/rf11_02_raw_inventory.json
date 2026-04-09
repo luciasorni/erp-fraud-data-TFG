@@ -1,0 +1,1176 @@
+{
+  "zip_path": "erp_fraud_data.zip",
+  "raw_nested_archives": [
+    "erp_fraud_data/raw_data/fraud_1.zip",
+    "erp_fraud_data/raw_data/fraud_2.zip",
+    "erp_fraud_data/raw_data/fraud_3.zip",
+    "erp_fraud_data/raw_data/normal_1.zip",
+    "erp_fraud_data/raw_data/normal_2.zip"
+  ],
+  "datasets": {
+    "fraud_1.zip": {
+      "file_count": 40,
+      "files": [
+        "fraud_1/ADRC.XLSX",
+        "fraud_1/AFKO.XLSX",
+        "fraud_1/AUFK.XLSX",
+        "fraud_1/BKPF.XLSX",
+        "fraud_1/BSEG_1.XLSX",
+        "fraud_1/BSEG_2.XLSX",
+        "fraud_1/BSEG_3.XLSX",
+        "fraud_1/BSEG_4.XLSX",
+        "fraud_1/BSEG_5.XLSX",
+        "fraud_1/CAUFV.XLSX",
+        "fraud_1/CDHDR.XLSX",
+        "fraud_1/CDPOS.XLSX",
+        "fraud_1/EBAN.XLSX",
+        "fraud_1/EKKO.XLSX",
+        "fraud_1/EKPO.XLSX",
+        "fraud_1/JEST.XLSX",
+        "fraud_1/JSTO.XLSX",
+        "fraud_1/KNA1.XLSX",
+        "fraud_1/KONP.XLSX",
+        "fraud_1/LFA1.XLSX",
+        "fraud_1/LIKP.XLSX",
+        "fraud_1/LIPS.XLSX",
+        "fraud_1/MARA.XLSX",
+        "fraud_1/MARC.XLSX",
+        "fraud_1/MARD.XLSX",
+        "fraud_1/MAST.XLSX",
+        "fraud_1/MBEW.XLSX",
+        "fraud_1/MKPF.XLSX",
+        "fraud_1/MSEG.XLSX",
+        "fraud_1/RBKP.XLSX",
+        "fraud_1/RESEG.XLSX",
+        "fraud_1/STKO.XLSX",
+        "fraud_1/STPO.XLSX",
+        "fraud_1/T681A.XLSX",
+        "fraud_1/T685.XLSX",
+        "fraud_1/TPAR.XLSX",
+        "fraud_1/TSTCT.XLSX",
+        "fraud_1/VBAK.XLSX",
+        "fraud_1/VBAP.XLSX",
+        "fraud_1/VBPA.XLSX"
+      ],
+      "table_stems": [
+        "ADRC",
+        "AFKO",
+        "AUFK",
+        "BKPF",
+        "BSEG_1",
+        "BSEG_2",
+        "BSEG_3",
+        "BSEG_4",
+        "BSEG_5",
+        "CAUFV",
+        "CDHDR",
+        "CDPOS",
+        "EBAN",
+        "EKKO",
+        "EKPO",
+        "JEST",
+        "JSTO",
+        "KNA1",
+        "KONP",
+        "LFA1",
+        "LIKP",
+        "LIPS",
+        "MARA",
+        "MARC",
+        "MARD",
+        "MAST",
+        "MBEW",
+        "MKPF",
+        "MSEG",
+        "RBKP",
+        "RESEG",
+        "STKO",
+        "STPO",
+        "T681A",
+        "T685",
+        "TPAR",
+        "TSTCT",
+        "VBAK",
+        "VBAP",
+        "VBPA"
+      ]
+    },
+    "fraud_2.zip": {
+      "file_count": 68,
+      "files": [
+        "fraud_2/CDHDR.XLSX",
+        "fraud_2/CDPOS.XLSX",
+        "fraud_2/EBAN.XLSX",
+        "fraud_2/S031.XLSX",
+        "fraud_2/T001L.XLSX",
+        "fraud_2/T156.XLSX",
+        "fraud_2/T681.XLSX",
+        "fraud_2/T685.XLSX",
+        "fraud_2/adrc.XLSX",
+        "fraud_2/affl.XLSX",
+        "fraud_2/afko.XLSX",
+        "fraud_2/afpo.XLSX",
+        "fraud_2/afru.XLSX",
+        "fraud_2/afvc.XLSX",
+        "fraud_2/afvv.XLSX",
+        "fraud_2/aufk.XLSX",
+        "fraud_2/aufm.XLSX",
+        "fraud_2/bkpf.XLSX",
+        "fraud_2/bseg.XLSX",
+        "fraud_2/ekbe.XLSX",
+        "fraud_2/ekko.XLSX",
+        "fraud_2/ekpo.XLSX",
+        "fraud_2/eord.XLSX",
+        "fraud_2/jcds.XLSX",
+        "fraud_2/jest.XLSX",
+        "fraud_2/jstoXLSX.XLSX",
+        "fraud_2/kbko.XLSX",
+        "fraud_2/kna1.XLSX",
+        "fraud_2/knb1.XLSX",
+        "fraud_2/konh.XLSX",
+        "fraud_2/konp.XLSX",
+        "fraud_2/konv.XLSX",
+        "fraud_2/lfa1.XLSX",
+        "fraud_2/likp.XLSX",
+        "fraud_2/lips.XLSX",
+        "fraud_2/makt.XLSX",
+        "fraud_2/mapl.XLSX",
+        "fraud_2/mara.XLSX",
+        "fraud_2/marc.XLSX",
+        "fraud_2/mard.XLSX",
+        "fraud_2/marm.XLSX",
+        "fraud_2/mast.XLSX",
+        "fraud_2/mbew.XLSX",
+        "fraud_2/mkpf.XLSX",
+        "fraud_2/mseg.XLSX",
+        "fraud_2/mver.XLSX",
+        "fraud_2/mvke.XLSX",
+        "fraud_2/pbed.XLSX",
+        "fraud_2/pbhi.XLSX",
+        "fraud_2/pbim.XLSX",
+        "fraud_2/plko.XLSX",
+        "fraud_2/plmz.XLSX",
+        "fraud_2/plpo.XLSX",
+        "fraud_2/rbkp.XLSX",
+        "fraud_2/resb.XLSX",
+        "fraud_2/rkpf.XLSX",
+        "fraud_2/rseg.XLSX",
+        "fraud_2/stko.XLSX",
+        "fraud_2/stpo.XLSX",
+        "fraud_2/t151.XLSX",
+        "fraud_2/tj02t.XLSX",
+        "fraud_2/tpar.XLSX",
+        "fraud_2/vbak.XLSX",
+        "fraud_2/vbap.XLSX",
+        "fraud_2/vbfa.XLSX",
+        "fraud_2/vbpa.XLSX",
+        "fraud_2/vbuk.XLSX",
+        "fraud_2/vbup.XLSX"
+      ],
+      "table_stems": [
+        "ADRC",
+        "AFFL",
+        "AFKO",
+        "AFPO",
+        "AFRU",
+        "AFVC",
+        "AFVV",
+        "AUFK",
+        "AUFM",
+        "BKPF",
+        "BSEG",
+        "CDHDR",
+        "CDPOS",
+        "EBAN",
+        "EKBE",
+        "EKKO",
+        "EKPO",
+        "EORD",
+        "JCDS",
+        "JEST",
+        "JSTOXLSX",
+        "KBKO",
+        "KNA1",
+        "KNB1",
+        "KONH",
+        "KONP",
+        "KONV",
+        "LFA1",
+        "LIKP",
+        "LIPS",
+        "MAKT",
+        "MAPL",
+        "MARA",
+        "MARC",
+        "MARD",
+        "MARM",
+        "MAST",
+        "MBEW",
+        "MKPF",
+        "MSEG",
+        "MVER",
+        "MVKE",
+        "PBED",
+        "PBHI",
+        "PBIM",
+        "PLKO",
+        "PLMZ",
+        "PLPO",
+        "RBKP",
+        "RESB",
+        "RKPF",
+        "RSEG",
+        "S031",
+        "STKO",
+        "STPO",
+        "T001L",
+        "T151",
+        "T156",
+        "T681",
+        "T685",
+        "TJ02T",
+        "TPAR",
+        "VBAK",
+        "VBAP",
+        "VBFA",
+        "VBPA",
+        "VBUK",
+        "VBUP"
+      ]
+    },
+    "fraud_3.zip": {
+      "file_count": 69,
+      "files": [
+        "fraud_3/ADRC.XLSX",
+        "fraud_3/AFFL.XLSX",
+        "fraud_3/AFKO.XLSX",
+        "fraud_3/AFPO.XLSX",
+        "fraud_3/AFRU.XLSX",
+        "fraud_3/AFVC.XLSX",
+        "fraud_3/AFVV.XLSX",
+        "fraud_3/AUFK.XLSX",
+        "fraud_3/AUFM.XLSX",
+        "fraud_3/BKPF.XLSX",
+        "fraud_3/BSEG.XLSX",
+        "fraud_3/CDHDR.XLSX",
+        "fraud_3/CDPOS.XLSX",
+        "fraud_3/EBAN.XLSX",
+        "fraud_3/EKBE.XLSX",
+        "fraud_3/EKKO.XLSX",
+        "fraud_3/EKPO.XLSX",
+        "fraud_3/EORD.XLSX",
+        "fraud_3/JCDS.XLSX",
+        "fraud_3/JEST.XLSX",
+        "fraud_3/JSTO.XLSX",
+        "fraud_3/KBKO.XLSX",
+        "fraud_3/KNA1.XLSX",
+        "fraud_3/KNB1.XLSX",
+        "fraud_3/KONH.XLSX",
+        "fraud_3/KONP.XLSX",
+        "fraud_3/KONV.XLSX",
+        "fraud_3/LFA1.XLSX",
+        "fraud_3/LIKP.XLSX",
+        "fraud_3/LIPS.XLSX",
+        "fraud_3/MAKT.XLSX",
+        "fraud_3/MAPL.XLSX",
+        "fraud_3/MARA.XLSX",
+        "fraud_3/MARC.XLSX",
+        "fraud_3/MARD.XLSX",
+        "fraud_3/MARD1.xlsx",
+        "fraud_3/MARM.XLSX",
+        "fraud_3/MAST.XLSX",
+        "fraud_3/MBEW.XLSX",
+        "fraud_3/MKPF.XLSX",
+        "fraud_3/MSEG.XLSX",
+        "fraud_3/MVER.XLSX",
+        "fraud_3/MVKE.XLSX",
+        "fraud_3/PBED.XLSX",
+        "fraud_3/PBHI.XLSX",
+        "fraud_3/PBIM.XLSX",
+        "fraud_3/PLKO.XLSX",
+        "fraud_3/PLMZ.XLSX",
+        "fraud_3/PLPO.XLSX",
+        "fraud_3/RBKP.XLSX",
+        "fraud_3/RESB.XLSX",
+        "fraud_3/RKPF.XLSX",
+        "fraud_3/RSEG.XLSX",
+        "fraud_3/S031.XLSX",
+        "fraud_3/T001L.XLSX",
+        "fraud_3/T151.XLSX",
+        "fraud_3/T156.XLSX",
+        "fraud_3/T681.XLSX",
+        "fraud_3/T685.XLSX",
+        "fraud_3/TJ02T.XLSX",
+        "fraud_3/TPAR.XLSX",
+        "fraud_3/VBAK.XLSX",
+        "fraud_3/VBAP.xlsx",
+        "fraud_3/VBFA.xlsx",
+        "fraud_3/VBPA.XLSX",
+        "fraud_3/VBUK.XLSX",
+        "fraud_3/VBUP.XLSX",
+        "fraud_3/stko.XLSX",
+        "fraud_3/stpo.XLSX"
+      ],
+      "table_stems": [
+        "ADRC",
+        "AFFL",
+        "AFKO",
+        "AFPO",
+        "AFRU",
+        "AFVC",
+        "AFVV",
+        "AUFK",
+        "AUFM",
+        "BKPF",
+        "BSEG",
+        "CDHDR",
+        "CDPOS",
+        "EBAN",
+        "EKBE",
+        "EKKO",
+        "EKPO",
+        "EORD",
+        "JCDS",
+        "JEST",
+        "JSTO",
+        "KBKO",
+        "KNA1",
+        "KNB1",
+        "KONH",
+        "KONP",
+        "KONV",
+        "LFA1",
+        "LIKP",
+        "LIPS",
+        "MAKT",
+        "MAPL",
+        "MARA",
+        "MARC",
+        "MARD",
+        "MARD1",
+        "MARM",
+        "MAST",
+        "MBEW",
+        "MKPF",
+        "MSEG",
+        "MVER",
+        "MVKE",
+        "PBED",
+        "PBHI",
+        "PBIM",
+        "PLKO",
+        "PLMZ",
+        "PLPO",
+        "RBKP",
+        "RESB",
+        "RKPF",
+        "RSEG",
+        "S031",
+        "STKO",
+        "STPO",
+        "T001L",
+        "T151",
+        "T156",
+        "T681",
+        "T685",
+        "TJ02T",
+        "TPAR",
+        "VBAK",
+        "VBAP",
+        "VBFA",
+        "VBPA",
+        "VBUK",
+        "VBUP"
+      ]
+    },
+    "normal_1.zip": {
+      "file_count": 46,
+      "files": [
+        "normal_1/ADRC.XLSX",
+        "normal_1/AFKO.XLSX",
+        "normal_1/AUFK.XLSX",
+        "normal_1/BKPF1.XLSX",
+        "normal_1/BKPF2.XLSX",
+        "normal_1/BSEG.XLSX",
+        "normal_1/BSEG_2.XLSX",
+        "normal_1/BSEG_3.XLSX",
+        "normal_1/BSEG_4.XLSX",
+        "normal_1/BSEG_5.XLSX",
+        "normal_1/BSEG_6.XLSX",
+        "normal_1/CAUFV.XLSX",
+        "normal_1/CDHDR.XLSX",
+        "normal_1/CDPOS.XLSX",
+        "normal_1/EBAN.XLSX",
+        "normal_1/EKKO.XLSX",
+        "normal_1/EKPO.XLSX",
+        "normal_1/JEST.XLSX",
+        "normal_1/JSTO.XLSX",
+        "normal_1/KNA1.XLSX",
+        "normal_1/KONP.XLSX",
+        "normal_1/LFA1.XLSX",
+        "normal_1/LIKS.XLSX",
+        "normal_1/LIPS.XLSX",
+        "normal_1/MARA_A-G.XLSX",
+        "normal_1/MARA_H-O.XLSX",
+        "normal_1/MARA_P-Y.XLSX",
+        "normal_1/MARA_Z.XLSX",
+        "normal_1/MARC.XLSX",
+        "normal_1/MARD.XLSX",
+        "normal_1/MAST.XLSX",
+        "normal_1/MBEW.XLSX",
+        "normal_1/MBEW2.XLSX",
+        "normal_1/MKPF.XLSX",
+        "normal_1/MSEG.XLSX",
+        "normal_1/RBKP.XLSX",
+        "normal_1/RSEG.XLSX",
+        "normal_1/STKO.XLSX",
+        "normal_1/STPO.XLSX",
+        "normal_1/T681A.XLSX",
+        "normal_1/T685.XLSX",
+        "normal_1/TPAR.XLSX",
+        "normal_1/TSTCT.XLSX",
+        "normal_1/VBAK.XLSX",
+        "normal_1/VBAP.XLSX",
+        "normal_1/VBPA.XLSX"
+      ],
+      "table_stems": [
+        "ADRC",
+        "AFKO",
+        "AUFK",
+        "BKPF1",
+        "BKPF2",
+        "BSEG",
+        "BSEG_2",
+        "BSEG_3",
+        "BSEG_4",
+        "BSEG_5",
+        "BSEG_6",
+        "CAUFV",
+        "CDHDR",
+        "CDPOS",
+        "EBAN",
+        "EKKO",
+        "EKPO",
+        "JEST",
+        "JSTO",
+        "KNA1",
+        "KONP",
+        "LFA1",
+        "LIKS",
+        "LIPS",
+        "MARA_A-G",
+        "MARA_H-O",
+        "MARA_P-Y",
+        "MARA_Z",
+        "MARC",
+        "MARD",
+        "MAST",
+        "MBEW",
+        "MBEW2",
+        "MKPF",
+        "MSEG",
+        "RBKP",
+        "RSEG",
+        "STKO",
+        "STPO",
+        "T681A",
+        "T685",
+        "TPAR",
+        "TSTCT",
+        "VBAK",
+        "VBAP",
+        "VBPA"
+      ]
+    },
+    "normal_2.zip": {
+      "file_count": 70,
+      "files": [
+        "normal_2/KONV.XLSX",
+        "normal_2/S031.XLSX",
+        "normal_2/T001L.XLSX",
+        "normal_2/adrc.xlsx",
+        "normal_2/affl.XLSX",
+        "normal_2/afko.XLSX",
+        "normal_2/afpo.XLSX",
+        "normal_2/afru.XLSX",
+        "normal_2/afvc.XLSX",
+        "normal_2/afvv.XLSX",
+        "normal_2/aufk.XLSX",
+        "normal_2/aufm.XLSX",
+        "normal_2/bkpf.XLSX",
+        "normal_2/bseg.XLSX",
+        "normal_2/bseg.csv",
+        "normal_2/cdhdr.XLSX",
+        "normal_2/cdpos.XLSX",
+        "normal_2/eban.XLSX",
+        "normal_2/ekbe.XLSX",
+        "normal_2/ekko.XLSX",
+        "normal_2/ekpo.XLSX",
+        "normal_2/eord.XLSX",
+        "normal_2/jcds.XLSX",
+        "normal_2/jest.XLSX",
+        "normal_2/jsto.XLSX",
+        "normal_2/kbko.XLSX",
+        "normal_2/kna1.XLSX",
+        "normal_2/knb1.XLSX",
+        "normal_2/konh.XLSX",
+        "normal_2/konp.XLSX",
+        "normal_2/lfa1.XLSX",
+        "normal_2/likp.XLSX",
+        "normal_2/lips.XLSX",
+        "normal_2/makt.XLSX",
+        "normal_2/mapl.XLSX",
+        "normal_2/mara.XLSX",
+        "normal_2/marc.XLSX",
+        "normal_2/mard.XLSX",
+        "normal_2/marm.XLSX",
+        "normal_2/mast.XLSX",
+        "normal_2/mbew.XLSX",
+        "normal_2/mkpf.XLSX",
+        "normal_2/mseg.XLSX",
+        "normal_2/mver.XLSX",
+        "normal_2/mvke.XLSX",
+        "normal_2/pbed.XLSX",
+        "normal_2/pbhi.XLSX",
+        "normal_2/pbimt.XLSX",
+        "normal_2/plaf.XLSX",
+        "normal_2/plko.XLSX",
+        "normal_2/plmz.XLSX",
+        "normal_2/plpo.XLSX",
+        "normal_2/rbkp.XLSX",
+        "normal_2/resb.XLSX",
+        "normal_2/rkpf.XLSX",
+        "normal_2/rseg.XLSX",
+        "normal_2/stko.XLSX",
+        "normal_2/stpo.XLSX",
+        "normal_2/t151.XLSX",
+        "normal_2/t156.XLSX",
+        "normal_2/t681.XLSX",
+        "normal_2/t685.XLSX",
+        "normal_2/tj02t.XLSX",
+        "normal_2/tpar.XLSX",
+        "normal_2/vbak.XLSX",
+        "normal_2/vbap.XLSX",
+        "normal_2/vbfa.XLSX",
+        "normal_2/vbpa.XLSX",
+        "normal_2/vbuk.XLSX",
+        "normal_2/vbup.XLSX"
+      ],
+      "table_stems": [
+        "ADRC",
+        "AFFL",
+        "AFKO",
+        "AFPO",
+        "AFRU",
+        "AFVC",
+        "AFVV",
+        "AUFK",
+        "AUFM",
+        "BKPF",
+        "BSEG",
+        "CDHDR",
+        "CDPOS",
+        "EBAN",
+        "EKBE",
+        "EKKO",
+        "EKPO",
+        "EORD",
+        "JCDS",
+        "JEST",
+        "JSTO",
+        "KBKO",
+        "KNA1",
+        "KNB1",
+        "KONH",
+        "KONP",
+        "KONV",
+        "LFA1",
+        "LIKP",
+        "LIPS",
+        "MAKT",
+        "MAPL",
+        "MARA",
+        "MARC",
+        "MARD",
+        "MARM",
+        "MAST",
+        "MBEW",
+        "MKPF",
+        "MSEG",
+        "MVER",
+        "MVKE",
+        "PBED",
+        "PBHI",
+        "PBIMT",
+        "PLAF",
+        "PLKO",
+        "PLMZ",
+        "PLPO",
+        "RBKP",
+        "RESB",
+        "RKPF",
+        "RSEG",
+        "S031",
+        "STKO",
+        "STPO",
+        "T001L",
+        "T151",
+        "T156",
+        "T681",
+        "T685",
+        "TJ02T",
+        "TPAR",
+        "VBAK",
+        "VBAP",
+        "VBFA",
+        "VBPA",
+        "VBUK",
+        "VBUP"
+      ]
+    }
+  },
+  "table_coverage": {
+    "ADRC": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "AFKO": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "AUFK": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "CDHDR": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "CDPOS": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "EBAN": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "EKKO": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "EKPO": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "JEST": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "KNA1": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "KONP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "LFA1": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "LIPS": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MARC": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MARD": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MAST": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MBEW": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MKPF": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "MSEG": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "RBKP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "STKO": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "STPO": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "T685": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "TPAR": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBAK": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBAP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBPA": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "BKPF": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "BSEG": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "JSTO": [
+      "fraud_1.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "LIKP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MARA": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "RSEG": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "AFFL": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "AFPO": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "AFRU": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "AFVC": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "AFVV": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "AUFM": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "EKBE": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "EORD": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "JCDS": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "KBKO": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "KNB1": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "KONH": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "KONV": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MAKT": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MAPL": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MARM": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MVER": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "MVKE": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "PBED": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "PBHI": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "PLKO": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "PLMZ": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "PLPO": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "RESB": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "RKPF": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "S031": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "T001L": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "T151": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "T156": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "T681": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "TJ02T": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "VBFA": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "VBUK": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "VBUP": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "BSEG_2": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "BSEG_3": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "BSEG_4": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "BSEG_5": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "CAUFV": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "PBIM": [
+      "fraud_2.zip",
+      "fraud_3.zip"
+    ],
+    "T681A": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "TSTCT": [
+      "fraud_1.zip",
+      "normal_1.zip"
+    ],
+    "BKPF1": [
+      "normal_1.zip"
+    ],
+    "BKPF2": [
+      "normal_1.zip"
+    ],
+    "BSEG_1": [
+      "fraud_1.zip"
+    ],
+    "BSEG_6": [
+      "normal_1.zip"
+    ],
+    "JSTOXLSX": [
+      "fraud_2.zip"
+    ],
+    "LIKS": [
+      "normal_1.zip"
+    ],
+    "MARA_A-G": [
+      "normal_1.zip"
+    ],
+    "MARA_H-O": [
+      "normal_1.zip"
+    ],
+    "MARA_P-Y": [
+      "normal_1.zip"
+    ],
+    "MARA_Z": [
+      "normal_1.zip"
+    ],
+    "MARD1": [
+      "fraud_3.zip"
+    ],
+    "MBEW2": [
+      "normal_1.zip"
+    ],
+    "PBIMT": [
+      "normal_2.zip"
+    ],
+    "PLAF": [
+      "normal_2.zip"
+    ],
+    "RESEG": [
+      "fraud_1.zip"
+    ]
+  },
+  "table_count_unique": 90,
+  "o2c_candidate_coverage": {
+    "VBAK": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBAP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBPA": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "LIKP": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "LIPS": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "VBRK": [],
+    "VBRP": [],
+    "KNA1": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "KNB1": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "BKPF": [
+      "fraud_1.zip",
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ],
+    "BSEG": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_1.zip",
+      "normal_2.zip"
+    ],
+    "BSID": [],
+    "BSAD": [],
+    "KONV": [
+      "fraud_2.zip",
+      "fraud_3.zip",
+      "normal_2.zip"
+    ]
+  }
+}

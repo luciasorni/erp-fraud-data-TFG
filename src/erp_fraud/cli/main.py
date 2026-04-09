@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -33,6 +34,7 @@ from ..ingest import (
 )
 from ..storage import (
     IngestJsonLogger,
+    get_duckdb_connection,
     load_table_to_duckdb_with_stats,
     run_technical_validation_before_tests,
     write_or_update_report_markdown_with_data_validation,
@@ -44,6 +46,8 @@ from ..storage import (
     write_run_metadata_json,
     write_schema_summary_json,
 )
+from ..storage.o2c_transform import O2CTransformError, transform_raw_to_o2c_canonical
+from ..storage.o2c_validation import write_o2c_validation_report_json
 from ..storage.data_dictionary import DataDictionaryCompletenessError, check_dictionary_completeness
 from ..storage.paths import ruta_run
 from ..storage.report_json import build_report_json_payload
@@ -55,6 +59,11 @@ from ..config import (
     DEFAULT_KB_ENABLED,
     DEFAULT_KB_SOURCES_CONFIG,
     DEFAULT_OUT_DIR,
+    DEFAULT_O2C_CANONICAL_SCHEMA_CONFIG,
+    DEFAULT_O2C_IDENTITY_CONFIG,
+    DEFAULT_O2C_MAPPING_CONFIG,
+    DEFAULT_O2C_TARGET_SCHEMA,
+    DEFAULT_PROCESS_FAMILY,
     DEFAULT_RUN_INPUT_ZIP,
     DEFAULT_SAMPLE_TOP_N,
     DEFAULT_SCHEMA_NAME,
@@ -236,6 +245,13 @@ def _normalize_llm_mode(raw_value: Any) -> str:
     return mode
 
 
+def _normalize_process_family(raw_value: Any) -> str:
+    value = str(raw_value if raw_value is not None else DEFAULT_PROCESS_FAMILY).strip().lower()
+    if value not in {"p2p", "o2c"}:
+        return DEFAULT_PROCESS_FAMILY
+    return value
+
+
 def _filter_catalog_test_ids(
     *,
     test_specs: list[dict[str, Any]],
@@ -321,6 +337,13 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_KB_CHUNKING_CONFIG)),
         "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
         "llm_mode": _normalize_llm_mode(_pick("llm_mode", "stub")),
+        "process_family": _normalize_process_family(_pick("process_family", DEFAULT_PROCESS_FAMILY)),
+        "o2c_canonical_schema_config": str(
+            _pick("o2c_canonical_schema_config", DEFAULT_O2C_CANONICAL_SCHEMA_CONFIG)
+        ),
+        "o2c_identity_config": str(_pick("o2c_identity_config", DEFAULT_O2C_IDENTITY_CONFIG)),
+        "o2c_mapping_config": str(_pick("o2c_mapping_config", DEFAULT_O2C_MAPPING_CONFIG)),
+        "o2c_target_schema": str(_pick("o2c_target_schema", DEFAULT_O2C_TARGET_SCHEMA)),
     }
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
@@ -466,11 +489,134 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             catalog_path=settings["catalog"],
             out_dir=settings["out_dir"],
             llm_mode=settings["llm_mode"],
+            process_family=settings["process_family"],
         )
+        if settings["process_family"] == "o2c":
+            raw = Path(settings["input_zip"]).read_bytes()
+            dataset_hash = hashlib.sha256(raw).hexdigest()
+        else:
+            dataset_hash_result = calcular_dataset_hash(settings["input_zip"])
+            dataset_hash = dataset_hash_result.dataset_hash
+
+        if settings["process_family"] == "o2c":
+            conn = get_duckdb_connection(settings["db_path"])
+            try:
+                transform_payload = transform_raw_to_o2c_canonical(
+                    conn=conn,
+                    canonical_schema_config_path=settings["o2c_canonical_schema_config"],
+                    identity_config_path=settings["o2c_identity_config"],
+                    mapping_config_path=settings["o2c_mapping_config"],
+                    target_schema=settings["o2c_target_schema"],
+                )
+                data_validation_report_path = write_o2c_validation_report_json(
+                    run_paths["data_validation_report"],
+                    conn=conn,
+                    canonical_schema_config_path=settings["o2c_canonical_schema_config"],
+                    target_schema=settings["o2c_target_schema"],
+                )
+                validation_payload = json.loads(data_validation_report_path.read_text(encoding="utf-8"))
+                validation_summary = (
+                    validation_payload.get("summary", {}) if isinstance(validation_payload, dict) else {}
+                )
+                validation_status = str(validation_summary.get("overall_status", "ERROR")).strip().upper() or "ERROR"
+                overall_status = "OK" if validation_status == "OK" else "ERROR"
+
+                schema_summary_path = write_schema_summary_json(
+                    run_paths["schema_summary"],
+                    db_path=settings["db_path"],
+                    schema_name=settings["o2c_target_schema"],
+                )
+            finally:
+                conn.close()
+
+            run_metadata_path = write_run_metadata_json(
+                run_paths["run_metadata"],
+                run_id=run_id,
+                dataset_hash=dataset_hash,
+                project_root=".",
+                process_family=settings["process_family"],
+            )
+            try:
+                run_metadata_payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
+                if isinstance(run_metadata_payload, dict):
+                    run_metadata_payload["llm_mode"] = settings["llm_mode"]
+                    run_metadata_payload["process_family"] = settings["process_family"]
+                    run_metadata_payload["o2c_target_schema"] = settings["o2c_target_schema"]
+                    run_metadata_payload["o2c_transform_status"] = transform_payload
+                    run_metadata_payload["o2c_validation_summary"] = validation_summary
+                    run_metadata_path.write_text(
+                        json.dumps(run_metadata_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                        encoding="utf-8",
+                    )
+            except Exception:
+                pass
+
+            extra_artifacts: dict[str, str] = {
+                "run_metadata_json": str(run_metadata_path),
+                "schema_summary_json_run": str(schema_summary_path),
+                "o2c_validation_report_json": str(data_validation_report_path),
+            }
+            report_payload = build_report_json_payload(
+                run_id=run_id,
+                dataset_hash=dataset_hash,
+                out_dir=settings["out_dir"],
+                summary={
+                    "overall_status": overall_status,
+                    "tests_total": 0,
+                    "tests_ok": 0,
+                    "tests_error": 0,
+                    "tests_timeout": 0,
+                    "findings_total": 0,
+                    "ranking_entities": 0,
+                },
+                ranking=[],
+                top_k=0,
+                test_runs=[],
+                artifact_paths=extra_artifacts,
+                errors=[],
+                metadata_extra={
+                    "input_zip": settings["input_zip"],
+                    "out_dir": settings["out_dir"],
+                    "llm_mode": settings["llm_mode"],
+                    "process_family": settings["process_family"],
+                    "o2c_target_schema": settings["o2c_target_schema"],
+                    "o2c_canonical_schema_config": settings["o2c_canonical_schema_config"],
+                    "o2c_identity_config": settings["o2c_identity_config"],
+                    "o2c_mapping_config": settings["o2c_mapping_config"],
+                    "o2c_transform_status": transform_payload,
+                    "o2c_validation_summary": validation_summary,
+                },
+            )
+            report_json_path = write_report_json(
+                output_path=run_paths["report_json"],
+                payload=report_payload,
+            )
+            report_md_path = write_report_markdown_from_report_json(
+                report_json_path=report_json_path,
+                report_md_path=run_paths["report_md"],
+            )
+            render_report_markdown_to_html(
+                report_md_path=report_md_path,
+                report_html_path=run_paths["report_html"],
+            )
+            _write_run_structure_manifest(run_id=run_id, run_dir=run_dir, paths=run_paths)
+
+            logger.log_ingest_end(
+                status=overall_status,
+                tables_loaded=int(transform_payload.get("entities_ok", 0)),
+                tests_total=0,
+                findings_total=0,
+                run_dir=str(run_dir),
+                process_family=settings["process_family"],
+            )
+            print(
+                "OK: run completado "
+                f"(run_id={run_id}, process_family=o2c, status={overall_status}, out={run_dir})"
+            )
+            return 0 if overall_status == "OK" else 1
+
         validar_ficheros_esperados_joint_datasets(settings["input_zip"])
         files = listar_ficheros_joint_datasets(settings["input_zip"])
-        dataset_hash_result = calcular_dataset_hash(settings["input_zip"])
-        dataset_hash = dataset_hash_result.dataset_hash
 
         table_stats: list[dict[str, object]] = []
         loaded_tables: list[str] = []
@@ -527,11 +673,13 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             run_id=run_id,
             dataset_hash=dataset_hash,
             project_root=".",
+            process_family=settings["process_family"],
         )
         try:
             run_metadata_payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
             if isinstance(run_metadata_payload, dict):
                 run_metadata_payload["llm_mode"] = settings["llm_mode"]
+                run_metadata_payload["process_family"] = settings["process_family"]
                 run_metadata_path.write_text(
                     json.dumps(run_metadata_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8",
@@ -731,6 +879,7 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 "kb_chunking_config": settings["kb_chunking_config"],
                 "kb_chroma_config": settings["kb_chroma_config"],
                 "llm_mode": settings["llm_mode"],
+                "process_family": settings["process_family"],
             },
         )
         report_json_path = write_report_json(
@@ -785,6 +934,10 @@ def _run_pipeline(args: argparse.Namespace) -> int:
     except CatalogValidationError as exc:
         logger.log_error("Validación de catálogo RF13 falló", error=str(exc))
         print(f"ERROR: validación catálogo falló: {exc}", file=sys.stderr)
+        return 1
+    except O2CTransformError as exc:
+        logger.log_error("Transformación O2C falló", error=str(exc))
+        print(f"ERROR: transformación O2C falló: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
         logger.log_error("Pipeline run falló", error=str(exc))
@@ -987,6 +1140,32 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         choices=["stub", "real"],
         help="Modo de nodos LLM del grafo (stub|real). Default: stub",
+    )
+    run_parser.add_argument(
+        "--process-family",
+        default=None,
+        choices=["p2p", "o2c"],
+        help="Familia de proceso del run (p2p|o2c). Default: p2p",
+    )
+    run_parser.add_argument(
+        "--o2c-canonical-schema-config",
+        default=None,
+        help=f"Config schema O2C (default: {DEFAULT_O2C_CANONICAL_SCHEMA_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--o2c-identity-config",
+        default=None,
+        help=f"Config identidad/dedup O2C (default: {DEFAULT_O2C_IDENTITY_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--o2c-mapping-config",
+        default=None,
+        help=f"Config mapping raw->canónico O2C (default: {DEFAULT_O2C_MAPPING_CONFIG})",
+    )
+    run_parser.add_argument(
+        "--o2c-target-schema",
+        default=None,
+        help=f"Schema destino O2C en DuckDB (default: {DEFAULT_O2C_TARGET_SCHEMA})",
     )
     run_parser.set_defaults(handler=_run_pipeline)
     return parser

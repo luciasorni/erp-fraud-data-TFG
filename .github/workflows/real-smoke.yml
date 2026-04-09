@@ -44,13 +44,96 @@ jobs:
           print(p)
           PY
 
-      - name: Run real smoke (low-cost)
+      - name: Create minimal O2C fixture (db + schema_summary)
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        run: |
+          python - <<'PY'
+          import duckdb
+          import json
+          from pathlib import Path
+
+          db_path = Path("run_results/real_smoke_o2c.duckdb")
+          db_path.parent.mkdir(parents=True, exist_ok=True)
+          conn = duckdb.connect(str(db_path))
+          try:
+              conn.execute('CREATE SCHEMA IF NOT EXISTS "o2c"')
+              conn.execute(
+                  '''
+                  CREATE TABLE IF NOT EXISTS "o2c"."o2c_order" (
+                      sales_order_id VARCHAR,
+                      sales_order_item_id VARCHAR,
+                      customer_id VARCHAR,
+                      net_amount DOUBLE,
+                      condition_amount DOUBLE,
+                      ordered_quantity DOUBLE
+                  )
+                  '''
+              )
+              conn.execute(
+                  '''
+                  CREATE TABLE IF NOT EXISTS "o2c"."o2c_delivery" (
+                      delivery_id VARCHAR,
+                      delivery_item_id VARCHAR,
+                      reference_sales_order_id VARCHAR,
+                      reference_sales_order_item_id VARCHAR,
+                      delivered_quantity DOUBLE
+                  )
+                  '''
+              )
+              conn.execute(
+                  '''
+                  CREATE TABLE IF NOT EXISTS "o2c"."o2c_collection" (
+                      company_code VARCHAR,
+                      receivable_document_id VARCHAR,
+                      fiscal_year VARCHAR,
+                      customer_id VARCHAR,
+                      amount_local_currency DOUBLE,
+                      baseline_date DATE,
+                      clearing_date DATE,
+                      clearing_document_id VARCHAR
+                  )
+                  '''
+              )
+              conn.execute('DELETE FROM "o2c"."o2c_order"')
+              conn.execute('DELETE FROM "o2c"."o2c_delivery"')
+              conn.execute('DELETE FROM "o2c"."o2c_collection"')
+              conn.execute(
+                  'INSERT INTO "o2c"."o2c_order" VALUES (?, ?, ?, ?, ?, ?)',
+                  ["5000000001", "000010", "V01", 500.0, -250.0, 10.0],
+              )
+              conn.execute(
+                  'INSERT INTO "o2c"."o2c_delivery" VALUES (?, ?, ?, ?, ?)',
+                  ["8000000001", "000010", "5000000001", "000010", -3.0],
+              )
+              conn.execute(
+                  'INSERT INTO "o2c"."o2c_collection" VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                  ["1000", "1900000010", "2026", "V01", 20000.0, "2026-01-20", "2026-01-10", None],
+              )
+          finally:
+              conn.close()
+
+          summary = {
+              "schema_name": "o2c",
+              "table_count": 3,
+              "tables": [
+                  {"table_name": "o2c_order", "columns": [{"name": "sales_order_id"}, {"name": "sales_order_item_id"}, {"name": "net_amount"}, {"name": "condition_amount"}]},
+                  {"table_name": "o2c_delivery", "columns": [{"name": "delivery_id"}, {"name": "delivery_item_id"}, {"name": "delivered_quantity"}]},
+                  {"table_name": "o2c_collection", "columns": [{"name": "company_code"}, {"name": "receivable_document_id"}, {"name": "fiscal_year"}, {"name": "amount_local_currency"}]},
+              ],
+          }
+          summary_path = Path("run_results/real_smoke_o2c_schema_summary.json")
+          summary_path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+          print(db_path)
+          print(summary_path)
+          PY
+
+      - name: Run real smoke P2P (low-cost)
         if: ${{ env.OPENAI_API_KEY != '' }}
         env:
           LANGSMITH_TRACING: "true"
           LANGCHAIN_TRACING_V2: "true"
           LANGSMITH_PROJECT: erp-fraud-tfg
-          LANGSMITH_ENDPOINT: https://eu.api.smith.langchain.com
+          LANGSMITH_ENDPOINT: https://api.smith.langchain.com
           OPENAI_PRICE_INPUT_PER_1M_USD: "0"
           OPENAI_PRICE_OUTPUT_PER_1M_USD: "0"
         run: |
@@ -61,12 +144,35 @@ jobs:
             --persist-base-dir run_results \
             --llm-mode real
 
+      - name: Run real smoke O2C (low-cost)
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        env:
+          LANGSMITH_TRACING: "true"
+          LANGCHAIN_TRACING_V2: "true"
+          LANGSMITH_PROJECT: erp-fraud-tfg
+          LANGSMITH_ENDPOINT: https://api.smith.langchain.com
+          OPENAI_PRICE_INPUT_PER_1M_USD: "0"
+          OPENAI_PRICE_OUTPUT_PER_1M_USD: "0"
+        run: |
+          python scripts/run_rf15c_e2e_manual.py \
+            --run-id real-smoke-o2c-${{ github.run_id }} \
+            --schema-summary-path run_results/real_smoke_o2c_schema_summary.json \
+            --catalog-path tests/catalog_o2c \
+            --persist-base-dir run_results \
+            --process-family o2c \
+            --db-path run_results/real_smoke_o2c.duckdb \
+            --schema-name o2c \
+            --table-name o2c_order \
+            --llm-mode real
+
       - name: Upload smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: real-smoke-artifacts
-          path: run_results/real-smoke-${{ github.run_id }}
+          path: |
+            run_results/real-smoke-${{ github.run_id }}
+            run_results/real-smoke-o2c-${{ github.run_id }}
           if-no-files-found: ignore
 
       - name: No-op when OPENAI_API_KEY is missing

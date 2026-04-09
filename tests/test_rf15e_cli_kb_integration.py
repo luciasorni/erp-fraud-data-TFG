@@ -25,12 +25,19 @@ def test_rf15e09_run_settings_include_kb_defaults() -> None:
         kb_sources_config=None,
         kb_chunking_config=None,
         kb_chroma_config=None,
+        process_family=None,
+        o2c_canonical_schema_config=None,
+        o2c_identity_config=None,
+        o2c_mapping_config=None,
+        o2c_target_schema=None,
     )
     settings = _resolve_run_settings(args)
     assert settings["kb_index_enabled"] is True
     assert settings["kb_sources_config"] == "config/kb_sources.yaml"
     assert settings["kb_chunking_config"] == "config/kb_chunking.yaml"
     assert settings["kb_chroma_config"] == "config/kb_chroma.yaml"
+    assert settings["process_family"] == "p2p"
+    assert settings["o2c_mapping_config"] == "config/column_mapping_o2c.yaml"
 
 
 def test_rf15e09_build_run_paths_include_kb_artifacts(tmp_path: Path) -> None:

@@ -1,0 +1,54 @@
+id: TST-O2C-CLEARING-ANOMALY
+version: 1.0.0
+name: O2C suspicious clearing anomaly
+fraud_type: collection_manipulation
+red_flag_id: RF-O2C-004
+process_step: collection
+description: Detecta anomalías de clearing/cobro en O2C.
+source:
+  catalog: acfe_coso
+  reference: suspicious_clearing_patterns
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_collection
+      required_columns:
+        - company_code
+        - receivable_document_id
+        - fiscal_year
+        - customer_id
+        - amount_local_currency
+        - baseline_date
+        - clearing_date
+        - clearing_document_id
+expected_output:
+  primary_entity: receivable_clearing_event
+  finding_fields:
+    - company_code
+    - receivable_document_id
+    - fiscal_year
+    - customer_id
+    - amount_local_currency
+    - baseline_date
+    - clearing_date
+    - clearing_document_id
+  notes: Marca clearings antes de baseline o importes altos sin clearing doc.
+evidence_columns:
+  - company_code
+  - receivable_document_id
+  - fiscal_year
+  - customer_id
+  - amount_local_currency
+  - baseline_date
+  - clearing_date
+  - clearing_document_id
+logic:
+  implementation_type: sql
+  description: Reglas de coherencia temporal y documental de cobro.
+  sql_ref: sql/tests/tst_o2c_clearing_anomaly.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - collection
+  - clearing

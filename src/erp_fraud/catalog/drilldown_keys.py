@@ -47,6 +47,37 @@ DRILLDOWN_MIN_KEYS_BY_TEST_ID: dict[str, tuple[str, ...]] = {
         "position",
         "material",
     ),
+    "TST-UNUSUAL-POSTING-TIMES": (
+        "kreditor",
+        "belegnummer",
+        "erfassungsuhrzeit",
+    ),
+    "TST-LARGE-EVEN-DOLLAR-ENTRIES": (
+        "kreditor",
+        "belegnummer",
+        "betrag",
+    ),
+    "TST-O2C-PRICE-OUTLIER": (
+        "sales_order_id",
+        "sales_order_item_id",
+    ),
+    "TST-O2C-DISCOUNT-POLICY-BREACH": (
+        "sales_order_id",
+        "sales_order_item_id",
+    ),
+    "TST-O2C-DELIVERY-QUANTITY-MISMATCH": (
+        "delivery_id",
+        "delivery_item_id",
+    ),
+    "TST-O2C-NEGATIVE-DELIVERY-QUANTITY": (
+        "delivery_id",
+        "delivery_item_id",
+    ),
+    "TST-O2C-CLEARING-ANOMALY": (
+        "company_code",
+        "receivable_document_id",
+        "fiscal_year",
+    ),
 }
 
 

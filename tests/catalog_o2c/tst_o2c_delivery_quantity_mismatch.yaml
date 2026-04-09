@@ -1,0 +1,53 @@
+id: TST-O2C-DELIVERY-QUANTITY-MISMATCH
+version: 1.0.0
+name: O2C delivery quantity mismatch
+fraud_type: delivery_manipulation
+red_flag_id: RF-O2C-003
+process_step: delivery
+description: Detecta diferencias entre cantidad pedida y entregada en O2C.
+source:
+  catalog: acfe_coso
+  reference: quantity_mismatch
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_delivery
+      required_columns:
+        - delivery_id
+        - delivery_item_id
+        - reference_sales_order_id
+        - reference_sales_order_item_id
+        - delivered_quantity
+    - table: o2c_order
+      required_columns:
+        - sales_order_id
+        - sales_order_item_id
+        - ordered_quantity
+expected_output:
+  primary_entity: delivery_item
+  finding_fields:
+    - delivery_id
+    - delivery_item_id
+    - reference_sales_order_id
+    - reference_sales_order_item_id
+    - delivered_quantity
+    - ordered_quantity
+    - qty_gap
+  notes: Marca entregas cuya cantidad difiere del pedido.
+evidence_columns:
+  - delivery_id
+  - delivery_item_id
+  - reference_sales_order_id
+  - reference_sales_order_item_id
+  - delivered_quantity
+  - ordered_quantity
+logic:
+  implementation_type: sql
+  description: Join delivery/order y detección de desviación de cantidad.
+  sql_ref: sql/tests/tst_o2c_delivery_quantity_mismatch.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - delivery
+  - quantity

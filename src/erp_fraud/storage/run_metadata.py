@@ -55,12 +55,16 @@ def build_run_metadata(
     code_version: str | None = None,
     tests_version: str | None = None,
     config_version: str | None = None,
+    process_family: str = "p2p",
 ) -> dict:
     """Construye un metadata dict estable para una ejecución."""
     if not run_id or not run_id.strip():
         raise ValueError("run_id debe ser un string no vacío")
     if not dataset_hash or not dataset_hash.strip():
         raise ValueError("dataset_hash debe ser un string no vacío")
+    normalized_process_family = str(process_family).strip().lower() or "p2p"
+    if normalized_process_family not in {"p2p", "o2c"}:
+        raise ValueError("process_family debe ser 'p2p' u 'o2c'")
 
     root = Path(project_root).resolve()
 
@@ -88,6 +92,7 @@ def build_run_metadata(
     metadata = {
         "run_id": run_id.strip(),
         "dataset_hash": dataset_hash.strip(),
+        "process_family": normalized_process_family,
         "timestamp_utc": timestamp_utc or _utc_timestamp_iso(),
         "versions": {
             "code": code_version or _safe_git_head(root),
@@ -108,6 +113,7 @@ def write_run_metadata_json(
     code_version: str | None = None,
     tests_version: str | None = None,
     config_version: str | None = None,
+    process_family: str = "p2p",
 ) -> Path:
     """Genera `run_metadata.json` con serialización estable."""
     metadata = build_run_metadata(
@@ -118,6 +124,7 @@ def write_run_metadata_json(
         code_version=code_version,
         tests_version=tests_version,
         config_version=config_version,
+        process_family=process_family,
     )
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

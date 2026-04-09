@@ -20,6 +20,7 @@ from .test_execution import (
     run_test_just_below_auth_threshold,
     run_test_negative_quantity_receipts,
     run_test_round_dollar_payments,
+    run_test_sql_ref_generic,
     run_test_split_payments_near_limit,
     run_test_unusual_amount_by_vendor,
 )
@@ -183,64 +184,87 @@ class TestRunner:
         """Ejecuta un test del catálogo y devuelve resultado estándar."""
         started = perf_counter()
         test_id = str(test_spec.get("id", ""))
+        requirements = test_spec.get("data_requirements", {})
+        tables = requirements.get("tables", []) if isinstance(requirements, dict) else []
+        resolved_schema = self.schema_name
+        resolved_table = self.table_name
+        if isinstance(tables, list) and tables and isinstance(tables[0], dict):
+            raw_table = str(tables[0].get("table", "")).strip()
+            if raw_table:
+                if "." in raw_table:
+                    left, right = raw_table.split(".", 1)
+                    resolved_schema = left.strip() or resolved_schema
+                    resolved_table = right.strip() or resolved_table
+                else:
+                    resolved_table = raw_table
+
         if test_id == "TST-DUPLICATE-POSTINGS":
             result = run_test_duplicate_postings(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-UNUSUAL-AMOUNT-BY-VENDOR":
             result = run_test_unusual_amount_by_vendor(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-ROUND-DOLLAR-PAYMENTS":
             result = run_test_round_dollar_payments(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-JUST-BELOW-AUTH-THRESHOLD":
             result = run_test_just_below_auth_threshold(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-SPLIT-PAYMENTS-NEAR-LIMIT":
             result = run_test_split_payments_near_limit(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-INVOICE-SEQUENCE-GAPS":
             result = run_test_invoice_sequence_gaps(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-NEGATIVE-QUANTITY-RECEIPTS":
             result = run_test_negative_quantity_receipts(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         elif test_id == "TST-DUPLICATE-MATERIAL-ITEMS":
             result = run_test_duplicate_material_items(
                 test_spec,
                 db_path=self.db_path,
-                schema_name=self.schema_name,
-                table_name=self.table_name,
+                schema_name=resolved_schema,
+                table_name=resolved_table,
             )
         else:
-            raise NotImplementedError(f"Test no soportado por TestRunner: {test_id}")
+            implementation_type = str(test_spec.get("logic", {}).get("implementation_type", "")).strip().lower()
+            if implementation_type == "sql":
+                result = run_test_sql_ref_generic(
+                    test_spec,
+                    db_path=self.db_path,
+                    schema_name=resolved_schema,
+                    table_name=resolved_table,
+                )
+            else:
+                raise NotImplementedError(f"Test no soportado por TestRunner: {test_id}")
 
         runner_duration_ms = int((perf_counter() - started) * 1000)
         result["runner_duration_ms"] = runner_duration_ms

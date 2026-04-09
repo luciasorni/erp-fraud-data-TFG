@@ -8,6 +8,11 @@ DEFAULT_TABLE_NAME = "fraud_1"
 DEFAULT_CATALOG_PATH = "tests/catalog"
 DEFAULT_WEIGHTS_CONFIG = "config/weights.yaml"
 DEFAULT_SAMPLE_TOP_N = 20
+DEFAULT_PROCESS_FAMILY = "p2p"
+DEFAULT_O2C_CANONICAL_SCHEMA_CONFIG = "config/canonical_schema_o2c.yaml"
+DEFAULT_O2C_IDENTITY_CONFIG = "config/o2c_entity_identity.yaml"
+DEFAULT_O2C_MAPPING_CONFIG = "config/column_mapping_o2c.yaml"
+DEFAULT_O2C_TARGET_SCHEMA = "o2c"
 
 DEFAULT_KB_ENABLED = True
 DEFAULT_KB_SOURCES_CONFIG = "config/kb_sources.yaml"

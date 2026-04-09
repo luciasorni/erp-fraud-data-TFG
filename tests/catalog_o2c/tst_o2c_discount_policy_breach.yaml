@@ -1,0 +1,46 @@
+id: TST-O2C-DISCOUNT-POLICY-BREACH
+version: 1.0.0
+name: O2C discount policy breach
+fraud_type: discount_abuse
+red_flag_id: RF-O2C-002
+process_step: sales_order
+description: Detecta descuentos fuera de política sobre pedidos O2C.
+source:
+  catalog: acfe_coso
+  reference: unusual_discount_patterns
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_order
+      required_columns:
+        - sales_order_id
+        - sales_order_item_id
+        - customer_id
+        - net_amount
+        - condition_amount
+expected_output:
+  primary_entity: sales_order_item
+  finding_fields:
+    - sales_order_id
+    - sales_order_item_id
+    - customer_id
+    - net_amount
+    - condition_amount
+    - discount_ratio
+  notes: Marca líneas con ratio de descuento superior al umbral.
+evidence_columns:
+  - sales_order_id
+  - sales_order_item_id
+  - customer_id
+  - net_amount
+  - condition_amount
+logic:
+  implementation_type: sql
+  description: Ratio abs(condition_amount)/abs(net_amount) por línea O2C.
+  sql_ref: sql/tests/tst_o2c_discount_policy_breach.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - discount
+  - policy

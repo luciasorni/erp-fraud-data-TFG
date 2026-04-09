@@ -27,3 +27,12 @@ internal_fraud_type_to_branch:
   inventory_cost_outlier: asset_misappropriation
   timing_anomaly: other_frauds
   account_usage_anomaly: other_frauds
+  # O2C RF11-12
+  price_manipulation: corruption
+  discount_abuse: corruption
+  order_change_anomaly: corruption
+  delivery_manipulation: corruption
+  quantity_manipulation: asset_misappropriation
+  invoice_amount_anomaly: material_misstatement_financial_statements
+  invoice_sequence_anomaly: material_misstatement_financial_statements
+  collection_manipulation: corruption

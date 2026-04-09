@@ -1,0 +1,50 @@
+{
+  "status": "OK",
+  "matrix_csv_path": "docs/o2c/artifacts/rf11_11_o2c_hypothesis_matrix.csv",
+  "taxonomy_config_path": "config/fraud_tree_taxonomy.yaml",
+  "matrix_fraud_types": [
+    "collection_manipulation",
+    "delivery_manipulation",
+    "discount_abuse",
+    "invoice_amount_anomaly",
+    "invoice_sequence_anomaly",
+    "order_change_anomaly",
+    "price_manipulation",
+    "quantity_manipulation"
+  ],
+  "mapped_rows": [
+    {
+      "fraud_type": "collection_manipulation",
+      "fraud_tree_branch": "corruption"
+    },
+    {
+      "fraud_type": "delivery_manipulation",
+      "fraud_tree_branch": "corruption"
+    },
+    {
+      "fraud_type": "discount_abuse",
+      "fraud_tree_branch": "corruption"
+    },
+    {
+      "fraud_type": "invoice_amount_anomaly",
+      "fraud_tree_branch": "material_misstatement_financial_statements"
+    },
+    {
+      "fraud_type": "invoice_sequence_anomaly",
+      "fraud_tree_branch": "material_misstatement_financial_statements"
+    },
+    {
+      "fraud_type": "order_change_anomaly",
+      "fraud_tree_branch": "corruption"
+    },
+    {
+      "fraud_type": "price_manipulation",
+      "fraud_tree_branch": "corruption"
+    },
+    {
+      "fraud_type": "quantity_manipulation",
+      "fraud_tree_branch": "asset_misappropriation"
+    }
+  ],
+  "errors": []
+}

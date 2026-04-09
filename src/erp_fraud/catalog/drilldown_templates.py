@@ -14,6 +14,13 @@ DRILLDOWN_QUERY_ID_BY_TEST_ID: dict[str, str] = {
     "TST-INVOICE-SEQUENCE-GAPS": "drilldown_invoice_sequence_gaps_v1",
     "TST-NEGATIVE-QUANTITY-RECEIPTS": "drilldown_negative_quantity_receipts_v1",
     "TST-DUPLICATE-MATERIAL-ITEMS": "drilldown_duplicate_material_items_v1",
+    "TST-UNUSUAL-POSTING-TIMES": "drilldown_unusual_posting_times_v1",
+    "TST-LARGE-EVEN-DOLLAR-ENTRIES": "drilldown_large_even_dollar_entries_v1",
+    "TST-O2C-PRICE-OUTLIER": "drilldown_o2c_price_outlier_v1",
+    "TST-O2C-DISCOUNT-POLICY-BREACH": "drilldown_o2c_discount_policy_breach_v1",
+    "TST-O2C-DELIVERY-QUANTITY-MISMATCH": "drilldown_o2c_delivery_quantity_mismatch_v1",
+    "TST-O2C-NEGATIVE-DELIVERY-QUANTITY": "drilldown_o2c_negative_delivery_quantity_v1",
+    "TST-O2C-CLEARING-ANOMALY": "drilldown_o2c_clearing_anomaly_v1",
 }
 
 

@@ -1,0 +1,47 @@
+id: TST-O2C-NEGATIVE-DELIVERY-QUANTITY
+version: 1.0.0
+name: O2C negative delivery quantity
+fraud_type: quantity_manipulation
+red_flag_id: RF-O2C-005
+process_step: delivery
+description: Detecta cantidades de entrega negativas en O2C como señal de manipulación o ajuste irregular.
+source:
+  catalog: acfe_coso
+  reference: negative_receipt_quantities
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_delivery
+      required_columns:
+        - delivery_id
+        - delivery_item_id
+        - delivered_quantity
+      required_columns_exact:
+        - delivery_id
+        - delivery_item_id
+        - delivered_quantity
+expected_output:
+  primary_entity: delivery_item
+  finding_fields:
+    - delivery_id
+    - delivery_item_id
+    - reference_sales_order_id
+    - reference_sales_order_item_id
+    - delivered_quantity
+  notes: Marca líneas de entrega con delivered_quantity negativa.
+evidence_columns:
+  - delivery_id
+  - delivery_item_id
+  - reference_sales_order_id
+  - reference_sales_order_item_id
+  - delivered_quantity
+logic:
+  implementation_type: sql
+  description: Filtra entregas con cantidad negativa.
+  sql_ref: sql/tests/tst_o2c_negative_delivery_quantity.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - delivery
+  - quantity

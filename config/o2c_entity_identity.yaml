@@ -1,0 +1,219 @@
+version: 1.0.0
+identity_id: o2c_entity_identity_v1
+process_family: o2c
+status: draft_for_implementation
+source_schema: config/canonical_schema_o2c.yaml
+
+global_normalization:
+  string_trim: true
+  string_uppercase: true
+  empty_to_null: true
+  sap_zero_pad_ids:
+    enabled: true
+    width_default: 10
+    applies_to_fields:
+      - sales_order_id
+      - delivery_id
+      - accounting_document_id
+      - receivable_document_id
+      - customer_id
+  decimal_scale_policy:
+    amount_scale: 2
+    quantity_scale: 3
+  date_policy:
+    invalid_date_handling: null_and_warn
+    timezone_assumption: UTC
+
+entities:
+  o2c_order:
+    grain: sales_order_item
+    business_key:
+      strategy: composite
+      key_fields:
+        - sales_order_id
+        - sales_order_item_id
+      required_non_null: true
+    normalization_rules:
+      - field: sales_order_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: sales_order_item_id
+        rules: [trim, uppercase, zero_pad_6]
+      - field: customer_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: net_amount
+        rules: [cast_decimal_18_2]
+      - field: ordered_quantity
+        rules: [cast_decimal_18_3]
+    duplicate_resolution:
+      duplicate_scope: business_key
+      keep_policy: max_quality_score
+      quality_score_order:
+        - has_non_null_customer_id
+        - has_non_null_order_created_date
+        - has_non_null_net_amount
+        - source_priority
+      source_priority:
+        - VBAP
+        - VBAK
+      tie_breaker:
+        - latest_ingestion_ts
+        - lexical_row_hash
+
+  o2c_delivery:
+    grain: delivery_item
+    business_key:
+      strategy: composite
+      key_fields:
+        - delivery_id
+        - delivery_item_id
+      required_non_null: true
+    normalization_rules:
+      - field: delivery_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: delivery_item_id
+        rules: [trim, uppercase, zero_pad_6]
+      - field: reference_sales_order_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: reference_sales_order_item_id
+        rules: [trim, uppercase, zero_pad_6]
+      - field: delivered_quantity
+        rules: [cast_decimal_18_3]
+    duplicate_resolution:
+      duplicate_scope: business_key
+      keep_policy: max_quality_score
+      quality_score_order:
+        - has_non_null_reference_sales_order_id
+        - has_non_null_delivered_quantity
+        - has_non_null_delivery_date
+        - source_priority
+      source_priority:
+        - LIPS
+        - LIKP
+      tie_breaker:
+        - latest_ingestion_ts
+        - lexical_row_hash
+
+  o2c_invoice:
+    grain: accounting_document_line
+    business_key:
+      strategy: composite
+      key_fields:
+        - company_code
+        - accounting_document_id
+        - fiscal_year
+      required_non_null: true
+    normalization_rules:
+      - field: company_code
+        rules: [trim, uppercase]
+      - field: accounting_document_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: fiscal_year
+        rules: [trim, uppercase]
+      - field: customer_or_account_id
+        rules: [trim, uppercase]
+      - field: amount_local_currency
+        rules: [cast_decimal_18_2]
+      - field: posting_date
+        rules: [parse_date]
+    duplicate_resolution:
+      duplicate_scope: business_key
+      keep_policy: max_quality_score
+      quality_score_order:
+        - has_non_null_posting_date
+        - has_non_null_amount_local_currency
+        - has_non_null_customer_or_account_id
+        - source_priority
+      source_priority:
+        - BSEG
+        - BKPF
+      tie_breaker:
+        - latest_ingestion_ts
+        - lexical_row_hash
+
+  o2c_collection:
+    grain: receivable_clearing_event
+    business_key:
+      strategy: composite
+      key_fields:
+        - company_code
+        - receivable_document_id
+        - fiscal_year
+      required_non_null: true
+    normalization_rules:
+      - field: company_code
+        rules: [trim, uppercase]
+      - field: receivable_document_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: fiscal_year
+        rules: [trim, uppercase]
+      - field: customer_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: amount_local_currency
+        rules: [cast_decimal_18_2]
+      - field: clearing_date
+        rules: [parse_date]
+    duplicate_resolution:
+      duplicate_scope: business_key
+      keep_policy: max_quality_score
+      quality_score_order:
+        - has_non_null_clearing_document_id
+        - has_non_null_clearing_date
+        - has_non_null_customer_id
+        - source_priority
+      source_priority:
+        - BSEG
+        - BKPF
+      tie_breaker:
+        - latest_ingestion_ts
+        - lexical_row_hash
+
+  o2c_customer:
+    grain: customer_master
+    business_key:
+      strategy: single_field
+      key_fields:
+        - customer_id
+      required_non_null: true
+    normalization_rules:
+      - field: customer_id
+        rules: [trim, uppercase, zero_pad_10]
+      - field: customer_name
+        rules: [trim]
+      - field: country
+        rules: [trim, uppercase]
+      - field: city
+        rules: [trim, uppercase]
+    duplicate_resolution:
+      duplicate_scope: business_key
+      keep_policy: max_quality_score
+      quality_score_order:
+        - has_non_null_customer_name
+        - has_non_null_country
+        - has_non_null_city
+        - source_priority
+      source_priority:
+        - KNA1
+        - KNB1
+      tie_breaker:
+        - latest_ingestion_ts
+        - lexical_row_hash
+
+cross_entity_integrity:
+  - id: O2C-INT-001
+    description: Delivery must reference an existing order item when reference keys are present.
+    from_entity: o2c_delivery
+    to_entity: o2c_order
+    from_fields: [reference_sales_order_id, reference_sales_order_item_id]
+    to_fields: [sales_order_id, sales_order_item_id]
+    severity: warning
+  - id: O2C-INT-002
+    description: Collection should map to an invoice document key when clearing keys are available.
+    from_entity: o2c_collection
+    to_entity: o2c_invoice
+    from_fields: [company_code, receivable_document_id, fiscal_year]
+    to_fields: [company_code, accounting_document_id, fiscal_year]
+    severity: warning
+
+implementation_notes:
+  - This file is consumed by RF11-05 transforms and RF11-06 validations.
+  - Keep strategy declarative; avoid embedding SQL here.

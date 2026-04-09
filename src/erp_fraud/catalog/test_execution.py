@@ -845,3 +845,92 @@ def run_test_duplicate_material_items(
         implementation_type="sql",
         executed_on=executed_on,
     )
+
+
+def run_test_sql_ref_generic(
+    test_spec: dict[str, Any],
+    *,
+    schema_name: str = "main",
+    table_name: str = "fraud_1",
+    conn: duckdb.DuckDBPyConnection | None = None,
+    db_path: str | Path = DEFAULT_DUCKDB_PATH,
+) -> dict[str, Any]:
+    """Ejecutor SQL genérico para tests de catálogo con `logic.sql_ref`."""
+    logic = test_spec.get("logic", {})
+    if not isinstance(logic, dict):
+        raise ValueError("logic debe ser objeto")
+    sql_ref = str(logic.get("sql_ref", "")).strip()
+    if not sql_ref:
+        raise ValueError(f"{test_spec.get('id', '')}: falta logic.sql_ref para ejecución SQL genérica")
+
+    sql_path = Path(sql_ref)
+    if not sql_path.is_absolute():
+        sql_path = Path.cwd() / sql_path
+    if not sql_path.exists():
+        raise FileNotFoundError(f"No existe SQL ref: {sql_path}")
+    query = sql_path.read_text(encoding="utf-8")
+
+    own_connection = conn is None
+    if own_connection:
+        conn = get_duckdb_connection(db_path)
+    assert conn is not None
+
+    started = perf_counter()
+    try:
+        cur = conn.execute(query)
+        raw_rows = cur.fetchall()
+        columns = [str(col[0]).strip() for col in (cur.description or [])]
+    finally:
+        if own_connection:
+            conn.close()
+    duration_ms = int((perf_counter() - started) * 1000)
+
+    expected_output = test_spec.get("expected_output", {})
+    finding_fields = []
+    if isinstance(expected_output, dict):
+        finding_fields = expected_output.get("finding_fields", [])
+    preferred_key_fields = [str(name).strip() for name in finding_fields if str(name).strip()]
+    evidence_columns = [str(col).strip().lower() for col in test_spec.get("evidence_columns", []) if str(col).strip()]
+
+    rows: list[dict[str, Any]] = []
+    for row in raw_rows:
+        base = {
+            columns[idx]: row[idx]
+            for idx in range(min(len(columns), len(row)))
+            if columns[idx]
+        }
+        keys: dict[str, str] = {}
+        for key_name in preferred_key_fields:
+            if key_name in base and base[key_name] is not None:
+                keys[key_name] = str(base[key_name])
+            if len(keys) >= 4:
+                break
+        if not keys and base:
+            first_key = next(iter(base.keys()))
+            keys[first_key] = str(base[first_key])
+        metric_payload = {
+            key: value
+            for key, value in base.items()
+            if key not in keys
+        }
+        rows.append(
+            {
+                **base,
+                **_build_finding_common_fields(
+                    test_id=str(test_spec.get("id", "")),
+                    keys=keys,
+                    evidence_columns=evidence_columns or list(base.keys()),
+                    metrics=metric_payload,
+                ),
+            }
+        )
+
+    return build_standard_test_result(
+        test_spec=test_spec,
+        status="OK",
+        rows=rows,
+        columns=columns,
+        duration_ms=duration_ms,
+        implementation_type="sql_ref",
+        executed_on=f"{schema_name}.{table_name}",
+    )

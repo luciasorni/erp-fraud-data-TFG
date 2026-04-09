@@ -1,0 +1,49 @@
+id: TST-UNUSUAL-POSTING-TIMES
+version: 1.0.0
+name: Transactions posted at unusual times
+fraud_type: timing_anomaly
+red_flag_id: RF-P2P-010
+process_step: invoice_posting
+description: Detecta transacciones registradas en ventanas horarias atípicas para revisión de manipulación.
+source:
+  catalog: acfe_coso
+  reference: unusual_posting_times
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: fraud_1
+      required_columns:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+        - Erfassungsuhrzeit
+      required_columns_exact:
+        - Kreditor
+        - Belegnummer
+        - Betrag
+        - Erfassungsuhrzeit
+expected_output:
+  primary_entity: invoice_line
+  finding_fields:
+    - kreditor
+    - belegnummer
+    - erfassungsuhrzeit
+    - posting_hour
+    - unusual_window
+  notes: Marca transacciones con hora de registro fuera de ventana habitual (antes de 06:00 o desde 22:00).
+evidence_columns:
+  - Kreditor
+  - Belegnummer
+  - Betrag
+  - Erfassungsuhrzeit
+logic:
+  implementation_type: sql
+  description: Identificar transacciones con hora de registro atípica.
+  sql_ref: sql/tests/tst_unusual_posting_times.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - p2p
+  - acfe
+  - timing
+  - anomaly

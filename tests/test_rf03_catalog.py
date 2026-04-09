@@ -29,10 +29,12 @@ def test_catalog_loads_valid_specs() -> None:
         "TST-DUPLICATE-POSTINGS",
         "TST-INVOICE-SEQUENCE-GAPS",
         "TST-JUST-BELOW-AUTH-THRESHOLD",
+        "TST-LARGE-EVEN-DOLLAR-ENTRIES",
         "TST-NEGATIVE-QUANTITY-RECEIPTS",
         "TST-ROUND-DOLLAR-PAYMENTS",
         "TST-SPLIT-PAYMENTS-NEAR-LIMIT",
         "TST-UNUSUAL-AMOUNT-BY-VENDOR",
+        "TST-UNUSUAL-POSTING-TIMES",
     ]
     for spec in specs:
         assert isinstance(spec.get("process_step"), str)

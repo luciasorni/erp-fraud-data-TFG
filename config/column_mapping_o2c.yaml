@@ -1,0 +1,261 @@
+version: 1.0.0
+mapping_id: o2c_column_mapping_v1
+process_family: o2c
+status: draft_for_implementation
+source_inventory: docs/o2c/artifacts/rf11_02_raw_inventory.json
+canonical_schema: config/canonical_schema_o2c.yaml
+
+global_rules:
+  trim_strings: true
+  uppercase_ids: true
+  empty_string_to_null: true
+  amount_decimal_scale: 2
+  quantity_decimal_scale: 3
+  date_parse_mode: try_cast
+  default_null_literal: null
+
+entities:
+  o2c_order:
+    source_tables:
+      - VBAK
+      - VBAP
+      - VBPA
+      - KNA1
+      - KONV
+    field_mapping:
+      sales_order_id:
+        source_candidates: [VBAK.VBELN, VBAP.VBELN]
+        cast: string
+        default: null
+      sales_order_item_id:
+        source_candidates: [VBAP.POSNR]
+        cast: string
+        default: null
+      customer_id:
+        source_candidates: [VBAK.KUNNR, VBPA.KUNNR]
+        cast: string
+        default: null
+      order_created_date:
+        source_candidates: [VBAK.ERDAT]
+        cast: date
+        default: null
+      net_amount:
+        source_candidates: [VBAP.NETWR]
+        cast: decimal(18,2)
+        default: null
+      sales_org:
+        source_candidates: [VBAK.VKORG]
+        cast: string
+        default: null
+      distribution_channel:
+        source_candidates: [VBAK.VTWEG]
+        cast: string
+        default: null
+      division:
+        source_candidates: [VBAK.SPART]
+        cast: string
+        default: null
+      material_id:
+        source_candidates: [VBAP.MATNR]
+        cast: string
+        default: null
+      ordered_quantity:
+        source_candidates: [VBAP.KWMENG]
+        cast: decimal(18,3)
+        default: null
+      item_net_price:
+        source_candidates: [VBAP.NETPR]
+        cast: decimal(18,4)
+        default: null
+      condition_amount:
+        source_candidates: [KONV.KWERT]
+        cast: decimal(18,2)
+        default: null
+      customer_group:
+        source_candidates: [KNA1.KDGRP]
+        cast: string
+        default: null
+
+  o2c_delivery:
+    source_tables:
+      - LIPS
+      - LIKP
+    field_mapping:
+      delivery_id:
+        source_candidates: [LIPS.VBELN, LIKP.VBELN]
+        cast: string
+        default: null
+      delivery_item_id:
+        source_candidates: [LIPS.POSNR]
+        cast: string
+        default: null
+      reference_sales_order_id:
+        source_candidates: [LIPS.VGBEL]
+        cast: string
+        default: null
+      reference_sales_order_item_id:
+        source_candidates: [LIPS.VGPOS]
+        cast: string
+        default: null
+      delivered_quantity:
+        source_candidates: [LIPS.LFIMG]
+        cast: decimal(18,3)
+        default: null
+      delivery_date:
+        source_candidates: [LIKP.LFDAT]
+        cast: date
+        default: null
+      goods_issue_date:
+        source_candidates: [LIKP.WADAT_IST]
+        cast: date
+        default: null
+      ship_to_customer_id:
+        source_candidates: [LIKP.KUNNR]
+        cast: string
+        default: null
+      material_id:
+        source_candidates: [LIPS.MATNR]
+        cast: string
+        default: null
+      plant_id:
+        source_candidates: [LIPS.WERKS]
+        cast: string
+        default: null
+
+  o2c_invoice:
+    source_tables:
+      - BKPF
+      - BSEG
+    field_mapping:
+      accounting_document_id:
+        source_candidates: [BKPF.BELNR, BSEG.BELNR]
+        cast: string
+        default: null
+      fiscal_year:
+        source_candidates: [BKPF.GJAHR, BSEG.GJAHR]
+        cast: string
+        default: null
+      company_code:
+        source_candidates: [BKPF.BUKRS, BSEG.BUKRS]
+        cast: string
+        default: null
+      posting_date:
+        source_candidates: [BKPF.BUDAT]
+        cast: date
+        default: null
+      customer_or_account_id:
+        source_candidates: [BSEG.KUNNR, BSEG.HKONT]
+        cast: string
+        default: null
+      amount_local_currency:
+        source_candidates: [BSEG.DMBTR]
+        cast: decimal(18,2)
+        default: null
+      document_currency_amount:
+        source_candidates: [BSEG.WRBTR]
+        cast: decimal(18,2)
+        default: null
+      debit_credit_indicator:
+        source_candidates: [BSEG.SHKZG]
+        cast: string
+        default: null
+      baseline_date:
+        source_candidates: [BSEG.ZFBDT]
+        cast: date
+        default: null
+      clearing_document_id:
+        source_candidates: [BSEG.AUGBL]
+        cast: string
+        default: null
+      clearing_date:
+        source_candidates: [BSEG.AUGDT]
+        cast: date
+        default: null
+      reference_delivery_id:
+        source_candidates: [LIPS.VBELN]
+        cast: string
+        default: null
+
+  o2c_collection:
+    source_tables:
+      - BSEG
+      - BKPF
+    field_mapping:
+      receivable_document_id:
+        source_candidates: [BSEG.BELNR]
+        cast: string
+        default: null
+      company_code:
+        source_candidates: [BSEG.BUKRS]
+        cast: string
+        default: null
+      fiscal_year:
+        source_candidates: [BSEG.GJAHR]
+        cast: string
+        default: null
+      customer_id:
+        source_candidates: [BSEG.KUNNR]
+        cast: string
+        default: null
+      amount_local_currency:
+        source_candidates: [BSEG.DMBTR]
+        cast: decimal(18,2)
+        default: null
+      clearing_document_id:
+        source_candidates: [BSEG.AUGBL]
+        cast: string
+        default: null
+      clearing_date:
+        source_candidates: [BSEG.AUGDT]
+        cast: date
+        default: null
+      payment_terms:
+        source_candidates: [BSEG.ZTERM]
+        cast: string
+        default: null
+      baseline_date:
+        source_candidates: [BSEG.ZFBDT]
+        cast: date
+        default: null
+      posting_date:
+        source_candidates: [BKPF.BUDAT]
+        cast: date
+        default: null
+
+  o2c_customer:
+    source_tables:
+      - KNA1
+      - KNB1
+    field_mapping:
+      customer_id:
+        source_candidates: [KNA1.KUNNR]
+        cast: string
+        default: null
+      customer_name:
+        source_candidates: [KNA1.NAME1]
+        cast: string
+        default: null
+      country:
+        source_candidates: [KNA1.LAND1]
+        cast: string
+        default: null
+      city:
+        source_candidates: [KNA1.ORT01]
+        cast: string
+        default: null
+      account_group:
+        source_candidates: [KNA1.KTOKD]
+        cast: string
+        default: null
+      reconciliation_account:
+        source_candidates: [KNB1.AKONT]
+        cast: string
+        default: null
+      payment_terms:
+        source_candidates: [KNB1.ZTERM]
+        cast: string
+        default: null
+      dunning_procedure:
+        source_candidates: [KNB1.MAHNA]
+        cast: string
+        default: null

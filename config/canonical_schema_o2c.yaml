@@ -1,0 +1,354 @@
+version: 1.0.0
+schema_id: o2c_canonical_v1
+process_family: o2c
+status: draft_for_implementation
+owners:
+  - fraud-analytics
+source_of_truth:
+  process_reference_doc: docs/o2c/rf11_process_fraud_reference.md
+  raw_inventory_doc: docs/o2c/rf11_02_raw_inventory.md
+  raw_inventory_artifact: docs/o2c/artifacts/rf11_02_raw_inventory.json
+
+design_principles:
+  - Reuse maximum existing pipeline components from P2P.
+  - Keep backward compatibility with current P2P contracts.
+  - Prefer explicit event traces (created/changed) over inferred states.
+  - Degrade gracefully when non-critical tables are missing in raw_data.
+
+availability_constraints:
+  present_in_all_datasets:
+    - VBAK
+    - VBAP
+    - VBPA
+    - LIPS
+    - KNA1
+  partially_available:
+    - LIKP
+    - BKPF
+    - BSEG
+    - KNB1
+    - KONV
+  not_detected_by_table_name:
+    - VBRK
+    - VBRP
+    - BSID
+    - BSAD
+
+entities:
+  o2c_order:
+    grain: sales_order_item
+    description: Sales order item enriched with customer and pricing context.
+    process_step: sales_order
+    source_tables_preferred:
+      - VBAK
+      - VBAP
+      - VBPA
+      - KNA1
+      - KONV
+    required_source_tables:
+      - VBAK
+      - VBAP
+    required_fields:
+      - name: sales_order_id
+        type: string
+        source_candidates: [VBAK.VBELN, VBAP.VBELN]
+      - name: sales_order_item_id
+        type: string
+        source_candidates: [VBAP.POSNR]
+      - name: customer_id
+        type: string
+        source_candidates: [VBAK.KUNNR, VBPA.KUNNR]
+      - name: order_created_date
+        type: date
+        source_candidates: [VBAK.ERDAT]
+      - name: net_amount
+        type: decimal(18,2)
+        source_candidates: [VBAP.NETWR]
+    optional_fields:
+      - name: sales_org
+        type: string
+        source_candidates: [VBAK.VKORG]
+      - name: distribution_channel
+        type: string
+        source_candidates: [VBAK.VTWEG]
+      - name: division
+        type: string
+        source_candidates: [VBAK.SPART]
+      - name: material_id
+        type: string
+        source_candidates: [VBAP.MATNR]
+      - name: ordered_quantity
+        type: decimal(18,3)
+        source_candidates: [VBAP.KWMENG]
+      - name: item_net_price
+        type: decimal(18,4)
+        source_candidates: [VBAP.NETPR]
+      - name: condition_amount
+        type: decimal(18,2)
+        source_candidates: [KONV.KWERT]
+      - name: customer_group
+        type: string
+        source_candidates: [KNA1.KDGRP]
+    preliminary_business_key:
+      - sales_order_id
+      - sales_order_item_id
+    quality_rules:
+      - sales_order_id not null
+      - sales_order_item_id not null
+      - customer_id not null
+      - order_created_date parseable
+
+  o2c_delivery:
+    grain: delivery_item
+    description: Delivery item linked to sales order context.
+    process_step: delivery
+    source_tables_preferred:
+      - LIKP
+      - LIPS
+    required_source_tables:
+      - LIPS
+    required_fields:
+      - name: delivery_id
+        type: string
+        source_candidates: [LIPS.VBELN, LIKP.VBELN]
+      - name: delivery_item_id
+        type: string
+        source_candidates: [LIPS.POSNR]
+      - name: reference_sales_order_id
+        type: string
+        source_candidates: [LIPS.VGBEL]
+      - name: reference_sales_order_item_id
+        type: string
+        source_candidates: [LIPS.VGPOS]
+      - name: delivered_quantity
+        type: decimal(18,3)
+        source_candidates: [LIPS.LFIMG]
+    optional_fields:
+      - name: delivery_date
+        type: date
+        source_candidates: [LIKP.LFDAT]
+      - name: goods_issue_date
+        type: date
+        source_candidates: [LIKP.WADAT_IST]
+      - name: ship_to_customer_id
+        type: string
+        source_candidates: [LIKP.KUNNR]
+      - name: material_id
+        type: string
+        source_candidates: [LIPS.MATNR]
+      - name: plant_id
+        type: string
+        source_candidates: [LIPS.WERKS]
+    preliminary_business_key:
+      - delivery_id
+      - delivery_item_id
+    quality_rules:
+      - delivery_id not null
+      - delivery_item_id not null
+      - delivered_quantity parseable
+
+  o2c_invoice:
+    grain: accounting_document_line
+    description: Invoice proxy from accounting when SD billing tables are unavailable.
+    process_step: invoice
+    source_tables_preferred:
+      - BKPF
+      - BSEG
+      - VBAK
+      - VBAP
+      - LIPS
+    required_source_tables:
+      - BKPF
+      - BSEG
+    required_fields:
+      - name: accounting_document_id
+        type: string
+        source_candidates: [BKPF.BELNR, BSEG.BELNR]
+      - name: fiscal_year
+        type: string
+        source_candidates: [BKPF.GJAHR, BSEG.GJAHR]
+      - name: company_code
+        type: string
+        source_candidates: [BKPF.BUKRS, BSEG.BUKRS]
+      - name: posting_date
+        type: date
+        source_candidates: [BKPF.BUDAT]
+      - name: customer_or_account_id
+        type: string
+        source_candidates: [BSEG.KUNNR, BSEG.HKONT]
+      - name: amount_local_currency
+        type: decimal(18,2)
+        source_candidates: [BSEG.DMBTR]
+    optional_fields:
+      - name: document_currency_amount
+        type: decimal(18,2)
+        source_candidates: [BSEG.WRBTR]
+      - name: debit_credit_indicator
+        type: string
+        source_candidates: [BSEG.SHKZG]
+      - name: baseline_date
+        type: date
+        source_candidates: [BSEG.ZFBDT]
+      - name: clearing_document_id
+        type: string
+        source_candidates: [BSEG.AUGBL]
+      - name: clearing_date
+        type: date
+        source_candidates: [BSEG.AUGDT]
+      - name: reference_delivery_id
+        type: string
+        source_candidates: [LIPS.VBELN]
+    preliminary_business_key:
+      - company_code
+      - accounting_document_id
+      - fiscal_year
+    quality_rules:
+      - accounting_document_id not null
+      - fiscal_year not null
+      - company_code not null
+      - posting_date parseable
+      - amount_local_currency parseable
+
+  o2c_collection:
+    grain: receivable_clearing_event
+    description: Collection/cash-application events inferred from accounting clearing fields.
+    process_step: collection
+    source_tables_preferred:
+      - BKPF
+      - BSEG
+    required_source_tables:
+      - BSEG
+    required_fields:
+      - name: receivable_document_id
+        type: string
+        source_candidates: [BSEG.BELNR]
+      - name: company_code
+        type: string
+        source_candidates: [BSEG.BUKRS]
+      - name: fiscal_year
+        type: string
+        source_candidates: [BSEG.GJAHR]
+      - name: customer_id
+        type: string
+        source_candidates: [BSEG.KUNNR]
+      - name: amount_local_currency
+        type: decimal(18,2)
+        source_candidates: [BSEG.DMBTR]
+    optional_fields:
+      - name: clearing_document_id
+        type: string
+        source_candidates: [BSEG.AUGBL]
+      - name: clearing_date
+        type: date
+        source_candidates: [BSEG.AUGDT]
+      - name: payment_terms
+        type: string
+        source_candidates: [BSEG.ZTERM]
+      - name: baseline_date
+        type: date
+        source_candidates: [BSEG.ZFBDT]
+      - name: posting_date
+        type: date
+        source_candidates: [BKPF.BUDAT]
+    preliminary_business_key:
+      - company_code
+      - receivable_document_id
+      - fiscal_year
+    quality_rules:
+      - receivable_document_id not null
+      - company_code not null
+      - fiscal_year not null
+      - amount_local_currency parseable
+
+  o2c_customer:
+    grain: customer_master
+    description: Customer master baseline for segmentation and policy checks.
+    process_step: master_data
+    source_tables_preferred:
+      - KNA1
+      - KNB1
+    required_source_tables:
+      - KNA1
+    required_fields:
+      - name: customer_id
+        type: string
+        source_candidates: [KNA1.KUNNR]
+      - name: customer_name
+        type: string
+        source_candidates: [KNA1.NAME1]
+    optional_fields:
+      - name: country
+        type: string
+        source_candidates: [KNA1.LAND1]
+      - name: city
+        type: string
+        source_candidates: [KNA1.ORT01]
+      - name: account_group
+        type: string
+        source_candidates: [KNA1.KTOKD]
+      - name: reconciliation_account
+        type: string
+        source_candidates: [KNB1.AKONT]
+      - name: payment_terms
+        type: string
+        source_candidates: [KNB1.ZTERM]
+      - name: dunning_procedure
+        type: string
+        source_candidates: [KNB1.MAHNA]
+    preliminary_business_key:
+      - customer_id
+    quality_rules:
+      - customer_id not null
+
+relations:
+  - from_entity: o2c_order
+    to_entity: o2c_customer
+    relation_type: many_to_one
+    join_keys:
+      - from: customer_id
+        to: customer_id
+    status: mandatory_for_entity_analytics
+  - from_entity: o2c_delivery
+    to_entity: o2c_order
+    relation_type: many_to_one
+    join_keys:
+      - from: reference_sales_order_id
+        to: sales_order_id
+      - from: reference_sales_order_item_id
+        to: sales_order_item_id
+    status: expected_but_may_be_incomplete
+  - from_entity: o2c_invoice
+    to_entity: o2c_delivery
+    relation_type: many_to_one
+    join_keys:
+      - from: reference_delivery_id
+        to: delivery_id
+    status: optional_proxy_link
+  - from_entity: o2c_collection
+    to_entity: o2c_invoice
+    relation_type: many_to_one
+    join_keys:
+      - from: company_code
+        to: company_code
+      - from: receivable_document_id
+        to: accounting_document_id
+      - from: fiscal_year
+        to: fiscal_year
+    status: expected_if_clearing_fields_populated
+
+degradation_policy:
+  fail_fast_entities:
+    - o2c_order
+    - o2c_delivery
+  soft_fail_entities:
+    - o2c_invoice
+    - o2c_collection
+    - o2c_customer
+  behavior:
+    missing_required_table_for_fail_fast_entity: abort_o2c_run_with_validation_error
+    missing_required_table_for_soft_fail_entity: mark_entity_status_skipped_and_continue
+    missing_optional_fields: keep_null_and_emit_warning
+
+notes:
+  - This schema is intentionally conservative for RF11-03 and will be refined in RF11-04 (business keys and dedup strategy).
+  - Field names use English canonical naming to avoid SAP source-column coupling in downstream nodes.

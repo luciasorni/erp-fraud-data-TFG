@@ -72,3 +72,18 @@ def test_rf13_cli_selection_flags_are_parsed() -> None:
     settings = _resolve_run_settings(args)
     assert settings["select_fraud_types"] == ["duplicate_payment", "amount_anomaly"]
     assert settings["select_tags"] == ["p2p", "acfe"]
+
+
+def test_rf11_07_cli_process_family_is_parsed() -> None:
+    parser = build_parser()
+    args = parser.parse_args(
+        [
+            "run",
+            "--input-zip",
+            "erp_fraud_data.zip",
+            "--process-family",
+            "o2c",
+        ]
+    )
+    settings = _resolve_run_settings(args)
+    assert settings["process_family"] == "o2c"
