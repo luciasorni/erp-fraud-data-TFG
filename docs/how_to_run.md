@@ -37,14 +37,33 @@ python3 -m src.erp_fraud.cli.main run \
 # Ejecutar subset de tests + top-k override
 python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
-  --select-tests TST-DUPLICATE-POSTINGS,TST-UNUSUAL-AMOUNT-BY-VENDOR \
+  --select-tests TST-DUPLICATE-POSTINGS,TST-UNUSUAL-AMOUNT-BY-VENDOR,TST-UNUSUAL-POSTING-TIMES,TST-LARGE-EVEN-DOLLAR-ENTRIES \
   --top-k 20
+
+# Validar matriz de hipótesis P2P (gobernanza planner/explainer)
+python3 scripts/run_rf13_p2p_hypothesis_matrix.py \
+  --run-id rf13-p2p-matrix-check
 
 # Ejecutar subset por fraud_type/tags (RF13-05)
 python3 -m src.erp_fraud.cli.main run \
   --input-zip erp_fraud_data.zip \
   --select-fraud-types duplicate_payment,amount_anomaly \
   --select-tags p2p,acfe
+
+# Declarar familia de proceso en metadata/config (RF11-07)
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --process-family p2p
+
+# Ejecutar rama O2C (requiere tablas raw SAP ya cargadas en DuckDB main)
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --db-path erp.duckdb \
+  --process-family o2c \
+  --o2c-canonical-schema-config config/canonical_schema_o2c.yaml \
+  --o2c-identity-config config/o2c_entity_identity.yaml \
+  --o2c-mapping-config config/column_mapping_o2c.yaml \
+  --o2c-target-schema o2c
 
 # Parametrizar por fichero config (json/yaml)
 python3 -m src.erp_fraud.cli.main run \
@@ -281,6 +300,38 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --llm-mode real
 ```
 
+Ejecutar RF11 O2C con LangGraph + agentes (stub/real):
+
+```bash
+# 1) construir tablas canónicas O2C en DuckDB
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --db-path erp.duckdb \
+  --process-family o2c \
+  --o2c-canonical-schema-config config/canonical_schema_o2c.yaml \
+  --o2c-identity-config config/o2c_entity_identity.yaml \
+  --o2c-mapping-config config/column_mapping_o2c.yaml \
+  --o2c-target-schema o2c \
+  --run-id rf11-o2c-cli
+
+# 2) ejecutar grafo O2C con catálogo O2C (cambiar llm-mode a stub si quieres coste 0)
+python3 scripts/run_rf15c_e2e_manual.py \
+  --run-id rf11-o2c-graph-real \
+  --schema-summary-path run_results/rf11-o2c-cli/schema_summary.json \
+  --catalog-path tests/catalog_o2c \
+  --persist-base-dir run_results \
+  --process-family o2c \
+  --db-path erp.duckdb \
+  --schema-name o2c \
+  --table-name o2c_order \
+  --llm-mode real
+```
+
+Nota de arquitectura:
+
+- `run --process-family o2c` ejecuta el pipeline determinista de preparación/validación O2C.
+- `run_rf15c_e2e_manual.py --process-family o2c` ejecuta el grafo multiagente (LangGraph + AlphaCodium + LLM + LangSmith).
+
 Ver resumen legible del run (hipótesis, tests, hallazgos, score y explicación):
 
 ```bash
@@ -413,6 +464,14 @@ Implementaciones actuales:
 
 - `TST-DUPLICATE-POSTINGS`
 - `TST-UNUSUAL-AMOUNT-BY-VENDOR`
+- `TST-ROUND-DOLLAR-PAYMENTS`
+- `TST-JUST-BELOW-AUTH-THRESHOLD`
+- `TST-SPLIT-PAYMENTS-NEAR-LIMIT`
+- `TST-INVOICE-SEQUENCE-GAPS`
+- `TST-NEGATIVE-QUANTITY-RECEIPTS`
+- `TST-DUPLICATE-MATERIAL-ITEMS`
+- `TST-UNUSUAL-POSTING-TIMES`
+- `TST-LARGE-EVEN-DOLLAR-ENTRIES`
 
 ## Runner seguro RF04
 
