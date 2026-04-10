@@ -119,6 +119,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--db-path", default="erp.duckdb", help="Ruta DuckDB a usar por executor.")
     parser.add_argument("--schema-name", default="main", help="Schema DuckDB a usar por executor.")
     parser.add_argument("--table-name", default="fraud_1", help="Tabla por defecto de executor.")
+    parser.add_argument(
+        "--hypothesis-max-items",
+        type=int,
+        default=3,
+        help="Máximo de hipótesis a generar en hypothesis_planner.",
+    )
+    parser.add_argument(
+        "--test-planner-top-n",
+        type=int,
+        default=3,
+        help="Máximo de tests por hipótesis en test_planner.",
+    )
+    parser.add_argument(
+        "--test-planner-min-per-hypothesis-real",
+        type=int,
+        default=1,
+        help="Mínimo de tests por hipótesis cuando llm_mode=real (cobertura anti-concentración).",
+    )
     parser.add_argument("--notes", default="", help="Notas libres para contexto del tutor.")
     return parser.parse_args()
 
@@ -157,7 +175,9 @@ def main() -> int:
             "kb_index_enabled": bool(args.kb_index_enabled),
             "kb_search_enabled": bool(args.kb_search_enabled),
             "scoring_top_k": 20,
-            "test_planner_top_n": 2,
+            "hypothesis_max_items": int(args.hypothesis_max_items),
+            "test_planner_top_n": int(args.test_planner_top_n),
+            "test_planner_min_per_hypothesis_real": int(args.test_planner_min_per_hypothesis_real),
             "executor_timeout_ms": 3000,
         },
     )

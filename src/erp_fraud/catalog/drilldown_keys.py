@@ -78,6 +78,16 @@ DRILLDOWN_MIN_KEYS_BY_TEST_ID: dict[str, tuple[str, ...]] = {
         "receivable_document_id",
         "fiscal_year",
     ),
+    "TST-O2C-INVOICE-AMOUNT-ANOMALY": (
+        "company_code",
+        "accounting_document_id",
+        "fiscal_year",
+    ),
+    "TST-O2C-INVOICE-DATE-SEQUENCE": (
+        "company_code",
+        "accounting_document_id",
+        "fiscal_year",
+    ),
 }
 
 

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import io
 from pathlib import Path
 import zipfile
 
 import duckdb
+import pandas as pd
 
 from src.erp_fraud.cli.main import main
 
@@ -13,6 +15,74 @@ def _write_dummy_zip(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(path, "w") as zf:
         zf.writestr("dummy.txt", "rf11-o2c")
+
+
+def _xlsx_bytes(df: pd.DataFrame) -> bytes:
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+    return buffer.getvalue()
+
+
+def _write_o2c_raw_zip_with_min_sources(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w") as outer:
+        nested_bytes = io.BytesIO()
+        with zipfile.ZipFile(nested_bytes, "w") as inner:
+            inner.writestr(
+                "fraud_1/VBAK.XLSX",
+                _xlsx_bytes(
+                    pd.DataFrame(
+                        [
+                            {
+                                "VBELN": "5000000001",
+                                "KUNNR": "V01",
+                                "ERDAT": "2026-01-01",
+                                "VKORG": "1000",
+                                "VTWEG": "10",
+                                "SPART": "00",
+                                "KNUMV": "C001",
+                            }
+                        ]
+                    )
+                ),
+            )
+            inner.writestr(
+                "fraud_1/VBAP.XLSX",
+                _xlsx_bytes(
+                    pd.DataFrame(
+                        [
+                            {
+                                "VBELN": "5000000001",
+                                "POSNR": "000010",
+                                "NETWR": 1200.0,
+                                "MATNR": "MAT-01",
+                                "KWMENG": 10.0,
+                                "NETPR": 120.0,
+                            }
+                        ]
+                    )
+                ),
+            )
+            inner.writestr(
+                "fraud_1/LIPS.XLSX",
+                _xlsx_bytes(
+                    pd.DataFrame(
+                        [
+                            {
+                                "VBELN": "8000000001",
+                                "POSNR": "000010",
+                                "VGBEL": "5000000001",
+                                "VGPOS": "000010",
+                                "LFIMG": 10.0,
+                                "MATNR": "MAT-01",
+                                "WERKS": "P001",
+                            }
+                        ]
+                    )
+                ),
+            )
+        outer.writestr("erp_fraud_data/raw_data/fraud_1.zip", nested_bytes.getvalue())
 
 
 def _prepare_o2c_min_sources(db_path: Path) -> None:
@@ -152,3 +222,35 @@ def test_rf11_08_cli_run_o2c_mode_fails_when_missing_fail_fast_sources(tmp_path:
         ]
     )
     assert rc == 1
+
+
+def test_rf11_08_cli_run_o2c_mode_autoloads_raw_data_from_zip(tmp_path: Path) -> None:
+    db_path = tmp_path / "erp_o2c_autoload.duckdb"
+    zip_path = tmp_path / "erp_raw.zip"
+    _write_o2c_raw_zip_with_min_sources(zip_path)
+
+    run_id = "rf11-08-o2c-autoload"
+    rc = main(
+        [
+            "run",
+            "--input-zip",
+            str(zip_path),
+            "--db-path",
+            str(db_path),
+            "--out-dir",
+            str(tmp_path / "run_results"),
+            "--run-id",
+            run_id,
+            "--process-family",
+            "o2c",
+        ]
+    )
+    assert rc == 0
+
+    run_dir = tmp_path / "run_results" / run_id
+    metadata = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    autoload = metadata.get("o2c_raw_autoload", {})
+    assert isinstance(autoload, dict)
+    assert autoload.get("status") in {"OK", "PARTIAL"}
+    loaded = set(autoload.get("tables_loaded", []))
+    assert {"VBAK", "VBAP", "LIPS"}.issubset(loaded)

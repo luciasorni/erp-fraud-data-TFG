@@ -5,10 +5,15 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import hashlib
+import io
 import json
 from pathlib import Path
+import re
 import sys
 from typing import Any
+from zipfile import BadZipFile, ZipFile
+
+import pandas as pd
 
 from ..catalog import (
     CatalogValidationError,
@@ -175,6 +180,280 @@ def _safe_table_name_from_file(file_name: str) -> str:
     if not stem:
         raise ValueError(f"Nombre de fichero inválido para tabla: {file_name}")
     return "".join(ch if ch.isalnum() or ch in {"_", "-"} else "_" for ch in stem)
+
+
+def _raw_data_nested_archives(zip_path: str | Path) -> list[str]:
+    try:
+        with ZipFile(zip_path) as zf:
+            return sorted(
+                name
+                for name in zf.namelist()
+                if name.lower().endswith(".zip") and "/raw_data/" in name.lower()
+            )
+    except BadZipFile as exc:
+        raise RuntimeError(f"Zip corrupto o no válido: {zip_path}") from exc
+
+
+def _raw_table_name_from_member(member_name: str) -> str:
+    base = Path(member_name).name
+    stem = Path(base).stem.strip()
+    if not stem:
+        return ""
+    normalized = re.sub(r"_[0-9]+$", "", stem)
+    return normalized.upper()
+
+
+def _load_raw_member_dataframe(member_name: str, raw_bytes: bytes) -> pd.DataFrame:
+    suffix = Path(member_name).suffix.lower()
+    if suffix in {".xlsx", ".xls"}:
+        try:
+            df = pd.read_excel(io.BytesIO(raw_bytes), dtype="string")
+        except ImportError as exc:
+            raise RuntimeError(
+                "missing_dependency_openpyxl: instala openpyxl en tu entorno activo"
+            ) from exc
+    elif suffix == ".csv":
+        from ..ingest.tabular_loader import _leer_csv_bytes  # type: ignore
+
+        df = _leer_csv_bytes(raw_bytes, dtype="string")
+    elif suffix == ".parquet":
+        from ..ingest.tabular_loader import _leer_parquet_bytes  # type: ignore
+
+        df = _leer_parquet_bytes(raw_bytes)
+    else:
+        raise ValueError(f"Formato no soportado: {member_name}")
+    df.columns = [str(col).strip() for col in df.columns]
+    return df
+
+
+def _table_exists_in_main(conn: Any, table_name: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1
+        FROM information_schema.tables
+        WHERE lower(table_schema) = 'main'
+          AND lower(table_name) = lower(?)
+        LIMIT 1
+        """,
+        [table_name],
+    ).fetchone()
+    return bool(row)
+
+
+def _load_yaml_config(path: str | Path) -> dict[str, Any]:
+    cfg_path = Path(path)
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"No existe config YAML: {cfg_path}")
+    try:
+        import yaml  # type: ignore
+    except Exception as exc:
+        raise RuntimeError("PyYAML no disponible para cargar config O2C") from exc
+    payload = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+    if payload is None:
+        return {}
+    if not isinstance(payload, dict):
+        raise ValueError(f"Config YAML inválida (raíz no objeto): {cfg_path}")
+    return payload
+
+
+def _resolve_o2c_source_tables_from_config(canonical_schema_config_path: str | Path) -> list[str]:
+    cfg = _load_yaml_config(canonical_schema_config_path)
+    entities = cfg.get("entities", {})
+    if not isinstance(entities, dict):
+        return []
+    tables: set[str] = set()
+    for entity_cfg in entities.values():
+        if not isinstance(entity_cfg, dict):
+            continue
+        for key in ("required_source_tables", "source_tables_preferred"):
+            rows = entity_cfg.get(key, [])
+            if isinstance(rows, list):
+                for row in rows:
+                    name = str(row).strip().upper()
+                    if name:
+                        tables.add(name)
+    return sorted(tables)
+
+
+def _resolve_o2c_fail_fast_required_tables(canonical_schema_config_path: str | Path) -> list[str]:
+    cfg = _load_yaml_config(canonical_schema_config_path)
+    policy = cfg.get("degradation_policy", {})
+    entities_cfg = cfg.get("entities", {})
+    if not isinstance(policy, dict) or not isinstance(entities_cfg, dict):
+        return []
+    fail_fast_entities = policy.get("fail_fast_entities", [])
+    if not isinstance(fail_fast_entities, list):
+        return []
+    tables: set[str] = set()
+    for entity_name in fail_fast_entities:
+        node = entities_cfg.get(str(entity_name), {})
+        if not isinstance(node, dict):
+            continue
+        required = node.get("required_source_tables", [])
+        if isinstance(required, list):
+            for table_name in required:
+                normalized = str(table_name).strip().upper()
+                if normalized:
+                    tables.add(normalized)
+    return sorted(tables)
+
+
+def _load_o2c_raw_tables_from_zip_if_needed(
+    *,
+    conn: Any,
+    zip_path: str,
+    canonical_schema_config_path: str,
+) -> dict[str, Any]:
+    source_tables = _resolve_o2c_source_tables_from_config(canonical_schema_config_path)
+    fail_fast_required_tables = _resolve_o2c_fail_fast_required_tables(canonical_schema_config_path)
+    target_tables = fail_fast_required_tables or source_tables
+    if not source_tables:
+        return {
+            "status": "SKIPPED",
+            "reason": "no_source_tables_defined",
+            "source_tables": [],
+            "target_tables": [],
+            "tables_loaded": [],
+            "tables_already_present": [],
+            "tables_missing_after_load": [],
+            "nested_archives_count": 0,
+        }
+
+    missing_before = [table for table in target_tables if not _table_exists_in_main(conn, table)]
+    if not missing_before:
+        return {
+            "status": "SKIPPED",
+            "reason": "all_source_tables_already_present",
+            "source_tables": source_tables,
+            "target_tables": target_tables,
+            "tables_loaded": [],
+            "tables_already_present": target_tables,
+            "tables_missing_after_load": [],
+            "nested_archives_count": 0,
+        }
+
+    nested_archives = _raw_data_nested_archives(zip_path)
+    if not nested_archives:
+        return {
+            "status": "SKIPPED",
+            "reason": "raw_data_nested_archives_not_found",
+            "source_tables": source_tables,
+            "target_tables": target_tables,
+            "tables_loaded": [],
+            "tables_already_present": [t for t in target_tables if t not in missing_before],
+            "tables_missing_after_load": missing_before,
+            "nested_archives_count": 0,
+        }
+
+    supported_suffixes = {".xlsx", ".xls", ".csv", ".parquet"}
+    aggregated: dict[str, list[pd.DataFrame]] = {}
+    read_errors: list[str] = []
+    invalid_nested_archives: list[str] = []
+    loaded_members_count = 0
+
+    with ZipFile(zip_path) as outer:
+        for nested_name in nested_archives:
+            print(f"[O2C autoload] scanning nested archive: {nested_name}", flush=True)
+            try:
+                nested_bytes = outer.read(nested_name)
+            except KeyError:
+                continue
+            try:
+                with ZipFile(io.BytesIO(nested_bytes)) as inner:
+                    for member in sorted(inner.namelist()):
+                        if member.endswith("/"):
+                            continue
+                        suffix = Path(member).suffix.lower()
+                        if suffix not in supported_suffixes:
+                            continue
+                        table_name = _raw_table_name_from_member(member)
+                        if table_name not in missing_before:
+                            continue
+                        try:
+                            raw_bytes = inner.read(member)
+                            df = _load_raw_member_dataframe(member, raw_bytes)
+                        except Exception as exc:
+                            read_errors.append(
+                                f"{nested_name}:{member}:{type(exc).__name__}:{str(exc)}"
+                            )
+                            continue
+                        if df.empty:
+                            continue
+                        aggregated.setdefault(table_name, []).append(df)
+                        loaded_members_count += 1
+            except BadZipFile:
+                invalid_nested_archives.append(nested_name)
+                continue
+
+    loaded_tables: list[str] = []
+    for table_name in sorted(aggregated.keys()):
+        print(f"[O2C autoload] loading table: {table_name}", flush=True)
+        frames = aggregated[table_name]
+        combined = pd.concat(frames, ignore_index=True, sort=False)
+        combined.columns = [str(col).strip() for col in combined.columns]
+        load_table_to_duckdb_with_stats(
+            table_name=table_name,
+            df=combined,
+            mode="overwrite",
+            conn=conn,
+        )
+        loaded_tables.append(table_name)
+
+    still_missing = [table for table in missing_before if not _table_exists_in_main(conn, table)]
+    if any("missing_dependency_openpyxl" in err for err in read_errors):
+        raise RuntimeError(
+            "No se pudo autoload O2C desde raw_data porque falta openpyxl. "
+            "Ejecuta: .venv_rf10_clean/bin/python -m pip install openpyxl"
+        )
+    status = "OK" if not still_missing else "PARTIAL"
+    return {
+        "status": status,
+        "source_tables": source_tables,
+        "target_tables": target_tables,
+        "tables_loaded": loaded_tables,
+        "tables_already_present": [t for t in target_tables if t not in missing_before],
+        "tables_missing_after_load": still_missing,
+        "nested_archives_count": len(nested_archives),
+        "loaded_members_count": loaded_members_count,
+        "invalid_nested_archives_count": len(invalid_nested_archives),
+        "invalid_nested_archives_sample": invalid_nested_archives[:20],
+        "read_errors_count": len(read_errors),
+        "read_errors_sample": read_errors[:20],
+    }
+
+
+def _ensure_o2c_optional_placeholders(conn: Any) -> list[str]:
+    placeholders: dict[str, list[str]] = {
+        "VBPA": ["VBELN", "KUNNR"],
+        "KNA1": ["KUNNR", "NAME1", "LAND1", "ORT01", "KTOKD", "KDGRP"],
+        "KONV": ["KNUMV", "KWERT"],
+        "LIKP": ["VBELN", "LFDAT", "WADAT_IST", "KUNNR"],
+        "KNB1": ["KUNNR", "AKONT", "ZTERM", "MAHNA"],
+        "BKPF": ["BUKRS", "BELNR", "GJAHR", "BUDAT"],
+        "BSEG": [
+            "BUKRS",
+            "BELNR",
+            "GJAHR",
+            "KUNNR",
+            "HKONT",
+            "DMBTR",
+            "WRBTR",
+            "SHKZG",
+            "ZFBDT",
+            "AUGBL",
+            "AUGDT",
+            "ZTERM",
+        ],
+        "LIPS": ["VBELN", "POSNR", "VGBEL", "VGPOS", "LFIMG", "MATNR", "WERKS"],
+    }
+    created: list[str] = []
+    for table_name, columns in placeholders.items():
+        if _table_exists_in_main(conn, table_name):
+            continue
+        cols_sql = ", ".join(f'"{column}" VARCHAR' for column in columns)
+        conn.execute(f'CREATE TABLE main."{table_name}" ({cols_sql})')
+        created.append(table_name)
+    return created
 
 
 def _load_config_file(path: str | Path | None) -> dict[str, Any]:
@@ -501,6 +780,12 @@ def _run_pipeline(args: argparse.Namespace) -> int:
         if settings["process_family"] == "o2c":
             conn = get_duckdb_connection(settings["db_path"])
             try:
+                raw_autoload_summary = _load_o2c_raw_tables_from_zip_if_needed(
+                    conn=conn,
+                    zip_path=settings["input_zip"],
+                    canonical_schema_config_path=settings["o2c_canonical_schema_config"],
+                )
+                created_placeholders = _ensure_o2c_optional_placeholders(conn)
                 transform_payload = transform_raw_to_o2c_canonical(
                     conn=conn,
                     canonical_schema_config_path=settings["o2c_canonical_schema_config"],
@@ -543,6 +828,8 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                     run_metadata_payload["process_family"] = settings["process_family"]
                     run_metadata_payload["o2c_target_schema"] = settings["o2c_target_schema"]
                     run_metadata_payload["o2c_transform_status"] = transform_payload
+                    run_metadata_payload["o2c_raw_autoload"] = raw_autoload_summary
+                    run_metadata_payload["o2c_optional_placeholders_created"] = created_placeholders
                     run_metadata_payload["o2c_validation_summary"] = validation_summary
                     run_metadata_path.write_text(
                         json.dumps(run_metadata_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -584,6 +871,8 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                     "o2c_identity_config": settings["o2c_identity_config"],
                     "o2c_mapping_config": settings["o2c_mapping_config"],
                     "o2c_transform_status": transform_payload,
+                    "o2c_raw_autoload": raw_autoload_summary,
+                    "o2c_optional_placeholders_created": created_placeholders,
                     "o2c_validation_summary": validation_summary,
                 },
             )

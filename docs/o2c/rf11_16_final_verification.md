@@ -35,7 +35,7 @@ python3 -m pytest -q \
 
 ## 4) Riesgos abiertos (controlados)
 
-1. Catálogo O2C actual es baseline (5 tests); cobertura funcional ampliable por iteraciones.
+1. Catálogo O2C actual es baseline operativo (7 tests); cobertura funcional ampliable por iteraciones.
 2. En rama O2C de CLI, el reporte se genera con `test_runs=[]` y `ranking.rows=[]` por diseño actual de RF11 (la ejecución de tests O2C se hace en grafo/agents con catálogo O2C).
 3. Calidad de detección depende de calidad y completitud de tablas SAP raw disponibles por dataset.
 

@@ -21,6 +21,8 @@ DRILLDOWN_QUERY_ID_BY_TEST_ID: dict[str, str] = {
     "TST-O2C-DELIVERY-QUANTITY-MISMATCH": "drilldown_o2c_delivery_quantity_mismatch_v1",
     "TST-O2C-NEGATIVE-DELIVERY-QUANTITY": "drilldown_o2c_negative_delivery_quantity_v1",
     "TST-O2C-CLEARING-ANOMALY": "drilldown_o2c_clearing_anomaly_v1",
+    "TST-O2C-INVOICE-AMOUNT-ANOMALY": "drilldown_o2c_invoice_amount_anomaly_v1",
+    "TST-O2C-INVOICE-DATE-SEQUENCE": "drilldown_o2c_invoice_date_sequence_v1",
 }
 
 

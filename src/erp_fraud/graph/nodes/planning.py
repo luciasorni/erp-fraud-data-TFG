@@ -38,6 +38,136 @@ from ..fraud_taxonomy import branch_for_fraud_type, load_fraud_taxonomy
 # Compat tests: permitir monkeypatch del nombre legacy.
 _run_alpha_loop_for_node = run_alpha_loop_for_node
 
+
+def _normalize_llm_hypotheses_output(
+    *,
+    llm_output: Any,
+    default_hypotheses: list[dict[str, Any]],
+    catalog_tests: list[dict[str, Any]],
+    max_hypotheses: int,
+) -> list[dict[str, Any]]:
+    if isinstance(llm_output, list):
+        return [row for row in llm_output if isinstance(row, dict)]
+    if not isinstance(llm_output, dict):
+        return []
+
+    decisions = llm_output.get("decisions", [])
+    if not isinstance(decisions, list):
+        return []
+
+    by_fraud_type: dict[str, dict[str, Any]] = {}
+    for row in default_hypotheses:
+        if not isinstance(row, dict):
+            continue
+        key = str(row.get("fraud_type", "")).strip()
+        if key and key not in by_fraud_type:
+            by_fraud_type[key] = row
+
+    catalog_tests_by_fraud_type: dict[str, list[str]] = {}
+    for spec in catalog_tests:
+        if not isinstance(spec, dict):
+            continue
+        fraud_type = str(spec.get("fraud_type", "")).strip()
+        test_id = str(spec.get("id", "")).strip()
+        if not fraud_type or not test_id:
+            continue
+        bucket = catalog_tests_by_fraud_type.setdefault(fraud_type, [])
+        if test_id not in bucket:
+            bucket.append(test_id)
+
+    out: list[dict[str, Any]] = []
+    seen_fraud_type: set[str] = set()
+    for idx, decision in enumerate(decisions):
+        if not isinstance(decision, dict):
+            continue
+        fraud_type = str(decision.get("fraud_type", "")).strip()
+        if not fraud_type or fraud_type in seen_fraud_type:
+            continue
+        seed = by_fraud_type.get(fraud_type)
+        if not isinstance(seed, dict):
+            continue
+        seen_fraud_type.add(fraud_type)
+        hypothesis_id = str(decision.get("id", "")).strip() or f"HYP-{idx + 1:03d}"
+        reason = str(decision.get("reason", "")).strip()
+        row = dict(seed)
+        row["hypothesis_id"] = hypothesis_id
+        row["fraud_type"] = fraud_type
+        if str(decision.get("process_step", "")).strip():
+            row["process_step"] = str(decision.get("process_step", "")).strip()
+        row["candidate_test_ids"] = catalog_tests_by_fraud_type.get(fraud_type, row.get("candidate_test_ids", []))[:3]
+        if reason:
+            row["description"] = reason
+            row["title"] = f"Hypothesis for {fraud_type.replace('_', ' ').title()} ({reason[:64]})"
+        out.append(row)
+        if len(out) >= max_hypotheses:
+            break
+    return out
+
+
+def _normalize_llm_selected_tests_output(
+    *,
+    llm_output: Any,
+    allowlist_ids: set[str],
+    default_hypothesis_id: str,
+    hypotheses_by_id: dict[str, dict[str, Any]],
+    test_meta_by_id: dict[str, dict[str, str]],
+) -> list[dict[str, Any]]:
+    if isinstance(llm_output, list):
+        return [row for row in llm_output if isinstance(row, dict)]
+    if not isinstance(llm_output, dict):
+        return []
+    decisions = llm_output.get("decisions", [])
+    if not isinstance(decisions, list):
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _resolve_hypothesis_id_from_decision(decision: dict[str, Any], test_id: str) -> str:
+        explicit = str(decision.get("hypothesis_id", "")).strip()
+        if explicit and explicit in hypotheses_by_id:
+            return explicit
+        fraud_type = str(decision.get("fraud_type", "")).strip()
+        process_step = str(decision.get("process_step", "")).strip()
+        test_meta = test_meta_by_id.get(test_id, {})
+        if not fraud_type:
+            fraud_type = str(test_meta.get("fraud_type", "")).strip()
+        if not process_step:
+            process_step = str(test_meta.get("process_step", "")).strip()
+        if fraud_type:
+            for hyp_id, hyp in hypotheses_by_id.items():
+                if str(hyp.get("fraud_type", "")).strip() == fraud_type:
+                    if process_step and str(hyp.get("process_step", "")).strip() not in {"", process_step}:
+                        continue
+                    return hyp_id
+        if process_step:
+            for hyp_id, hyp in hypotheses_by_id.items():
+                if str(hyp.get("process_step", "")).strip() == process_step:
+                    return hyp_id
+        return explicit or default_hypothesis_id
+
+    for decision in decisions:
+        if not isinstance(decision, dict):
+            continue
+        test_id = str(decision.get("id", "")).strip()
+        if not test_id or (allowlist_ids and test_id not in allowlist_ids):
+            continue
+        hypothesis_id = _resolve_hypothesis_id_from_decision(decision, test_id)
+        reason = str(decision.get("reason", "")).strip()
+        key = (hypothesis_id, test_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(
+            {
+                "hypothesis_id": hypothesis_id,
+                "test_id": test_id,
+                "source": "planner_llm",
+                "score": 0,
+                "match_reasons": [reason] if reason else ["llm_decision"],
+            }
+        )
+    return out
+
 def hypothesis_planner_node(state: GraphState) -> GraphState:
     """Genera hipótesis con trazabilidad de fuentes (RF15c-03)."""
     metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
@@ -243,8 +373,14 @@ def hypothesis_planner_node(state: GraphState) -> GraphState:
                 "fallback_used": bool(llm_meta.get("fallback_used", llm_output is None)),
                 "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
             }
-            if isinstance(llm_output, list):
-                return [row for row in llm_output if isinstance(row, dict)]
+            parsed = _normalize_llm_hypotheses_output(
+                llm_output=llm_output,
+                default_hypotheses=fallback,
+                catalog_tests=[row for row in catalog_tests if isinstance(row, dict)],
+                max_hypotheses=max_hypotheses,
+            )
+            if parsed:
+                return parsed
             return fallback
 
         hypothesis_input_payload = {
@@ -389,6 +525,24 @@ def test_planner_node(state: GraphState) -> GraphState:
         for row in compatible_catalog_tests
         if isinstance(row, dict) and str(row.get("id", "")).strip()
     }
+    hypotheses_by_id: dict[str, dict[str, Any]] = {}
+    for idx, hypothesis in enumerate(state.hypotheses):
+        if not isinstance(hypothesis, dict):
+            continue
+        hypothesis_id = str(hypothesis.get("hypothesis_id", f"HYP-{idx + 1:03d}")).strip()
+        if hypothesis_id:
+            hypotheses_by_id[hypothesis_id] = hypothesis
+    test_meta_by_id: dict[str, dict[str, str]] = {}
+    for row in compatible_catalog_tests:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("id", "")).strip()
+        if not test_id:
+            continue
+        test_meta_by_id[test_id] = {
+            "fraud_type": str(row.get("fraud_type", "")).strip(),
+            "process_step": str(row.get("process_step", "")).strip(),
+        }
 
     selected_rows: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
@@ -441,7 +595,7 @@ def test_planner_node(state: GraphState) -> GraphState:
                 {
                     "hypothesis_id": hypothesis_id,
                     "test_id": test_id,
-                    "source": "planner_stub_allowlist",
+                    "source": "planner_allowlist_heuristic",
                     "score": int(score),
                     "match_reasons": reasons,
                 }
@@ -459,7 +613,7 @@ def test_planner_node(state: GraphState) -> GraphState:
             {
                 "hypothesis_id": fallback_hypothesis_id,
                 "test_id": fallback_test_id,
-                "source": "planner_stub_fallback",
+                "source": "planner_fallback_first_catalog_test",
                 "score": 0,
                 "match_reasons": ["fallback_first_catalog_test"],
             }
@@ -530,6 +684,20 @@ def test_planner_node(state: GraphState) -> GraphState:
             "fallback_used": bool(llm_meta.get("fallback_used", llm_output is None)),
             "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
         }
+        default_hypothesis_id = (
+            str(state.hypotheses[0].get("hypothesis_id", "HYP-001"))
+            if state.hypotheses and isinstance(state.hypotheses[0], dict)
+            else "HYP-001"
+        )
+        parsed = _normalize_llm_selected_tests_output(
+            llm_output=llm_output,
+            allowlist_ids=allowlist_ids,
+            default_hypothesis_id=default_hypothesis_id,
+            hypotheses_by_id=hypotheses_by_id,
+            test_meta_by_id=test_meta_by_id,
+        )
+        if parsed:
+            return parsed
         if isinstance(llm_output, list):
             return [row for row in llm_output if isinstance(row, dict)]
         return fallback
@@ -538,6 +706,32 @@ def test_planner_node(state: GraphState) -> GraphState:
         "allowlist_ids": sorted(allowlist_ids),
         "hypotheses_count": len(state.hypotheses),
         "top_n": top_n,
+        "hypotheses": [
+            {
+                "hypothesis_id": str(row.get("hypothesis_id", "")).strip(),
+                "fraud_type": str(row.get("fraud_type", "")).strip(),
+                "process_step": str(row.get("process_step", "")).strip(),
+                "title": str(row.get("title", "")).strip(),
+                "description": str(row.get("description", "")).strip(),
+                "candidate_test_ids": [
+                    str(test_id).strip()
+                    for test_id in row.get("candidate_test_ids", [])
+                    if str(test_id).strip()
+                ][:5],
+            }
+            for row in state.hypotheses
+            if isinstance(row, dict)
+        ],
+        "catalog_tests": [
+            {
+                "test_id": str(row.get("id", "")).strip(),
+                "fraud_type": str(row.get("fraud_type", "")).strip(),
+                "process_step": str(row.get("process_step", "")).strip(),
+                "name": str(row.get("name", "")).strip(),
+            }
+            for row in compatible_catalog_tests
+            if isinstance(row, dict) and str(row.get("id", "")).strip()
+        ],
     }
     try:
         state.selected_tests = _run_alpha_loop_for_node(
@@ -553,6 +747,79 @@ def test_planner_node(state: GraphState) -> GraphState:
         state.selected_tests = list(selected_rows)
         metadata["test_planner_fallback_used"] = True
         metadata["test_planner_fallback_reason"] = f"{type(exc).__name__}: {exc}"
+
+    # En modo real exigimos cobertura mínima por hipótesis para evitar concentración en una sola.
+    min_per_hypothesis_real = int(metadata.get("test_planner_min_per_hypothesis_real", 1) or 1)
+    if min_per_hypothesis_real < 0:
+        min_per_hypothesis_real = 0
+    metadata["test_planner_min_per_hypothesis_real"] = min_per_hypothesis_real
+    if llm_mode == "real" and min_per_hypothesis_real > 0 and hypotheses_by_id:
+        current_selected = [
+            row for row in state.selected_tests if isinstance(row, dict)
+        ]
+        selected_pairs = {
+            (
+                str(row.get("hypothesis_id", "")).strip(),
+                str(row.get("test_id", "")).strip(),
+            )
+            for row in current_selected
+            if str(row.get("hypothesis_id", "")).strip() and str(row.get("test_id", "")).strip()
+        }
+        by_hypothesis: dict[str, int] = {}
+        for hyp_id, _test_id in selected_pairs:
+            by_hypothesis[hyp_id] = by_hypothesis.get(hyp_id, 0) + 1
+        added_for_coverage = 0
+        for hyp_id, hypothesis in hypotheses_by_id.items():
+            current_count = by_hypothesis.get(hyp_id, 0)
+            if current_count >= min_per_hypothesis_real:
+                continue
+            hypothesis_text = (
+                f"{hypothesis.get('title', '')} {hypothesis.get('description', '')} "
+                f"{hypothesis.get('fraud_type', '')}"
+            ).strip()
+            scored_candidates: list[tuple[int, str, list[str]]] = []
+            requested_candidates = hypothesis.get("candidate_test_ids", [])
+            requested_allowlist = {
+                str(test_id).strip()
+                for test_id in (requested_candidates if isinstance(requested_candidates, list) else [])
+                if str(test_id).strip() in allowlist_ids
+            }
+            for test_spec in compatible_catalog_tests:
+                if not isinstance(test_spec, dict):
+                    continue
+                test_id = str(test_spec.get("id", "")).strip()
+                if not test_id:
+                    continue
+                if requested_allowlist and test_id not in requested_allowlist:
+                    continue
+                score, reasons = score_test_against_hypothesis(
+                    hypothesis_text=hypothesis_text,
+                    test_spec=test_spec,
+                )
+                if score <= 0 and not requested_allowlist:
+                    continue
+                scored_candidates.append((int(score), test_id, reasons))
+            scored_candidates.sort(key=lambda item: (-item[0], item[1]))
+            for score, test_id, reasons in scored_candidates:
+                pair = (hyp_id, test_id)
+                if pair in selected_pairs:
+                    continue
+                current_selected.append(
+                    {
+                        "hypothesis_id": hyp_id,
+                        "test_id": test_id,
+                        "source": "planner_real_min_coverage",
+                        "score": int(score),
+                        "match_reasons": reasons or ["real_min_coverage"],
+                    }
+                )
+                selected_pairs.add(pair)
+                by_hypothesis[hyp_id] = by_hypothesis.get(hyp_id, 0) + 1
+                added_for_coverage += 1
+                if by_hypothesis[hyp_id] >= min_per_hypothesis_real:
+                    break
+        state.selected_tests = current_selected
+        metadata["test_planner_min_per_hypothesis_real_added"] = added_for_coverage
     state.recomendaciones = [
         {
             "hypothesis_id": str(row.get("hypothesis_id", "")).strip(),

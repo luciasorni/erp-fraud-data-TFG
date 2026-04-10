@@ -1,0 +1,49 @@
+id: TST-O2C-INVOICE-DATE-SEQUENCE
+version: 1.0.0
+name: O2C invoice sequence anomaly
+fraud_type: invoice_sequence_anomaly
+red_flag_id: RF-O2C-007
+process_step: invoice
+description: Detecta saltos atípicos en secuencia de documento contable de factura O2C.
+source:
+  catalog: acfe_coso
+  reference: little_or_no_sequence_between_invoice_numbers
+  url: https://www.acfe.com/fraud-resources/fraud-risk-tools---coso/anti-fraud-data-analytics-tests
+data_requirements:
+  tables:
+    - table: o2c_invoice
+      required_columns:
+        - company_code
+        - accounting_document_id
+        - fiscal_year
+        - customer_or_account_id
+        - posting_date
+expected_output:
+  primary_entity: accounting_document_line
+  finding_fields:
+    - company_code
+    - accounting_document_id
+    - fiscal_year
+    - customer_or_account_id
+    - posting_date
+    - accounting_document_num
+    - prev_document_num
+    - document_gap
+  notes: Marca secuencias con huecos amplios en la numeración documental por cliente/cuenta.
+evidence_columns:
+  - company_code
+  - accounting_document_id
+  - fiscal_year
+  - customer_or_account_id
+  - posting_date
+logic:
+  implementation_type: sql
+  description: Gap de numeración (doc actual - doc previo) por customer_or_account_id.
+  sql_ref: sql/tests/tst_o2c_invoice_date_sequence.sql
+enabled: true
+owner: fraud-analytics
+tags:
+  - o2c
+  - invoice
+  - sequence
+  - anomaly

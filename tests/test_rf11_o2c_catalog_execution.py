@@ -44,6 +44,18 @@ def _prepare_o2c_tables(conn: duckdb.DuckDBPyConnection) -> None:
         )
         '''
     )
+    conn.execute(
+        '''
+        CREATE TABLE "o2c"."o2c_invoice" (
+          accounting_document_id VARCHAR,
+          fiscal_year VARCHAR,
+          company_code VARCHAR,
+          posting_date DATE,
+          customer_or_account_id VARCHAR,
+          amount_local_currency DOUBLE
+        )
+        '''
+    )
 
     conn.executemany(
         'INSERT INTO "o2c"."o2c_order" VALUES (?, ?, ?, ?, ?, ?)',
@@ -67,6 +79,15 @@ def _prepare_o2c_tables(conn: duckdb.DuckDBPyConnection) -> None:
             ("1000", "1900000010", "2026", "V01", 20000.0, "2026-01-20", "2026-01-10", None),
         ],
     )
+    conn.executemany(
+        'INSERT INTO "o2c"."o2c_invoice" VALUES (?, ?, ?, ?, ?, ?)',
+        [
+            ("1000000001", "2026", "1000", "2026-01-05", "V01", 100.0),
+            ("1000000002", "2026", "1000", "2026-01-06", "V01", 110.0),
+            ("1000000003", "2026", "1000", "2026-01-07", "V01", 95.0),
+            ("1000001500", "2026", "1000", "2026-01-08", "V01", 5000.0),
+        ],
+    )
 
 
 def test_rf11_o2c_catalog_tests_execute_with_runner(tmp_path) -> None:
@@ -85,6 +106,8 @@ def test_rf11_o2c_catalog_tests_execute_with_runner(tmp_path) -> None:
             "TST-O2C-DELIVERY-QUANTITY-MISMATCH",
             "TST-O2C-NEGATIVE-DELIVERY-QUANTITY",
             "TST-O2C-CLEARING-ANOMALY",
+            "TST-O2C-INVOICE-AMOUNT-ANOMALY",
+            "TST-O2C-INVOICE-DATE-SEQUENCE",
         ],
         catalog_path="tests/catalog_o2c",
         validate_schema=True,
@@ -96,6 +119,8 @@ def test_rf11_o2c_catalog_tests_execute_with_runner(tmp_path) -> None:
     assert status_by_id["TST-O2C-DELIVERY-QUANTITY-MISMATCH"] == "OK"
     assert status_by_id["TST-O2C-NEGATIVE-DELIVERY-QUANTITY"] == "OK"
     assert status_by_id["TST-O2C-CLEARING-ANOMALY"] == "OK"
+    assert status_by_id["TST-O2C-INVOICE-AMOUNT-ANOMALY"] == "OK"
+    assert status_by_id["TST-O2C-INVOICE-DATE-SEQUENCE"] == "OK"
 
     findings_by_id = {str(r.get("test_id", "")): int(r.get("finding_count", 0) or 0) for r in results if isinstance(r, dict)}
     assert findings_by_id["TST-O2C-PRICE-OUTLIER"] >= 1
@@ -103,3 +128,5 @@ def test_rf11_o2c_catalog_tests_execute_with_runner(tmp_path) -> None:
     assert findings_by_id["TST-O2C-DELIVERY-QUANTITY-MISMATCH"] >= 1
     assert findings_by_id["TST-O2C-NEGATIVE-DELIVERY-QUANTITY"] >= 1
     assert findings_by_id["TST-O2C-CLEARING-ANOMALY"] >= 1
+    assert findings_by_id["TST-O2C-INVOICE-AMOUNT-ANOMALY"] >= 1
+    assert findings_by_id["TST-O2C-INVOICE-DATE-SEQUENCE"] >= 1

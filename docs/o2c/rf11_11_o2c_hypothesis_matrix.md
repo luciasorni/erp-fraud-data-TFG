@@ -63,3 +63,8 @@ Resultado esperado:
 `test_status` distingue cobertura:
 - `implemented`: test operativo en catálogo O2C y validado en integración.
 - `planned`: test identificado en la matriz pero pendiente de implementación.
+
+Estado actual relevante:
+- `TST-O2C-INVOICE-AMOUNT-ANOMALY`: `implemented`.
+- `TST-O2C-INVOICE-DATE-SEQUENCE`: `implemented`.
+- `TST-O2C-LATE-ORDER-CHANGES`: sigue `planned` hasta disponer de trazas explícitas de cambio de pedido.

@@ -332,6 +332,42 @@ def _build_drilldown_query_and_params(
         ]
         return query, params
 
+    if query_id == "drilldown_o2c_invoice_amount_anomaly_v1":
+        table_ref = '"o2c"."o2c_invoice"'
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE company_code = ?
+              AND accounting_document_id = ?
+              AND fiscal_year = ?
+            LIMIT ?
+        """
+        params = [
+            keys["company_code"],
+            keys["accounting_document_id"],
+            keys["fiscal_year"],
+            resolved_limit,
+        ]
+        return query, params
+
+    if query_id == "drilldown_o2c_invoice_date_sequence_v1":
+        table_ref = '"o2c"."o2c_invoice"'
+        query = f"""
+            SELECT *
+            FROM {table_ref}
+            WHERE company_code = ?
+              AND accounting_document_id = ?
+              AND fiscal_year = ?
+            LIMIT ?
+        """
+        params = [
+            keys["company_code"],
+            keys["accounting_document_id"],
+            keys["fiscal_year"],
+            resolved_limit,
+        ]
+        return query, params
+
     raise KeyError(f"query_id no soportado para drilldown: {query_id}")
 
 

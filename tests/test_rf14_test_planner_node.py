@@ -42,5 +42,4 @@ def test_rf14_test_planner_filters_invalid_candidate_test_ids() -> None:
 
     assert len(out.selected_tests) == 1
     assert out.selected_tests[0]["test_id"] == "TST-DUPLICATE-POSTINGS"
-    assert out.selected_tests[0]["source"] == "planner_stub_allowlist"
-
+    assert out.selected_tests[0]["source"] == "planner_allowlist_heuristic"

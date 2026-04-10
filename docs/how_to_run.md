@@ -324,12 +324,16 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --db-path erp.duckdb \
   --schema-name o2c \
   --table-name o2c_order \
+  --hypothesis-max-items 4 \
+  --test-planner-top-n 4 \
+  --test-planner-min-per-hypothesis-real 1 \
   --llm-mode real
 ```
 
 Nota de arquitectura:
 
 - `run --process-family o2c` ejecuta el pipeline determinista de preparación/validación O2C.
+- En modo O2C, la CLI intenta autoload de fuentes SAP desde `raw_data/*.zip` del `input-zip` (tablas requeridas para entidades `fail_fast`).
 - `run_rf15c_e2e_manual.py --process-family o2c` ejecuta el grafo multiagente (LangGraph + AlphaCodium + LLM + LangSmith).
 
 Ver resumen legible del run (hipótesis, tests, hallazgos, score y explicación):

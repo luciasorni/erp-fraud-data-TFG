@@ -134,3 +134,61 @@ def test_rf15c_hypothesis_validation_rejects_invalid_fraud_type_process_and_evid
     assert "fraud_type fuera de catálogo" in joined
     assert "process_step fuera de catálogo" in joined
     assert "columna no existente" in joined
+
+
+def test_rf15c_hypothesis_planner_normalizes_llm_decisions_object_output() -> None:
+    import src.erp_fraud.graph.nodes.planning as planning_mod
+
+    normalized = planning_mod._normalize_llm_hypotheses_output(
+        llm_output={
+            "status": "OK",
+            "decisions": [
+                {
+                    "id": "HYP-010",
+                    "reason": "clear duplicate payment pattern",
+                    "confidence": 0.91,
+                    "fraud_type": "duplicate_payment",
+                    "process_step": "invoice_posting",
+                },
+                {
+                    "id": "HYP-011",
+                    "reason": "amount outlier cluster",
+                    "confidence": 0.82,
+                    "fraud_type": "amount_anomaly",
+                    "process_step": "invoice_posting",
+                },
+            ],
+            "evidence": [],
+        },
+        default_hypotheses=[
+            {
+                "hypothesis_id": "HYP-001",
+                "title": "seed",
+                "description": "seed",
+                "fraud_type": "duplicate_payment",
+                "process_step": "invoice_posting",
+                "candidate_test_ids": ["TST-DUPLICATE-POSTINGS"],
+                "sources": [{"type": "test_catalog"}, {"type": "schema_summary"}, {"type": "data_catalog"}],
+                "evidence_requirements": [{"table": "fraud_1", "column": "Kreditor"}],
+            },
+            {
+                "hypothesis_id": "HYP-002",
+                "title": "seed",
+                "description": "seed",
+                "fraud_type": "amount_anomaly",
+                "process_step": "invoice_posting",
+                "candidate_test_ids": ["TST-UNUSUAL-AMOUNT-BY-VENDOR"],
+                "sources": [{"type": "test_catalog"}, {"type": "schema_summary"}, {"type": "data_catalog"}],
+                "evidence_requirements": [{"table": "fraud_1", "column": "Betrag"}],
+            },
+        ],
+        catalog_tests=[
+            {"id": "TST-DUPLICATE-POSTINGS", "fraud_type": "duplicate_payment"},
+            {"id": "TST-UNUSUAL-AMOUNT-BY-VENDOR", "fraud_type": "amount_anomaly"},
+        ],
+        max_hypotheses=3,
+    )
+    ids = {str(row.get("hypothesis_id", "")) for row in normalized if isinstance(row, dict)}
+    fraud_types = {str(row.get("fraud_type", "")) for row in normalized if isinstance(row, dict)}
+    assert "HYP-010" in ids
+    assert "duplicate_payment" in fraud_types

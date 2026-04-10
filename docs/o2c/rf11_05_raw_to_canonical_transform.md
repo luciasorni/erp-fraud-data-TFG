@@ -59,6 +59,6 @@ Casos cubiertos:
 
 ## 5) Limitaciones actuales (esperadas en esta fase)
 
-1. El comando `erp-fraud run` aún carga `joint_datasets`; esta transformación asume tablas SAP raw ya presentes en DuckDB.
-2. La integración completa del selector de proceso (`process_family`) queda para RF11-07/RF11-08.
-3. Mapeo detallado columna a columna quedará afinado en RF11-09.
+1. El autoload desde `raw_data/*.zip` depende de disponibilidad de tablas SAP en los nested archives y de formato tabular legible.
+2. Cuando faltan tablas no críticas, la CLI crea placeholders vacíos para permitir degradación controlada.
+3. Mapeo detallado columna a columna queda afinado en RF11-09.

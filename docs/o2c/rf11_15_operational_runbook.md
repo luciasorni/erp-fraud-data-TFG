@@ -8,11 +8,16 @@ Dejar operativo O2C con comandos reproducibles para:
 2. run de grafo (LangGraph + agentes) en `stub` y `real`,
 3. trazabilidad en LangSmith cuando `llm_mode=real`.
 
+Prerequisito de entorno para autoload O2C desde `raw_data/*.zip`:
+
+- `openpyxl` instalado en el entorno Python activo (lectura de tablas SAP en `.XLSX`).
+
 ## 1.1 Aclaración de arquitectura (importante)
 
 Hay **dos planos de ejecución** complementarios:
 
 1. `erp-fraud run --process-family o2c` (CLI base determinista):
+   - intenta auto-cargar tablas SAP raw O2C desde `erp_fraud_data/raw_data/*.zip` dentro de `--input-zip` hacia `main` en DuckDB (priorizando tablas requeridas de entidades `fail_fast`),
    - construye canónico O2C,
    - ejecuta validación técnica O2C,
    - genera reporte técnico/artefactos base.
@@ -65,6 +70,9 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --db-path erp.duckdb \
   --schema-name o2c \
   --table-name o2c_order \
+  --hypothesis-max-items 4 \
+  --test-planner-top-n 4 \
+  --test-planner-min-per-hypothesis-real 1 \
   --llm-mode real
 ```
 
@@ -89,6 +97,13 @@ Comprobar en `run_results/<run_id>/graph/graph_state.json`:
 - `run_metadata.llm_runtime_by_node.*.status=OK` en nodos LLM
 - `run_metadata.langsmith_trace_link` no vacío (si credenciales válidas)
 
+Comprobar en `run_results/<run_id>/run_metadata.json` (run CLI O2C):
+
+- `o2c_raw_autoload.status` (`OK|PARTIAL|SKIPPED`)
+- `o2c_raw_autoload.tables_loaded`
+- `o2c_raw_autoload.target_tables`
+- `o2c_optional_placeholders_created`
+
 ## 6) Scope de catálogo O2C operativo
 
 Catálogo ejecutable actual:
@@ -98,6 +113,8 @@ Catálogo ejecutable actual:
 - `TST-O2C-DELIVERY-QUANTITY-MISMATCH`
 - `TST-O2C-NEGATIVE-DELIVERY-QUANTITY`
 - `TST-O2C-CLEARING-ANOMALY`
+- `TST-O2C-INVOICE-AMOUNT-ANOMALY`
+- `TST-O2C-INVOICE-DATE-SEQUENCE`
 
 Ubicación:
 

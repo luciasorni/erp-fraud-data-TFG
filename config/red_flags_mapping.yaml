@@ -154,3 +154,21 @@ red_flags:
     process_step: delivery
     related_tests:
       - TST-O2C-NEGATIVE-DELIVERY-QUANTITY
+
+  - red_flag_id: RF-O2C-006
+    name: O2C invoice amount anomaly
+    description: Importe contable de factura O2C atípico por cliente/cuenta.
+    fraud_type: invoice_amount_anomaly
+    acfe_reference: unusual_transaction_amounts
+    process_step: invoice
+    related_tests:
+      - TST-O2C-INVOICE-AMOUNT-ANOMALY
+
+  - red_flag_id: RF-O2C-007
+    name: O2C invoice sequence anomaly
+    description: Saltos no esperados en secuencia documental de facturas O2C.
+    fraud_type: invoice_sequence_anomaly
+    acfe_reference: little_or_no_sequence_between_invoice_numbers
+    process_step: invoice
+    related_tests:
+      - TST-O2C-INVOICE-DATE-SEQUENCE
