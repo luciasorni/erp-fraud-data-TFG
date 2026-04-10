@@ -30,6 +30,7 @@ def test_rf14_default_sequences_are_defined() -> None:
         "explainer",
         "scoring",
         "persist",
+        "second_level_explainer",
     )
 
 

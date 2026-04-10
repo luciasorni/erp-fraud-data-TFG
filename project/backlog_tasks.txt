@@ -1134,11 +1134,11 @@ requirements:
     estimate_hours: 1.0
 - id: RF16
   name: RF16 — Agente explicador de 2º nivel (comparación de runs y recomendaciones)
-  descripcion: '[Fase 3] Implementa un explicador de segundo nivel que compara runs (P2P/O2C o single-run), identifica similitudes/concurrencias
-    de fraude y propone recomendaciones de auditoría accionables.'
-  criterio_validacion: Existe lógica RF16 para cargar snapshots de runs, comparar selected_tests/findings/fraud_types, generar recomendaciones
-    (incluyendo caso single-run) y persistir artefactos JSON/MD. CLI incluye list-runs y compare-runs, y compare-runs soporta auto-selección
-    del último run P2P + O2C.
+  descripcion: '[Fase 3] Implementa un explicador de segundo nivel LLM como último nodo del grafo (second_level_explainer) para comparar runs
+    (P2P/O2C o single-run), identificar similitudes/concurrencias de fraude y proponer recomendaciones de auditoría accionables.'
+  criterio_validacion: El flujo full del grafo ejecuta second_level_explainer tras persist. El nodo genera `graph/second_level_analysis.json|md`,
+    usa LLM en `llm_mode=real` con fallback determinista, y funciona en single-run o comparación cross-process. CLI adicional `list-runs`/`compare-runs`
+    operativo con auto-selección último P2P+O2C.
   estimador: 10
   prioridad: Should
   riesgo: Medio
@@ -1159,7 +1159,7 @@ requirements:
     title: Soportar modo comparativo P2P+O2C automático (auto latest por process_family) y modo single-run con recomendaciones válidas
     estimate_hours: 1.0
   - id: RF16-06
-    title: Añadir script operativo scripts/run_rf16_second_level_explainer.py para uso directo en demos/operación
+    title: Añadir script operativo scripts/run_rf16_second_level_explainer.py para uso directo en demos/operación (modo offline)
     estimate_hours: 0.8
   - id: RF16-07
     title: Escribir/actualizar tests de integración RF16 (storage + CLI)

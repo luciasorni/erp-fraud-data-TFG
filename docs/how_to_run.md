@@ -130,7 +130,8 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --schema-summary-path run_results/rf10-08-acceptance-run/schema_summary.json \
   --catalog-path tests/catalog \
   --persist-base-dir run_results \
-  --llm-mode real
+  --llm-mode real \
+  --rf16-auto-latest-p2p-o2c
 ```
 
 3) Ver resumen funcional:
@@ -161,6 +162,9 @@ Resultado esperado mínimo:
 - `llm_mode=real`
 - nodos LLM con `status=OK` en `llm_runtime_by_node`
 - `langsmith_runs.status=OK` y `langsmith_trace_link` no vacío (si LangSmith está activo).
+- artefactos RF16 de segundo nivel generados:
+  - `run_results/<run_id>/graph/second_level_analysis.json`
+  - `run_results/<run_id>/graph/second_level_analysis.md`
 
 ## Entorno limpio (RF10-06)
 

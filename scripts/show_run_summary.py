@@ -96,13 +96,27 @@ def _print_runtime(graph_dir: Path) -> None:
     runtime = _safe_dict(meta.get("llm_runtime_by_node", {}))
     _print_section("LLM Runtime")
     print(f"llm_mode: {meta.get('llm_mode', '')}")
-    for node_id in ["hypothesis_planner", "test_planner", "expert_explainer", "scoring"]:
+    for node_id in ["hypothesis_planner", "test_planner", "expert_explainer", "scoring", "second_level_explainer"]:
         row = _safe_dict(runtime.get(node_id, {}))
         print(
             f"- {node_id}: status={row.get('status', '')}, fallback={row.get('fallback_used', '')}, "
             f"tokens={row.get('total_tokens', 0)}, latency_ms={row.get('latency_ms', 0)}, "
             f"cost_usd={row.get('cost_estimated_usd', 0)}"
         )
+
+
+def _print_second_level(graph_dir: Path) -> None:
+    payload = _safe_dict(_load_json(graph_dir / "second_level_analysis.json"))
+    if not payload:
+        return
+    insights = _safe_dict(payload.get("llm_insights", {}))
+    scope = _safe_dict(payload.get("analysis_scope", {}))
+    _print_section("Second-Level (RF16)")
+    print(f"run_ids: {scope.get('run_ids', [])}")
+    print(f"executive_summary: {insights.get('executive_summary', '')}")
+    actions = _safe_list(insights.get("next_actions", []))
+    for row in actions[:5]:
+        print(f"- action: {row}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -125,6 +139,7 @@ def main() -> int:
     _print_findings(graph_dir)
     _print_score(graph_dir)
     _print_explanations(graph_dir)
+    _print_second_level(graph_dir)
     _print_runtime(graph_dir)
     return 0
 

@@ -367,18 +367,32 @@ def pick_latest_run_ids_by_process_family(
     process_families: tuple[str, ...] = ("p2p", "o2c"),
 ) -> list[str]:
     wanted = {str(item).strip().lower() for item in process_families if str(item).strip()}
-    out: dict[str, str] = {}
+    preferred: dict[str, str] = {}
+    fallback: dict[str, str] = {}
     for run_id in discover_run_ids(base_dir=base_dir):
-        if len(out) == len(wanted):
+        if len(preferred) == len(wanted):
             break
         try:
             snap = load_run_snapshot(run_id=run_id, base_dir=base_dir)
         except Exception:
             continue
         fam = snap.process_family.lower()
-        if fam in wanted and fam not in out:
-            out[fam] = run_id
-    return [out[fam] for fam in sorted(out.keys())]
+        if fam not in wanted:
+            continue
+        if fam not in fallback:
+            fallback[fam] = run_id
+        has_graph_outputs = (snap.run_dir / "graph").exists()
+        has_selected_tests = int(snap.selected_tests_count) > 0
+        if (has_graph_outputs or has_selected_tests) and fam not in preferred:
+            preferred[fam] = run_id
+
+    resolved: dict[str, str] = {}
+    for fam in sorted(wanted):
+        if fam in preferred:
+            resolved[fam] = preferred[fam]
+        elif fam in fallback:
+            resolved[fam] = fallback[fam]
+    return [resolved[fam] for fam in sorted(resolved.keys())]
 
 
 def build_comparison_markdown(payload: dict[str, Any]) -> str:

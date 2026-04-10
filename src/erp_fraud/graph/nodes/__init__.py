@@ -28,6 +28,7 @@ from .scoring import (
     scoring_node as _scoring_node_impl,
     _validate_scoring_evidence_and_probability_sum as _validate_scoring_evidence_and_probability_sum_impl,
 )
+from .second_level_explainer import second_level_explainer_node as _second_level_explainer_node_impl
 
 # Dependencias parcheables en tests (compatibilidad retroactiva).
 KBSearchTool = _deps.KBSearchTool
@@ -97,6 +98,11 @@ def persist_node(state):
     return _persist_node_impl(state)
 
 
+def second_level_explainer_node(state):
+    _sync_runtime_dependencies()
+    return _second_level_explainer_node_impl(state)
+
+
 def run_node_by_id(*, node_id: str, state):
     _sync_runtime_dependencies()
     return _run_node_by_id_impl(node_id=node_id, state=state)
@@ -142,6 +148,7 @@ __all__ = [
     "persist_node",
     "run_node_by_id",
     "scoring_node",
+    "second_level_explainer_node",
     "test_planner_node",
     "_tool_test_catalog",
     "_validate_explanations_guardrails",

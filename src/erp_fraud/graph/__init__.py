@@ -18,6 +18,7 @@ from .nodes import (
     persist_node,
     run_node_by_id,
     scoring_node,
+    second_level_explainer_node,
     test_planner_node,
 )
 from .state import (
@@ -49,6 +50,7 @@ __all__ = [
     "run_graph_stub",
     "run_node_by_id",
     "scoring_node",
+    "second_level_explainer_node",
     "test_planner_node",
     "get_graph_state_contract",
     "validate_graph_state_payload",

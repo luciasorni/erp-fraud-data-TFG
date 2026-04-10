@@ -16,7 +16,7 @@ Documentar el grafo multiagente para que cualquier persona pueda:
 
 El orquestador (`src/erp_fraud/graph/graph.py`) soporta:
 
-- **secuencia full**: `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist`
+- **secuencia full**: `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist -> second_level_explainer`
 - **abort condicional** antes de planificación si:
   - `abort_graph=true`,
   - `schema_validation_failed=true`,
@@ -133,6 +133,19 @@ Campos principales:
   - `hypotheses.json`, `selected_tests.json`, `findings.json`, `explanations.json`, `scores.json`, `graph_state.json`, `manifest.json`
 - Trazas:
   - `run_metadata.persist_*`
+
+### 9) `second_level_explainer` (agente LLM RF16, post-run)
+
+- Entrada:
+  - artefactos ya persistidos del run actual (`graph/*`)
+  - opcionalmente runs previos para comparar (`rf16_compare_run_ids` o auto latest P2P+O2C)
+- Lógica:
+  - comparación determinista de runs (tests seleccionados, findings, fraud_types, similitud)
+  - en `llm_mode=real` genera conclusiones/recomendaciones con schema validado y fallback determinista
+- Salida:
+  - `graph/second_level_analysis.json`
+  - `graph/second_level_analysis.md`
+  - recomendaciones en `state.recomendaciones`
 
 ## Nodos y agentes (qué es “agente” aquí)
 

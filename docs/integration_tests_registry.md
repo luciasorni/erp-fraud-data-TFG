@@ -37,6 +37,7 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 | RF11 | `tests/test_rf11_o2c_graph_integration.py` | E2E grafo O2C | `run_graph_full` con nodos/agents, `process_family=o2c`, catálogo O2C y persistencia en grafo | `docs/o2c/rf11_13_o2c_integration_tests.md`, `docs/o2c/rf11_15_operational_runbook.md` |
 | RF16 | `tests/test_rf16_runs_comparison.py` | Integración storage comparación de runs | Carga snapshots desde artefactos persistidos, comparación cross-process/single-run, selección de latest por familia | `docs/rf16.md` |
 | RF16 | `tests/test_rf16_cli_compare_runs.py` | Integración CLI RF16 | Comandos `list-runs` y `compare-runs`, con generación de `rf16_second_level_analysis.json/md` | `docs/rf16.md`, `docs/how_to_run.md` |
+| RF16 | `tests/test_rf16_second_level_agent_node.py` | Integración nodo/agente RF16 | Ejecución de `second_level_explainer` como último nodo del grafo, persistiendo `graph/second_level_analysis.json|md` | `docs/rf16.md`, `docs/langgraph_architecture.md` |
 
 ## Suites de ejecución recomendadas
 
@@ -101,7 +102,8 @@ python3 -m pytest -q \
 ```bash
 python3 -m pytest -q \
   tests/test_rf16_runs_comparison.py \
-  tests/test_rf16_cli_compare_runs.py
+  tests/test_rf16_cli_compare_runs.py \
+  tests/test_rf16_second_level_agent_node.py
 ```
 
 ## Evidencia documental por bloque

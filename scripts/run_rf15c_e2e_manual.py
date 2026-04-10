@@ -138,6 +138,16 @@ def parse_args() -> argparse.Namespace:
         help="Mínimo de tests por hipótesis cuando llm_mode=real (cobertura anti-concentración).",
     )
     parser.add_argument("--notes", default="", help="Notas libres para contexto del tutor.")
+    parser.add_argument(
+        "--rf16-auto-latest-p2p-o2c",
+        action="store_true",
+        help="RF16: compara automáticamente último run P2P+O2C además del run actual.",
+    )
+    parser.add_argument(
+        "--rf16-compare-run-ids",
+        default="",
+        help="RF16: run_ids explícitos a comparar (coma separada).",
+    )
     return parser.parse_args()
 
 
@@ -179,6 +189,14 @@ def main() -> int:
             "test_planner_top_n": int(args.test_planner_top_n),
             "test_planner_min_per_hypothesis_real": int(args.test_planner_min_per_hypothesis_real),
             "executor_timeout_ms": 3000,
+            "rf16_include_current_run": True,
+            "rf16_auto_latest_p2p_o2c": bool(args.rf16_auto_latest_p2p_o2c),
+            "rf16_compare_run_ids": [
+                item.strip()
+                for item in str(args.rf16_compare_run_ids).split(",")
+                if item.strip()
+            ],
+            "rf16_base_dir": str(args.persist_base_dir).strip(),
         },
     )
 

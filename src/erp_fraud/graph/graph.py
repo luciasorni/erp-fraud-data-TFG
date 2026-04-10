@@ -42,6 +42,7 @@ DEFAULT_GRAPH_SEQUENCE_FULL: tuple[str, ...] = (
     "explainer",
     "scoring",
     "persist",
+    "second_level_explainer",
 )
 
 
