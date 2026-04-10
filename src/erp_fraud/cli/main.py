@@ -56,6 +56,12 @@ from ..storage.o2c_validation import write_o2c_validation_report_json
 from ..storage.data_dictionary import DataDictionaryCompletenessError, check_dictionary_completeness
 from ..storage.paths import ruta_run
 from ..storage.report_json import build_report_json_payload
+from ..storage.runs_comparison import (
+    compare_runs,
+    list_runs,
+    pick_latest_run_ids_by_process_family,
+    write_comparison_outputs,
+)
 from ..config import (
     DEFAULT_CATALOG_PATH,
     DEFAULT_DB_PATH,
@@ -173,6 +179,63 @@ def _run_drilldown(args: argparse.Namespace) -> int:
 def _default_run_id() -> str:
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     return f"run-{stamp}"
+
+
+def _run_list_runs(args: argparse.Namespace) -> int:
+    rows = list_runs(base_dir=args.base_dir)
+    if args.output_json:
+        print(json.dumps({"runs": rows, "count": len(rows)}, ensure_ascii=False, indent=2, sort_keys=True))
+        return 0
+
+    print(f"Runs encontrados: {len(rows)}")
+    for row in rows:
+        run_id = str(row.get("run_id", ""))
+        process_family = str(row.get("process_family", ""))
+        llm_mode = str(row.get("llm_mode", ""))
+        findings_total = int(row.get("findings_total", 0) or 0)
+        selected_tests_count = int(row.get("selected_tests_count", 0) or 0)
+        final_label = str(row.get("final_label", ""))
+        confidence = float(row.get("confidence", 0.0) or 0.0)
+        print(
+            f"- {run_id} | family={process_family} | llm={llm_mode} | "
+            f"selected_tests={selected_tests_count} | findings={findings_total} | "
+            f"label={final_label} ({confidence:.2f})"
+        )
+    return 0
+
+
+def _run_compare_runs(args: argparse.Namespace) -> int:
+    run_ids = [str(item).strip() for item in (args.run_ids or []) if str(item).strip()]
+    if not run_ids and args.auto_latest_p2p_o2c:
+        run_ids = pick_latest_run_ids_by_process_family(base_dir=args.base_dir)
+    if not run_ids:
+        print("ERROR: Debes indicar run_ids o usar --auto-latest-p2p-o2c", file=sys.stderr)
+        return 2
+
+    try:
+        payload = compare_runs(run_ids=run_ids, base_dir=args.base_dir)
+    except Exception as exc:
+        print(f"ERROR: compare-runs falló: {exc}", file=sys.stderr)
+        return 1
+
+    analysis_id = str(args.analysis_id).strip() if args.analysis_id else ""
+    if not analysis_id:
+        analysis_id = f"rf16-second-level-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    output_dir = Path(args.base_dir) / analysis_id
+    output_json = output_dir / "rf16_second_level_analysis.json"
+    output_md = output_dir / "rf16_second_level_analysis.md"
+    write_comparison_outputs(
+        payload=payload,
+        output_json_path=output_json,
+        output_md_path=output_md,
+    )
+
+    print(f"OK: compare-runs analysis_id={analysis_id}")
+    print(f"- compared_runs: {', '.join(run_ids)}")
+    print(f"- output_json: {output_json}")
+    print(f"- output_md: {output_md}")
+    print(f"- recommendations: {len(payload.get('recommendations', []))}")
+    return 0
 
 
 def _safe_table_name_from_file(file_name: str) -> str:
@@ -1313,6 +1376,48 @@ def build_parser() -> argparse.ArgumentParser:
         help="Guarda en run_results/<run_id>/drilldown_<test_id>.json",
     )
     drilldown_parser.set_defaults(handler=_run_drilldown)
+
+    list_runs_parser = subparsers.add_parser(
+        "list-runs",
+        help="Lista runs persistidos con resumen (RF16)",
+    )
+    list_runs_parser.add_argument(
+        "--base-dir",
+        default=DEFAULT_OUT_DIR,
+        help=f"Directorio base de runs (default: {DEFAULT_OUT_DIR})",
+    )
+    list_runs_parser.add_argument(
+        "--output-json",
+        action="store_true",
+        help="Imprime salida en JSON",
+    )
+    list_runs_parser.set_defaults(handler=_run_list_runs)
+
+    compare_runs_parser = subparsers.add_parser(
+        "compare-runs",
+        help="Compara runs y genera análisis RF16 (JSON + MD) con recomendaciones",
+    )
+    compare_runs_parser.add_argument(
+        "run_ids",
+        nargs="*",
+        help="Run IDs a comparar (1..N). Si se omiten, usar --auto-latest-p2p-o2c",
+    )
+    compare_runs_parser.add_argument(
+        "--base-dir",
+        default=DEFAULT_OUT_DIR,
+        help=f"Directorio base de runs (default: {DEFAULT_OUT_DIR})",
+    )
+    compare_runs_parser.add_argument(
+        "--auto-latest-p2p-o2c",
+        action="store_true",
+        help="Selecciona automáticamente el último run p2p y el último o2c",
+    )
+    compare_runs_parser.add_argument(
+        "--analysis-id",
+        default=None,
+        help="ID del análisis RF16 (default: autogenerado)",
+    )
+    compare_runs_parser.set_defaults(handler=_run_compare_runs)
 
     run_parser = subparsers.add_parser(
         "run",

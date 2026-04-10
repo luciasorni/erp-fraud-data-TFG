@@ -35,6 +35,8 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 | RF11 | `tests/test_rf11_o2c_hypothesis_matrix.py` + `tests/test_rf11_o2c_taxonomy.py` | Integración gobernanza analítica | Consistencia matriz hipótesis->tests->evidencia y alineación de `fraud_type` O2C con Fraud Tree | `docs/o2c/rf11_11_o2c_hypothesis_matrix.md`, `docs/o2c/rf11_12_o2c_fraud_taxonomy.md` |
 | RF11 | `tests/test_rf11_o2c_catalog_execution.py` | Integración catálogo O2C ejecutable | Ejecución real de tests de fraude O2C en `TestRunner` contra tablas canónicas O2C (order/delivery/collection/invoice), incluyendo `TST-O2C-INVOICE-AMOUNT-ANOMALY` y `TST-O2C-INVOICE-DATE-SEQUENCE` | `docs/o2c/rf11_15_operational_runbook.md` |
 | RF11 | `tests/test_rf11_o2c_graph_integration.py` | E2E grafo O2C | `run_graph_full` con nodos/agents, `process_family=o2c`, catálogo O2C y persistencia en grafo | `docs/o2c/rf11_13_o2c_integration_tests.md`, `docs/o2c/rf11_15_operational_runbook.md` |
+| RF16 | `tests/test_rf16_runs_comparison.py` | Integración storage comparación de runs | Carga snapshots desde artefactos persistidos, comparación cross-process/single-run, selección de latest por familia | `docs/rf16.md` |
+| RF16 | `tests/test_rf16_cli_compare_runs.py` | Integración CLI RF16 | Comandos `list-runs` y `compare-runs`, con generación de `rf16_second_level_analysis.json/md` | `docs/rf16.md`, `docs/how_to_run.md` |
 
 ## Suites de ejecución recomendadas
 
@@ -94,6 +96,14 @@ python3 -m pytest -q \
   tests/test_rf13_p2p_hypothesis_matrix.py
 ```
 
+### RF16 (comparación de runs)
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf16_runs_comparison.py \
+  tests/test_rf16_cli_compare_runs.py
+```
+
 ## Evidencia documental por bloque
 
 - RF14: `docs/rf14.md`
@@ -101,6 +111,7 @@ python3 -m pytest -q \
 - RF15c: `docs/rf15c.md`, `docs/rf15c_verification.md`
 - RF18: `docs/scoring.md`, `docs/rf18_verification.md`
 - RF11/O2C: `docs/o2c/README.md`, `docs/o2c/rf11_13_o2c_integration_tests.md`
+- RF16: `docs/rf16.md`
 - Operación de ejecución: `docs/how_to_run.md`
 
 ## Nota de trazabilidad

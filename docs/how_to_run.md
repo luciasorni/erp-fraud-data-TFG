@@ -81,6 +81,22 @@ python3 -m src.erp_fraud.cli.main run \
   --kb-sources-config config/kb_sources.yaml \
   --kb-chunking-config config/kb_chunking.yaml \
   --kb-chroma-config config/kb_chroma.yaml
+
+# RF16: listar runs persistidos
+python3 -m src.erp_fraud.cli.main list-runs \
+  --base-dir run_results
+
+# RF16: comparar runs concretos (P2P/O2C o cualquier combinación)
+python3 -m src.erp_fraud.cli.main compare-runs \
+  p2p-real-check-01 o2c-real-fix-01 \
+  --base-dir run_results \
+  --analysis-id rf16-compare-demo
+
+# RF16: comparar automáticamente último run P2P + último O2C
+python3 -m src.erp_fraud.cli.main compare-runs \
+  --base-dir run_results \
+  --auto-latest-p2p-o2c \
+  --analysis-id rf16-latest-demo
 ```
 
 Calidad rápida:

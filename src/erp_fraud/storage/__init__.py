@@ -53,6 +53,16 @@ from .report_json import (
     validate_report_json_file_artifact_links,
     write_report_json,
 )
+from .runs_comparison import (
+    build_comparison_markdown,
+    compare_run_snapshots,
+    compare_runs,
+    discover_run_ids,
+    list_runs,
+    load_run_snapshot,
+    pick_latest_run_ids_by_process_family,
+    write_comparison_outputs,
+)
 
 __all__ = [
     "DEFAULT_INGEST_LOG_FILENAME",
@@ -99,6 +109,14 @@ __all__ = [
     "write_report_markdown_from_report_json",
     "write_report_markdown_template",
     "write_data_validation_report_json",
+    "build_comparison_markdown",
+    "compare_run_snapshots",
+    "compare_runs",
+    "discover_run_ids",
+    "list_runs",
+    "load_run_snapshot",
+    "pick_latest_run_ids_by_process_family",
+    "write_comparison_outputs",
 ]
 
 try:

@@ -146,6 +146,17 @@ No todos los nodos son LLM:
 
 Esto permite control y auditabilidad: decisión asistida donde aporta valor, ejecución determinista donde hay riesgo.
 
+## Relación con RF16 (explicador de 2º nivel)
+
+RF16 **no es un nodo del grafo RF14**. Es una capa posterior que consume artefactos de runs ya ejecutados (`run_results/.../graph/*`) para comparar ejecuciones entre sí (P2P/O2C o single-run) y proponer recomendaciones de auditoría.
+
+Comandos RF16 integrados:
+
+- `python3 -m src.erp_fraud.cli.main list-runs`
+- `python3 -m src.erp_fraud.cli.main compare-runs ...`
+
+Referencia: `docs/rf16.md`.
+
 ## Artefactos clave para depurar
 
 - estado técnico:

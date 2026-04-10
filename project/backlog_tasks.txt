@@ -1133,48 +1133,45 @@ requirements:
       logs/reportes)
     estimate_hours: 1.0
 - id: RF16
-  name: RF16 — Persistencia y comparación de runs
-  descripcion: '[Fase 2] Guarda histórico de ejecuciones y permite comparar resultados entre runs.'
-  criterio_validacion: Existe storage de runs (tabla o carpeta) con run_id, dataset_hash y versiones. Comandos list-runs y
-    compare-runs producen diffs de ranking/tests.
-  estimador: 8
+  name: RF16 — Agente explicador de 2º nivel (comparación de runs y recomendaciones)
+  descripcion: '[Fase 3] Implementa un explicador de segundo nivel que compara runs (P2P/O2C o single-run), identifica similitudes/concurrencias
+    de fraude y propone recomendaciones de auditoría accionables.'
+  criterio_validacion: Existe lógica RF16 para cargar snapshots de runs, comparar selected_tests/findings/fraud_types, generar recomendaciones
+    (incluyendo caso single-run) y persistir artefactos JSON/MD. CLI incluye list-runs y compare-runs, y compare-runs soporta auto-selección
+    del último run P2P + O2C.
+  estimador: 10
   prioridad: Should
   riesgo: Medio
   tasks:
   - id: RF16-01
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
-    estimate_hours: 1.5
-  - id: RF16-02
-    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
-  - id: RF16-03
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
-    estimate_hours: 1.0
-  - id: RF16-01
-    title: 'Definir almacenamiento de runs: carpeta persistente o tabla DuckDB ''runs'' + ''test_results'''
+    title: Diseñar contrato de snapshot de run (campos mínimos para comparación) y definir parser robusto desde artefactos de run_results
     estimate_hours: 1.2
   - id: RF16-02
-    title: 'Implementar escritura: registrar run_id, dataset_hash, config_hash, tests_versions, timestamps'
-    estimate_hours: 1.5
+    title: Implementar módulo storage RF16 para comparación (carga snapshots, similitud, resumen, recomendaciones, export JSON/MD)
+    estimate_hours: 2.0
   - id: RF16-03
-    title: Implementar comando 'list-runs' (tabla resumen) y filtros por fecha/dataset_hash
+    title: Implementar comando CLI list-runs con salida humana y JSON
     estimate_hours: 1.0
   - id: RF16-04
-    title: Implementar comando 'compare-runs A B' (diff ranking, tests fallidos, métricas)
-    estimate_hours: 2.0
+    title: Implementar comando CLI compare-runs (N runs) con persistencia de rf16_second_level_analysis.json/md
+    estimate_hours: 1.2
   - id: RF16-05
-    title: Añadir export compare a MD/JSON y enlazarlo desde reportes
+    title: Soportar modo comparativo P2P+O2C automático (auto latest por process_family) y modo single-run con recomendaciones válidas
     estimate_hours: 1.0
   - id: RF16-06
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
-    estimate_hours: 1.5
+    title: Añadir script operativo scripts/run_rf16_second_level_explainer.py para uso directo en demos/operación
+    estimate_hours: 0.8
   - id: RF16-07
-    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: Escribir/actualizar tests de integración RF16 (storage + CLI)
+    estimate_hours: 1.5
   - id: RF16-08
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
+    title: Documentar RF16 (objetivo, arquitectura, comandos, outputs, interpretación de recomendaciones)
+    estimate_hours: 1.0
+  - id: RF16-09
+    title: Actualizar runbook general y registro de tests de integración con RF16
+    estimate_hours: 0.8
+  - id: RF16-10
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + outputs de compare-runs)
     estimate_hours: 1.0
 - id: RF17
   name: RF17 — Taxonomía de fraude (fraud_type) y mapping
