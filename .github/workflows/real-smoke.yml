@@ -165,6 +165,39 @@ jobs:
             --table-name o2c_order \
             --llm-mode real
 
+      - name: Validate smoke outputs
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          run_ids = [f"real-smoke-{os.environ['GITHUB_RUN_ID']}", f"real-smoke-o2c-{os.environ['GITHUB_RUN_ID']}"]
+          require_langsmith = bool(os.getenv("LANGSMITH_API_KEY", "").strip())
+
+          for run_id in run_ids:
+            state_path = Path("run_results") / run_id / "graph" / "graph_state.json"
+            if not state_path.exists():
+                raise SystemExit(f"missing graph_state: {state_path}")
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            metadata = state.get("run_metadata", {})
+            if metadata.get("graph_status") != "OK":
+                raise SystemExit(f"{run_id}: graph_status != OK")
+            if metadata.get("llm_mode") != "real":
+                raise SystemExit(f"{run_id}: llm_mode != real")
+            runtime = metadata.get("llm_runtime_by_node", {})
+            if not isinstance(runtime, dict) or not runtime:
+                raise SystemExit(f"{run_id}: llm_runtime_by_node missing or empty")
+            if require_langsmith:
+                ls = metadata.get("langsmith_runs", {})
+                if str(ls.get("status", "")).upper() != "OK":
+                    raise SystemExit(f"{run_id}: langsmith_runs.status != OK")
+                if not str(metadata.get("langsmith_trace_link", "")).strip():
+                    raise SystemExit(f"{run_id}: missing langsmith_trace_link")
+          print("OK smoke output validation")
+          PY
+
       - name: Upload smoke artifacts
         if: always()
         uses: actions/upload-artifact@v4

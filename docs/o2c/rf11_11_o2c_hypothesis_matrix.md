@@ -33,7 +33,9 @@ La validación verifica:
 5. `evidence_entity` existente en `config/canonical_schema_o2c.yaml`,
 6. `evidence_columns` dentro de campos válidos de la entidad,
 7. `business_key_fields` dentro de `config/o2c_entity_identity.yaml`,
-8. unicidad de `(hypothesis_id, test_id)`.
+8. unicidad de `(hypothesis_id, test_id)`,
+9. si `test_status=implemented`, `test_id` debe existir en `tests/catalog_o2c`,
+10. si `test_status=implemented`, `fraud_type` y `process_step` deben coincidir con el TestSpec del catálogo.
 
 ## 4) Ejecución manual
 
@@ -52,7 +54,9 @@ Resultado esperado:
 - `tests/test_rf11_o2c_hypothesis_matrix.py`
   - caso OK sobre matriz oficial,
   - error por `evidence_columns` no válidas,
-  - error por duplicado `hypothesis_id+test_id`.
+  - error por duplicado `hypothesis_id+test_id`,
+  - error por `test_id` implementado que no existe en catálogo O2C,
+  - error por mismatch `fraud_type/process_step` frente al catálogo O2C.
 
 ## 6) Notas de alcance
 

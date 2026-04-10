@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from ..catalog.test_spec_loader import load_test_specs_from_catalog
 
 REQUIRED_COLUMNS = (
     "hypothesis_id",
@@ -100,6 +101,7 @@ def validate_o2c_hypothesis_matrix(
     matrix_csv_path: str | Path = "docs/o2c/artifacts/rf11_11_o2c_hypothesis_matrix.csv",
     canonical_schema_config_path: str | Path = "config/canonical_schema_o2c.yaml",
     identity_config_path: str | Path = "config/o2c_entity_identity.yaml",
+    o2c_catalog_path: str | Path = "tests/catalog_o2c",
 ) -> dict[str, Any]:
     matrix_path = Path(matrix_csv_path)
     if not matrix_path.exists():
@@ -110,6 +112,12 @@ def validate_o2c_hypothesis_matrix(
     allowed_fields_by_entity = _build_allowed_fields_by_entity(canonical_cfg)
     allowed_entities = set(allowed_fields_by_entity.keys())
     key_fields_by_entity = _build_business_key_fields_by_entity(identity_cfg)
+    catalog_specs = load_test_specs_from_catalog(o2c_catalog_path, validate_schema=True)
+    catalog_by_test_id: dict[str, dict[str, Any]] = {}
+    for spec in catalog_specs:
+        test_id = str(spec.get("id", "")).strip()
+        if test_id:
+            catalog_by_test_id[test_id] = spec
 
     errors: list[str] = []
     rows_total = 0
@@ -147,6 +155,23 @@ def validate_o2c_hypothesis_matrix(
                 row_errors.append("test_id vacío")
             elif not test_id.startswith("TST-O2C-"):
                 row_errors.append(f"test_id debe empezar por TST-O2C-: {test_id}")
+            elif test_status == "implemented":
+                spec = catalog_by_test_id.get(test_id)
+                if spec is None:
+                    row_errors.append(f"test_id implementado no existe en catálogo O2C: {test_id}")
+                else:
+                    spec_fraud_type = str(spec.get("fraud_type", "")).strip()
+                    spec_process_step = str(spec.get("process_step", "")).strip()
+                    if spec_fraud_type and fraud_type != spec_fraud_type:
+                        row_errors.append(
+                            f"fraud_type no coincide con catálogo para {test_id}: "
+                            f"matrix={fraud_type}, catalog={spec_fraud_type}"
+                        )
+                    if spec_process_step and process_step != spec_process_step:
+                        row_errors.append(
+                            f"process_step no coincide con catálogo para {test_id}: "
+                            f"matrix={process_step}, catalog={spec_process_step}"
+                        )
             if test_status not in ALLOWED_TEST_STATUS:
                 row_errors.append(f"test_status inválido: {test_status}")
             if not source_deviation_id.startswith("O2C-"):
@@ -188,5 +213,5 @@ def validate_o2c_hypothesis_matrix(
         "matrix_csv_path": str(matrix_path),
         "canonical_schema_config_path": str(canonical_schema_config_path),
         "identity_config_path": str(identity_config_path),
+        "o2c_catalog_path": str(o2c_catalog_path),
     }
-

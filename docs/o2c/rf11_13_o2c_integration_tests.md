@@ -8,7 +8,7 @@ Garantizar que una ejecución O2C completa:
 2. persiste artefactos estándar de run,
 3. genera reporte final sin romper compatibilidad P2P.
 
-Además, garantizar que la ampliación de catálogo P2P (segunda ola RF13-P2) no rompe el flujo O2C.
+Además, garantizar que el flujo O2C no rompe compatibilidad transversal con P2P.
 
 ## 2) Suite de integración O2C usada
 
@@ -22,7 +22,6 @@ Además, garantizar que la ampliación de catálogo P2P (segunda ola RF13-P2) no
 - `tests/test_rf11_o2c_taxonomy.py`
 - `tests/test_rf11_o2c_catalog_execution.py`
 - `tests/test_rf11_o2c_graph_integration.py`
-- `tests/test_rf13_p2_additional_catalog.py`
 
 ## 3) Qué se verifica (integración)
 
@@ -54,8 +53,7 @@ python3 -m pytest -q \
   tests/test_rf11_o2c_hypothesis_matrix.py \
   tests/test_rf11_o2c_taxonomy.py \
   tests/test_rf11_o2c_catalog_execution.py \
-  tests/test_rf11_o2c_graph_integration.py \
-  tests/test_rf13_p2_additional_catalog.py
+  tests/test_rf11_o2c_graph_integration.py
 ```
 
 ## 5) Criterio de aceptación RF11-13

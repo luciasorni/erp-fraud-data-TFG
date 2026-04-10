@@ -560,8 +560,9 @@ requirements:
   descripcion: '[Fase 2] Extiende el pipeline de P2P a O2C usando fuentes raw_data del dataset ERP Fraud Data. Define modelo
     canónico O2C, transforma raw a entidades O2C, habilita ejecución/validación sobre O2C y deja trazabilidad separada por proceso.'
   criterio_validacion: Existe documentación funcional/técnica de O2C y su mapping desde raw_data. Se generan tablas canónicas
-    O2C en DuckDB con validación de calidad mínima, y al menos un run O2C completo produce artefactos estándar (findings/ranking/report)
-    sin romper el flujo P2P existente.
+    O2C en DuckDB con validación de calidad mínima. El run CLI O2C (`run --process-family o2c`) produce artefactos técnicos
+    estándar (metadata/schema/data_validation/report) y el run de grafo O2C (`run_rf15c_e2e_manual --process-family o2c`)
+    produce artefactos antifraude (hypotheses/selected_tests/findings/explanations/scores) sin romper el flujo P2P existente.
   estimador: 21
   prioridad: Should
   riesgo: Alto

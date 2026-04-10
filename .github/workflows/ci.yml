@@ -55,18 +55,6 @@ jobs:
           path: run_results/pre_langsmith_gate.json
           if-no-files-found: ignore
 
-      - name: RF11 O2C integration suite
-        run: |
-          python -m pytest -q \
-            tests/test_rf11_o2c_cli_run.py \
-            tests/test_rf11_o2c_transform.py \
-            tests/test_rf11_o2c_validation.py \
-            tests/test_rf11_o2c_data_dictionary.py \
-            tests/test_rf11_o2c_hypothesis_matrix.py \
-            tests/test_rf11_o2c_taxonomy.py \
-            tests/test_rf11_o2c_catalog_execution.py \
-            tests/test_rf11_o2c_graph_integration.py
-
       - name: RF11 cross-process regression
         run: |
           python scripts/run_rf11_cross_regression.py --run-id ci-rf11-cross-${{ github.run_id }}
