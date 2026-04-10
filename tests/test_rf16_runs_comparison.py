@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from src.erp_fraud.storage.runs_comparison import (
@@ -164,9 +165,40 @@ def test_rf16_pick_latest_run_ids_by_family(tmp_path: Path) -> None:
     )
 
     # Fuerza orden temporal distinto
-    (base_dir / "p2p-old").touch()
-    (base_dir / "o2c-new").touch()
-    (base_dir / "p2p-new").touch()
+    os.utime(base_dir / "p2p-old", (1000, 1000))
+    os.utime(base_dir / "o2c-new", (2000, 2000))
+    os.utime(base_dir / "p2p-new", (3000, 3000))
 
     picked = pick_latest_run_ids_by_process_family(base_dir=base_dir)
     assert sorted(picked) == ["o2c-new", "p2p-new"]
+
+
+def test_rf16_pick_latest_reads_process_family_from_run_metadata_when_graph_missing(tmp_path: Path) -> None:
+    base_dir = tmp_path / "runs"
+    p2p_dir = base_dir / "p2p-cli-only"
+    o2c_dir = base_dir / "o2c-cli-only"
+    p2p_dir.mkdir(parents=True, exist_ok=True)
+    o2c_dir.mkdir(parents=True, exist_ok=True)
+
+    (p2p_dir / "run_metadata.json").write_text(
+        json.dumps({"run_id": "p2p-cli-only", "process_family": "p2p", "llm_mode": "stub"}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (o2c_dir / "run_metadata.json").write_text(
+        json.dumps({"run_id": "o2c-cli-only", "process_family": "o2c", "llm_mode": "stub"}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (p2p_dir / "report.json").write_text(
+        json.dumps({"summary": {"overall_status": "OK"}}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    (o2c_dir / "report.json").write_text(
+        json.dumps({"summary": {"overall_status": "OK"}}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    os.utime(p2p_dir, (1000, 1000))
+    os.utime(o2c_dir, (2000, 2000))
+
+    picked = pick_latest_run_ids_by_process_family(base_dir=base_dir)
+    assert sorted(picked) == ["o2c-cli-only", "p2p-cli-only"]

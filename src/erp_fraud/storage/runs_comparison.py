@@ -57,14 +57,14 @@ def discover_run_ids(*, base_dir: str | Path = "run_results") -> list[str]:
     root = Path(base_dir)
     if not root.exists():
         return []
-    out: list[tuple[float, str]] = []
+    out: list[tuple[int, str]] = []
     for child in root.iterdir():
         if not child.is_dir():
             continue
         if (child / "graph").exists() or (child / "report.json").exists() or (child / "run_metadata.json").exists():
-            out.append((child.stat().st_mtime, child.name))
-    out.sort(key=lambda item: item[0], reverse=True)
-    return [name for _mtime, name in out]
+            out.append((child.stat().st_mtime_ns, child.name))
+    out.sort(key=lambda item: (item[0], item[1]), reverse=True)
+    return [name for _mtime_ns, name in out]
 
 
 def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> RunSnapshot:
@@ -82,9 +82,12 @@ def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> R
     scores = _normalize_score_payload(_load_json(graph_dir / "scores.json"))
     graph_state = _safe_dict(_load_json(graph_dir / "graph_state.json"))
     graph_meta = _safe_dict(graph_state.get("run_metadata", {}))
+    run_metadata_payload = _safe_dict(_load_json(run_dir / "run_metadata.json"))
 
     report_payload = _safe_dict(_load_json(run_dir / "report.json"))
     report_summary = _safe_dict(report_payload.get("summary", {}))
+    report_metadata = _safe_dict(report_payload.get("metadata", {}))
+    report_metadata_extra = _safe_dict(report_metadata.get("metadata_extra", {}))
     selected_test_ids: list[str] = []
     for row in selected_tests:
         item = _safe_dict(row)
@@ -109,8 +112,17 @@ def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> R
     if findings_total <= 0:
         findings_total = int(report_summary.get("findings_total", 0) or 0)
 
-    process_family = str(graph_meta.get("process_family", "")).strip() or "p2p"
-    llm_mode = str(graph_meta.get("llm_mode", "")).strip()
+    process_family = (
+        str(graph_meta.get("process_family", "")).strip()
+        or str(run_metadata_payload.get("process_family", "")).strip()
+        or str(report_metadata_extra.get("process_family", "")).strip()
+        or "p2p"
+    )
+    llm_mode = (
+        str(graph_meta.get("llm_mode", "")).strip()
+        or str(run_metadata_payload.get("llm_mode", "")).strip()
+        or str(report_metadata_extra.get("llm_mode", "")).strip()
+    )
     graph_status = str(graph_meta.get("graph_status", "")).strip()
     overall_status = str(report_summary.get("overall_status", "")).strip() or graph_status
     final_label = str(scores.get("final_label", "")).strip()
