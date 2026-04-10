@@ -1173,6 +1173,53 @@ requirements:
   - id: RF16-10
     title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + outputs de compare-runs)
     estimate_hours: 1.0
+- id: RF16b
+  name: RF16b — Nodo/agente LLM final en grafo (second_level_explainer)
+  descripcion: '[Fase 3] Implementa el agente LLM de 2º nivel como último nodo del flujo (`second_level_explainer`) para consumir el run actual
+    + runs de referencia, emitir conclusiones cross-process/single-run y recomendar procedimientos de auditoría/tests adicionales.'
+  criterio_validacion: DEFAULT_GRAPH_SEQUENCE_FULL incluye second_level_explainer tras persist. El nodo genera `graph/second_level_analysis.json|md`,
+    registra runtime LLM por nodo (`llm_runtime_by_node.second_level_explainer`), persiste artefactos en manifest, y funciona con fallback
+    determinista en stub/errores.
+  estimador: 12
+  prioridad: Must
+  riesgo: Alto
+  tasks:
+  - id: RF16b-01
+    title: Definir contrato de salida del agente (executive_summary, conclusiones, procedimientos, tests recomendados, next_actions)
+    estimate_hours: 1.0
+  - id: RF16b-02
+    title: Implementar nodo `src/erp_fraud/graph/nodes/second_level_explainer.py` con comparación base determinista + capa LLM
+    estimate_hours: 2.5
+  - id: RF16b-03
+    title: Integrar nodo en dispatcher (`registry.py`) y exports de nodos (`nodes/__init__.py`, `graph/__init__.py`)
+    estimate_hours: 0.8
+  - id: RF16b-04
+    title: Añadir nodo al final de `DEFAULT_GRAPH_SEQUENCE_FULL` y validar routing/abort sin romper persistencia
+    estimate_hours: 0.8
+  - id: RF16b-05
+    title: Persistir artefactos `second_level_analysis.json` y `second_level_analysis.md` en `run_results/<run_id>/graph/`
+    estimate_hours: 1.0
+  - id: RF16b-06
+    title: Actualizar manifest/artifact_paths para incluir salidas RF16b y exponerlas en `run_metadata`/`export_paths`
+    estimate_hours: 0.8
+  - id: RF16b-07
+    title: Exponer configuración RF16b en `run_rf15c_e2e_manual.py` (auto latest, run_ids explícitos, include current run)
+    estimate_hours: 0.8
+  - id: RF16b-08
+    title: Ampliar `scripts/show_run_summary.py` para mostrar conclusiones del agente de 2º nivel
+    estimate_hours: 0.5
+  - id: RF16b-09
+    title: Escribir tests de integración RF16b (`tests/test_rf16_second_level_agent_node.py`) y ajustar suites RF14/RF16
+    estimate_hours: 1.8
+  - id: RF16b-10
+    title: Corregir selección auto latest P2P+O2C priorizando runs con artefactos de grafo y fallback a metadata/report
+    estimate_hours: 1.0
+  - id: RF16b-11
+    title: Actualizar documentación (`docs/rf16.md`, `docs/langgraph_architecture.md`, `docs/how_to_run.md`, `docs/integration_tests_registry.md`)
+    estimate_hours: 1.0
+  - id: RF16b-12
+    title: Ejecutar verificación final (pytest completo + smoke compare-runs + smoke run real) y guardar evidencia
+    estimate_hours: 1.0
 - id: RF17
   name: RF17 — Taxonomía de fraude (fraud_type) y mapping
   descripcion: '[Fase 3] Define taxonomía y relaciona cada test con tipos de fraude.'

@@ -9,7 +9,7 @@ nodes:
     version: "v002"
   expert_explainer:
     file: prompts/explainer.md
-    version: "v002"
+    version: "v003"
   scoring:
     file: prompts/scoring.md
     version: "v002"

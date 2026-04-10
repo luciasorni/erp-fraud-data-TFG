@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from ...config import DEFAULT_BASE_DIR, DEFAULT_KB_CHROMA_CONFIG
 from ...storage.runs_comparison import (
     build_comparison_markdown,
     compare_runs,
@@ -14,7 +15,8 @@ from ...storage.runs_comparison import (
 from ..llm_runtime import call_openai_json, resolve_node_runtime_target
 from ..state import GraphState
 from .alpha_runtime import load_node_prompt, record_graph_node_model_config, run_alpha_loop_for_node
-from .common import annotate_node_llm_mode
+from .common import annotate_node_llm_mode, resolve_project_path
+from . import deps
 from .persist_utils import write_json
 
 _run_alpha_loop_for_node = run_alpha_loop_for_node
@@ -69,6 +71,12 @@ def _validate_second_level_output(output: Any, _input_payload: dict[str, Any]) -
     for field in required_lists:
         if not isinstance(output.get(field, []), list):
             return {"passed": False, "errors": [f"campo requerido debe ser lista: {field}"]}
+    if not (
+        _safe_list(output.get("audit_procedures"))
+        or _safe_list(output.get("recommended_tests"))
+        or _safe_list(output.get("next_actions"))
+    ):
+        return {"passed": False, "errors": ["el agente debe proponer al menos una acción/procedimiento/test"]}
     return {"passed": True, "errors": []}
 
 
@@ -103,11 +111,38 @@ def _fallback_llm_insights(*, deterministic_payload: dict[str, Any]) -> dict[str
         "cross_process_conclusions": [
             f"runs_count={int(deterministic_payload.get('runs_count', 0) or 0)}",
             f"common_fraud_types={common_types}",
+            "fallback_mode=deterministic",
         ],
         "audit_procedures": procedures[:6],
         "recommended_tests": tests[:8],
         "next_actions": actions[:8],
     }
+
+
+def _build_doc_first_query(*, deterministic_payload: dict[str, Any]) -> str:
+    runs = _safe_list(deterministic_payload.get("runs"))
+    process_families = sorted(
+        {
+            str(_safe_dict(row).get("process_family", "")).strip()
+            for row in runs
+            if str(_safe_dict(row).get("process_family", "")).strip()
+        }
+    )
+    common_types = _safe_list(_safe_dict(deterministic_payload.get("summary")).get("common_fraud_types_with_findings"))
+    labels = sorted(
+        {
+            str(_safe_dict(row).get("final_label", "")).strip()
+            for row in runs
+            if str(_safe_dict(row).get("final_label", "")).strip()
+        }
+    )
+    return (
+        "documentacion proyecto ERP fraude "
+        "procedimientos auditoria recomendaciones "
+        f"process_families={'/'.join(process_families) if process_families else 'unknown'} "
+        f"fraud_types={' '.join(str(x).strip() for x in common_types if str(x).strip())} "
+        f"labels={' '.join(labels)}"
+    ).strip()
 
 
 def _build_second_level_markdown(*, deterministic_payload: dict[str, Any], llm_insights: dict[str, Any]) -> str:
@@ -154,13 +189,82 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
     run_ids = _resolve_rf16_run_ids(state=state)
     base_dir = str(metadata.get("rf16_base_dir", metadata.get("persist_base_dir", "run_results"))).strip() or "run_results"
     deterministic_payload = compare_runs(run_ids=run_ids, base_dir=base_dir)
+    kb_enabled = bool(metadata.get("kb_search_enabled", False))
+    kb_top_k = int(metadata.get("rf16_kb_top_k", 5) or 5)
+    if kb_top_k <= 0:
+        kb_top_k = 5
+    kb_hits: list[dict[str, Any]] = []
+    kb_status = "SKIPPED"
+    kb_doc_hits: list[dict[str, Any]] = []
+    kb_general_hits: list[dict[str, Any]] = []
+    if kb_enabled:
+        common_types = _safe_list(_safe_dict(deterministic_payload.get("summary")).get("common_fraud_types_with_findings"))
+        query = str(metadata.get("rf16_kb_query", "")).strip()
+        if not query:
+            query = _build_doc_first_query(deterministic_payload=deterministic_payload)
+        try:
+            tool = deps.KBSearchTool(
+                kb_chroma_config_path=resolve_project_path(
+                    str(metadata.get("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)).strip()
+                    or DEFAULT_KB_CHROMA_CONFIG
+                ),
+                base_dir=resolve_project_path(
+                    str(metadata.get("base_dir", DEFAULT_BASE_DIR)).strip() or DEFAULT_BASE_DIR
+                ),
+            )
+            doc_filters_candidates = [
+                {"source_id": "project_docs_markdown"},
+                {"source_id": "project_docs"},
+                {"collection_type": "project_docs"},
+            ]
+            for filters in doc_filters_candidates:
+                try:
+                    kb_doc_out = tool.search(query=query, top_k=kb_top_k, filters=filters)
+                except Exception:
+                    kb_doc_out = {}
+                hits = kb_doc_out.get("hits", []) if isinstance(kb_doc_out, dict) else []
+                kb_doc_hits = [row for row in hits if isinstance(row, dict)]
+                if kb_doc_hits:
+                    break
+
+            general_query = (
+                "ACFE fraud red flags audit procedures "
+                + " ".join(str(item).strip() for item in common_types if str(item).strip())
+            ).strip()
+            kb_out = tool.search(query=general_query, top_k=kb_top_k)
+            hits = kb_out.get("hits", []) if isinstance(kb_out, dict) else []
+            kb_general_hits = [row for row in hits if isinstance(row, dict)]
+            kb_hits = [*kb_doc_hits]
+            seen_chunks = {
+                str(_safe_dict(item).get("chunk_id", "")).strip()
+                for item in kb_hits
+                if str(_safe_dict(item).get("chunk_id", "")).strip()
+            }
+            for hit in kb_general_hits:
+                hid = str(_safe_dict(hit).get("chunk_id", "")).strip()
+                if hid and hid in seen_chunks:
+                    continue
+                kb_hits.append(hit)
+                if hid:
+                    seen_chunks.add(hid)
+                if len(kb_hits) >= kb_top_k:
+                    break
+            kb_status = "OK"
+        except Exception as exc:
+            kb_status = f"ERROR:{type(exc).__name__}"
+    metadata["rf16_kb_search_status"] = kb_status
+    metadata["rf16_kb_hits_count"] = len(kb_hits)
+    metadata["rf16_kb_doc_hits_count"] = len(kb_doc_hits)
+    metadata["rf16_kb_general_hits_count"] = len(kb_general_hits)
 
     fallback_insights = _fallback_llm_insights(deterministic_payload=deterministic_payload)
     prompt_info = load_node_prompt(
         node_id="second_level_explainer",
         fallback_text=(
-            "Actúa como auditor senior. Analiza la comparación de runs y devuelve SOLO JSON con: "
-            "executive_summary, cross_process_conclusions[], audit_procedures[], recommended_tests[], next_actions[]."
+            "Actúa como auditor senior. Analiza comparación de runs + KB documental y devuelve SOLO JSON con: "
+            "executive_summary, cross_process_conclusions[], audit_procedures[], recommended_tests[], next_actions[]. "
+            "Prioriza primero la documentación del proyecto y después ACFE/externo. "
+            "No uses defaults; justifica acciones con evidencia de runs y KB cuando exista."
         ),
         registry_path=metadata.get("prompt_registry_path"),
     )
@@ -181,7 +285,7 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         repair_feedback: list[str],
         _iteration: int,
     ) -> dict[str, Any]:
-        output = dict(fallback_insights)
+        output: dict[str, Any] | None = None
         if bool(runtime_target.get("enabled", False)):
             llm_output, llm_meta = call_openai_json(
                 model_used=str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
@@ -223,10 +327,20 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
                 "fallback_used": True,
                 "status": "SKIPPED",
             }
+        if not isinstance(output, dict):
+            output = dict(fallback_insights)
         return output
 
     input_payload = {
         "deterministic_comparison": deterministic_payload,
+        "kb_context": {
+            "status": kb_status,
+            "hits_count": len(kb_hits),
+            "doc_hits_count": len(kb_doc_hits),
+            "general_hits_count": len(kb_general_hits),
+            "priority": "project_docs_first_then_external",
+            "hits": kb_hits,
+        },
         "run_context": {
             "run_id": str(state.run_id).strip(),
             "process_family": str(metadata.get("process_family", "")).strip(),
