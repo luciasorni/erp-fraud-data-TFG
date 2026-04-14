@@ -833,6 +833,28 @@ def _write_run_structure_manifest(*, run_id: str, run_dir: Path, paths: dict[str
     return output
 
 
+def _ensure_report_dictionary_artifacts(*, run_dir: Path) -> tuple[Path, Path]:
+    """Asegura artefactos mínimos de data dictionary dentro del run."""
+    dd_json = run_dir / "data_dictionary.json"
+    dd_md = run_dir / "data_dictionary.md"
+
+    if not dd_json.exists():
+        root_json = Path("data_dictionary.json")
+        if root_json.exists():
+            dd_json.write_bytes(root_json.read_bytes())
+        else:
+            dd_json.write_text("{}\n", encoding="utf-8")
+
+    if not dd_md.exists():
+        root_md = Path("data_dictionary.md")
+        if root_md.exists():
+            dd_md.write_bytes(root_md.read_bytes())
+        else:
+            dd_md.write_text("# Data Dictionary\n\nNo disponible para este run.\n", encoding="utf-8")
+
+    return dd_json, dd_md
+
+
 def _build_cloud_output_s3_uri(*, s3_output_uri: str, run_id: str) -> str:
     base = str(s3_output_uri).strip().rstrip("/")
     return f"{base}/{run_id}/"
@@ -914,18 +936,23 @@ def _build_cloud_artifacts_mappings_uri(*, s3_input_uri: str, scope: str) -> str
     return f"s3://{bucket}/{mapping_prefix}"
 
 
-def _restore_cloud_red_flags_mapping(
+def _candidate_cloud_mapping_scopes(process_scope: str) -> list[str]:
+    if process_scope == "both":
+        return ["both", "p2p", "o2c", "shared"]
+    return [process_scope, "shared"]
+
+
+def _restore_cloud_config_file_from_mappings(
     *,
     workspace_dir: Path,
     settings: dict[str, Any],
     process_scope: str,
+    source_filename: str,
+    target_relative_path: Path,
+    log_label: str,
 ) -> Path | None:
-    candidate_scopes: list[str] = [process_scope, "shared"]
-    if process_scope == "both":
-        candidate_scopes = ["both", "p2p", "o2c", "shared"]
-
-    target_path = workspace_dir / "config" / "red_flags_mapping.yaml"
-    for scope in candidate_scopes:
+    target_path = workspace_dir / target_relative_path
+    for scope in _candidate_cloud_mapping_scopes(process_scope):
         mapping_uri = _build_cloud_artifacts_mappings_uri(
             s3_input_uri=str(settings["s3_input_uri"]),
             scope=scope,
@@ -935,14 +962,46 @@ def _restore_cloud_red_flags_mapping(
             s3_uri=mapping_uri,
             local_dir=staging_dir,
         )
-        source_path = staging_dir / "red_flags_mapping.yaml"
+        source_path = staging_dir / source_filename
         if int(result.get("downloaded_count", 0) or 0) <= 0 or not source_path.exists():
             continue
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_bytes(source_path.read_bytes())
-        print(f"[cloud] restored red_flags_mapping -> {target_path}")
+        print(f"[cloud] restored {log_label} -> {target_path}")
         return target_path
     return None
+
+
+def _restore_cloud_red_flags_mapping(
+    *,
+    workspace_dir: Path,
+    settings: dict[str, Any],
+    process_scope: str,
+) -> Path | None:
+    return _restore_cloud_config_file_from_mappings(
+        workspace_dir=workspace_dir,
+        settings=settings,
+        process_scope=process_scope,
+        source_filename="red_flags_mapping.yaml",
+        target_relative_path=Path("config/red_flags_mapping.yaml"),
+        log_label="red_flags_mapping",
+    )
+
+
+def _restore_cloud_weights_config(
+    *,
+    workspace_dir: Path,
+    settings: dict[str, Any],
+    process_scope: str,
+) -> Path | None:
+    return _restore_cloud_config_file_from_mappings(
+        workspace_dir=workspace_dir,
+        settings=settings,
+        process_scope=process_scope,
+        source_filename="weights.yaml",
+        target_relative_path=Path("config/weights.yaml"),
+        log_label="weights",
+    )
 
 
 def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> int:
@@ -963,6 +1022,11 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
             s3_input_uri=settings["s3_input_uri"],
         )
         _restore_cloud_red_flags_mapping(
+            workspace_dir=workspace_dir,
+            settings=settings,
+            process_scope=process_scope,
+        )
+        _restore_cloud_weights_config(
             workspace_dir=workspace_dir,
             settings=settings,
             process_scope=process_scope,
@@ -1142,9 +1206,13 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
 
             extra_artifacts: dict[str, str] = {
                 "run_metadata_json": str(run_metadata_path),
+                "schema_summary_json": str(schema_summary_path),
                 "schema_summary_json_run": str(schema_summary_path),
                 "o2c_validation_report_json": str(data_validation_report_path),
             }
+            dd_json_path, dd_md_path = _ensure_report_dictionary_artifacts(run_dir=run_dir)
+            extra_artifacts["data_dictionary_json"] = str(dd_json_path)
+            extra_artifacts["data_dictionary_md"] = str(dd_md_path)
             report_payload = build_report_json_payload(
                 run_id=run_id,
                 dataset_hash=dataset_hash,
@@ -1431,10 +1499,14 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
 
         extra_artifacts: dict[str, str] = {
             "run_metadata_json": str(run_metadata_path),
+            "schema_summary_json": str(schema_summary_path),
             "schema_summary_json_run": str(schema_summary_path),
             "data_validation_report_json": str(validation_outcome.report_path),
             "test_runs_json": str(test_runs_path),
         }
+        dd_json_path, dd_md_path = _ensure_report_dictionary_artifacts(run_dir=run_dir)
+        extra_artifacts["data_dictionary_json"] = str(dd_json_path)
+        extra_artifacts["data_dictionary_md"] = str(dd_md_path)
         if kb_manifest_path is not None and kb_manifest_path.exists():
             extra_artifacts["kb_index_manifest_json"] = str(kb_manifest_path)
         if run_paths["kb_index_state"].exists():

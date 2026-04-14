@@ -146,6 +146,7 @@ def test_rf14c11_cloud_flow_success_download_upload_and_state(monkeypatch, tmp_p
     monkeypatch.setattr(cli_main, "upload_run_outputs", _fake_upload)
     monkeypatch.setattr(cli_main, "write_last_artifact_hash_state", _fake_write_state)
     monkeypatch.setattr(cli_main, "_restore_cloud_red_flags_mapping", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_restore_cloud_weights_config", lambda **kwargs: None)
     out = cli_main._run_pipeline_cloud(argparse.Namespace(), settings)
     assert out == 0
     assert calls["download"] == 1
@@ -185,6 +186,7 @@ def test_rf14c11_cloud_flow_failure_does_not_update_state(monkeypatch, tmp_path:
         lambda **kwargs: calls.__setitem__("write_state", 1),
     )
     monkeypatch.setattr(cli_main, "_restore_cloud_red_flags_mapping", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_restore_cloud_weights_config", lambda **kwargs: None)
     out = cli_main._run_pipeline_cloud(argparse.Namespace(), settings)
     assert out == 2
     assert calls["upload"] == 0
@@ -218,3 +220,43 @@ def test_rf14c11_cloud_restores_red_flags_mapping_from_scope(monkeypatch, tmp_pa
     assert restored is not None and restored.exists()
     assert restored.read_text(encoding="utf-8").strip() == "red_flags: []"
     assert requested_uris[0] == "s3://bucket/artifacts/mappings/p2p/"
+
+
+def test_rf14c11_cloud_restores_weights_from_scope(monkeypatch, tmp_path: Path) -> None:
+    settings = _base_settings()
+    workspace = tmp_path / "ws_weights"
+    workspace.mkdir(parents=True, exist_ok=True)
+    requested_uris: list[str] = []
+
+    def _fake_download_prefix(*, s3_uri, local_dir):
+        requested_uris.append(str(s3_uri))
+        path = Path(local_dir)
+        path.mkdir(parents=True, exist_ok=True)
+        if str(s3_uri).endswith("/artifacts/mappings/p2p/"):
+            (path / "weights.yaml").write_text("defaults:\n  fallback_weight: 1\n", encoding="utf-8")
+            return {"downloaded_count": 1}
+        return {"downloaded_count": 0}
+
+    monkeypatch.setattr(cli_main, "download_s3_prefix_to_local_dir", _fake_download_prefix)
+
+    restored = cli_main._restore_cloud_weights_config(
+        workspace_dir=workspace,
+        settings=settings,
+        process_scope="p2p",
+    )
+
+    assert restored == workspace / "config" / "weights.yaml"
+    assert restored is not None and restored.exists()
+    assert "fallback_weight" in restored.read_text(encoding="utf-8")
+    assert requested_uris[0] == "s3://bucket/artifacts/mappings/p2p/"
+
+
+def test_rf14c11_ensure_report_dictionary_artifacts_creates_run_local_files(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run_results" / "r1"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    dd_json, dd_md = cli_main._ensure_report_dictionary_artifacts(run_dir=run_dir)
+    assert dd_json.exists()
+    assert dd_md.exists()
+    json_text = dd_json.read_text(encoding="utf-8").strip()
+    assert json_text.startswith("{") and json_text.endswith("}")
+    assert "Data Dictionary" in dd_md.read_text(encoding="utf-8")
