@@ -1,0 +1,27 @@
+# VCS / editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Python envs / caches
+.venv
+venv
+__pycache__
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.py[cod]
+
+# Local outputs and temp files
+run_results
+*.tmp
+*.temp
+.DS_Store
+
+# Logs and notebooks checkpoints
+*.log
+.ipynb_checkpoints
+
+# OS temp
+/tmp

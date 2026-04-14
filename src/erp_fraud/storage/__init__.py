@@ -12,6 +12,12 @@ from .data_dictionary import (
     load_test_specs_from_catalog,
     normalize_data_dictionary_entry_min_fields,
 )
+from .artifact_hash import (
+    build_artifact_manifest,
+    collect_artifact_files,
+    compute_artifact_hash,
+    compute_file_sha256,
+)
 from .data_validation_policy import (
     VALIDATION_SEVERITY_POLICY,
     ValidationRule,
@@ -53,6 +59,11 @@ from .report_json import (
     validate_report_json_file_artifact_links,
     write_report_json,
 )
+from .run_outputs import (
+    RunOutputValidationError,
+    get_required_run_outputs,
+    validate_required_run_outputs,
+)
 from .runs_comparison import (
     build_comparison_markdown,
     compare_run_snapshots,
@@ -62,6 +73,20 @@ from .runs_comparison import (
     load_run_snapshot,
     pick_latest_run_ids_by_process_family,
     write_comparison_outputs,
+)
+from .s3_io import (
+    create_s3_client,
+    download_required_inputs,
+    download_s3_prefix_to_local_dir,
+    parse_s3_uri,
+    upload_local_dir_to_s3_prefix,
+    upload_run_outputs,
+)
+from .state_store import (
+    STATE_FILENAME,
+    build_state_s3_location,
+    read_last_artifact_hash_state,
+    write_last_artifact_hash_state,
 )
 
 __all__ = [
@@ -73,6 +98,7 @@ __all__ = [
     "VALIDATION_SEVERITY_POLICY",
     "annotate_dictionary_from_tests",
     "build_data_dictionary_draft_from_schema_summary",
+    "build_artifact_manifest",
     "build_data_validation_report",
     "build_run_metadata",
     "check_dictionary_completeness",
@@ -80,6 +106,9 @@ __all__ = [
     "check_missing_required_columns_in_duckdb",
     "check_null_percentage_required_columns_in_duckdb",
     "check_type_parse_errors_in_duckdb",
+    "collect_artifact_files",
+    "compute_artifact_hash",
+    "compute_file_sha256",
     "ensure_min_fields_in_data_dictionary",
     "generate_data_dictionary_json_draft",
     "extract_required_columns_from_testspecs",
@@ -97,9 +126,12 @@ __all__ = [
     "ValidationRule",
     "build_report_json_payload",
     "build_default_report_artifact_paths",
+    "RunOutputValidationError",
     "validate_report_artifact_paths_exist",
+    "get_required_run_outputs",
     "validate_report_json_contract",
     "validate_report_json_file_artifact_links",
+    "validate_required_run_outputs",
     "get_report_json_contract",
     "ruta_run",
     "write_report_json",
@@ -117,6 +149,16 @@ __all__ = [
     "load_run_snapshot",
     "pick_latest_run_ids_by_process_family",
     "write_comparison_outputs",
+    "create_s3_client",
+    "download_required_inputs",
+    "download_s3_prefix_to_local_dir",
+    "parse_s3_uri",
+    "upload_local_dir_to_s3_prefix",
+    "upload_run_outputs",
+    "STATE_FILENAME",
+    "build_state_s3_location",
+    "read_last_artifact_hash_state",
+    "write_last_artifact_hash_state",
 ]
 
 try:

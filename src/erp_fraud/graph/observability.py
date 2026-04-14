@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import os
 from typing import Any
+from ..config.env import parse_bool_env
 
 
 def _utc_now_iso() -> str:
@@ -56,7 +57,7 @@ def append_error_event(
 
 
 def _env_bool(name: str) -> bool:
-    return str(os.getenv(name, "")).strip().lower() in {"1", "true", "yes", "on"}
+    return parse_bool_env(os.getenv(name, ""), default=False)
 
 
 def get_langsmith_snapshot() -> dict[str, Any]:

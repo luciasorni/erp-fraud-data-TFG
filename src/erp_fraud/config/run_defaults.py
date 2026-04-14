@@ -14,6 +14,15 @@ DEFAULT_O2C_IDENTITY_CONFIG = "config/o2c_entity_identity.yaml"
 DEFAULT_O2C_MAPPING_CONFIG = "config/column_mapping_o2c.yaml"
 DEFAULT_O2C_TARGET_SCHEMA = "o2c"
 
+DEFAULT_AWS_REGION = "eu-west-1"
+DEFAULT_RUN_MODE = "local"
+DEFAULT_S3_INPUT_URI = "s3://tfg-fraud-dev-euw1-lucia01/inputs/"
+DEFAULT_S3_OUTPUT_URI = "s3://tfg-fraud-dev-euw1-lucia01/runs/"
+DEFAULT_S3_STATE_URI = "s3://tfg-fraud-dev-euw1-lucia01/state/"
+DEFAULT_PROCESS_SCOPE = "p2p"
+DEFAULT_LANGSMITH_TRACING = False
+DEFAULT_LANGSMITH_PROJECT = "erp-fraud-tfg"
+
 DEFAULT_KB_ENABLED = True
 DEFAULT_KB_SOURCES_CONFIG = "config/kb_sources.yaml"
 DEFAULT_KB_CHUNKING_CONFIG = "config/kb_chunking.yaml"

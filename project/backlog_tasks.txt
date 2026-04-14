@@ -848,82 +848,116 @@ requirements:
 - id: RF14c
   name: RF14c — Productivización en cloud + trigger automático de re-ejecución (AWS + artefact hashing)
   descripcion: '[Productivización AWS] Ejecutar el pipeline multiagente como un job en cloud: imagen Docker en ECR, ejecución
-    en ECS Fargate (run-task), inputs/outputs en S3 (runs/<run_id>/), logs en CloudWatch, secretos en Secrets Manager y permisos
-    IAM. Re-ejecutar automáticamente cuando cambien artefactos (catálogos/prompts/KB) usando artifact_hash + trigger (S3/EventBridge/Lambda).
-    Persistir/reutilizar índice Chroma (kb_index en S3) para RAG.'
+    en ECS Fargate (run-task), inputs/outputs/state en S3, logs en CloudWatch, secretos en Secrets Manager y permisos IAM.
+    Preparar ejecución multi-dominio (P2P/O2C) mediante parametrización por scope y re-ejecutar automáticamente cuando cambien
+    artefactos (catálogos/prompts/KB/mappings) usando artifact_hash + trigger (S3/EventBridge/Lambda). La primera versión
+    prioriza ejecución manual reproducible; el trigger automático se activa después.'
   criterio_validacion: 'Existe un despliegue mínimo en AWS: se puede lanzar un run con ''ecs run-task'' y genera outputs en
-    S3 + logs en CloudWatch + trazas en LangSmith. Un trigger (S3/EventBridge+Lambda) relanza el pipeline solo si artifact_hash
-    cambia (actualiza last_hash en S3). El índice Chroma se restaura/persiste desde S3. Documentación paso a paso (docs/cloud_aws.md)
-    + runbook de troubleshooting.'
-  estimador: 13
+    S3 + logs en CloudWatch + trazas en LangSmith. El mismo despliegue soporta PROCESS_SCOPE=p2p, o2c y both sin duplicar
+    infraestructura. Un trigger (S3/EventBridge+Lambda) relanza el pipeline solo si artifact_hash cambia (actualiza last_hash
+    en S3). Documentación paso a paso (docs/cloud_aws.md) + runbook de troubleshooting.'
+  estimador: 18
   prioridad: Should
   riesgo: Alto
   tasks:
   - id: RF14c-01
     title: 'Definir arquitectura AWS mínima ''job'': ECR (imagen), ECS Fargate (run-task), S3 (inputs/outputs/state), CloudWatch
-      Logs, Secrets Manager, IAM roles'
+      Logs, Secrets Manager, IAM roles y networking mínimo (VPC default, subnets públicas, public IP, SG egress-only)'
     estimate_hours: 1.5
   - id: RF14c-02
-    title: Elegir región AWS y naming estándar (prefijo proyecto) para recursos; crear documento docs/aws_naming.md
-    estimate_hours: 0.6
+    title: Elegir región AWS, naming estándar (prefijo proyecto) y convención de tags para recursos; crear documento docs/aws_naming.md
+    estimate_hours: 0.8
   - id: RF14c-03
     title: 'Preparar credenciales locales: instalar AWS CLI, configurar perfil, validar con ''aws sts get-caller-identity'''
     estimate_hours: 0.6
   - id: RF14c-04
-    title: 'Definir estructura S3 (carpetas): inputs/datasets/, inputs/docs/, artifacts/prompts/, artifacts/catalogs/, state/,
-      runs/<run_id>/'
+    title: 'Definir estrategia multi-dominio y parametrización de ejecución: PROCESS_SCOPE=p2p|o2c|both; documentarlo'
     estimate_hours: 0.8
   - id: RF14c-05
-    title: Crear buckets S3 (o uno con prefijos) y aplicar versioning + lifecycle (retención runs) + cifrado (SSE-S3)
-    estimate_hours: 1.2
-  - id: RF14c-06
-    title: 'Implementar en código ''S3 IO layer'': descargar inputs al inicio (dataset zip + docs) y subir outputs (run_results)
-      al final'
-    estimate_hours: 2.0
-  - id: RF14c-07
-    title: 'Añadir configuración por ENV: S3_INPUT_URI, S3_OUTPUT_URI, S3_STATE_URI, AWS_REGION, RUN_MODE=cloud/local'
+    title: 'Definir estructura S3 (carpetas): inputs/datasets/, inputs/docs/, artifacts/prompts/, artifacts/catalogs/, artifacts/mappings/,
+      state/, runs/<run_id>/'
     estimate_hours: 0.8
+  - id: RF14c-06
+    title: Crear bucket S3 (o uno con prefijos) y aplicar versioning + lifecycle (retención runs) + cifrado (SSE-S3); crear
+      prefijos iniciales y subir estructura base
+    estimate_hours: 1.3
+  - id: RF14c-07
+    title: 'Añadir configuración por ENV: S3_INPUT_URI, S3_OUTPUT_URI, S3_STATE_URI, AWS_REGION, RUN_MODE=cloud/local, PROCESS_SCOPE,
+      LANGSMITH_TRACING, LANGSMITH_PROJECT'
+    estimate_hours: 1.0
   - id: RF14c-08
-    title: Implementar cálculo de artifact_hash (catálogo tests/datos, prompts, KB docs, mapping) y guardarlo en run_metadata.json
-    estimate_hours: 1.2
+    title: 'Implementar en código ''S3 IO layer'': descargar inputs/artefactos al inicio y subir outputs (run_results) al final'
+    estimate_hours: 2.0
   - id: RF14c-09
-    title: 'Implementar ''state store'' en S3: escribir/leer last_artifact_hash.json en s3://.../state/ (idempotente)'
-    estimate_hours: 1.2
+    title: Implementar cálculo de artifact_hash (catálogo tests/datos, prompts, KB docs, mapping y artefactos relevantes) y
+      guardarlo en run_metadata.json
+    estimate_hours: 1.4
   - id: RF14c-10
-    title: 'Containerizar pipeline (Dockerfile): base slim + dependencias + entrypoint; build local; smoke test con RUN_MODE=local'
-    estimate_hours: 1.8
+    title: 'Implementar ''state store'' en S3: escribir/leer last_artifact_hash.json en s3://.../state/ (idempotente), incluyendo
+      last_run_id y updated_at'
+    estimate_hours: 1.2
   - id: RF14c-11
+    title: Adaptar el runner para modo cloud no interactivo (run_id, workspace temporal, descarga inputs, ejecución pipeline,
+      subida outputs y exit code correcto)
+    estimate_hours: 2.2
+  - id: RF14c-12
+    title: Definir outputs mínimos obligatorios por run en runs/<run_id>/ y validar que siempre se generen (run_metadata, report,
+      ranking, schema_summary, graph artifacts, etc.)
+    estimate_hours: 0.9
+  - id: RF14c-13
+    title: 'Containerizar pipeline (Dockerfile): base slim + dependencias + entrypoint + .dockerignore; build local; smoke test
+      con RUN_MODE=local'
+    estimate_hours: 1.8
+  - id: RF14c-14
     title: Crear repositorio ECR y script de build+push con tag por git_sha; documentar en docs/aws_ecr.md
     estimate_hours: 1.5
-  - id: RF14c-12
-    title: '(Opcional recomendado) GitHub Action: on push main → build/push a ECR y publicar imagen; guardar outputs del build'
-    estimate_hours: 2.0
-  - id: RF14c-13
+  - id: RF14c-15
     title: Crear CloudWatch Log Group para el job y definir formato de logs estructurados; probar que aparecen logs
     estimate_hours: 0.8
-  - id: RF14c-14
-    title: Crear Secrets Manager secrets (OPENAI_API_KEY, LANGSMITH_API_KEY, etc.) y documentar cómo rotarlos
-    estimate_hours: 1.2
-  - id: RF14c-15
-    title: 'Crear IAM: (a) ECS execution role (pull ECR + logs), (b) task role (S3 read/write + SecretsManager read)'
-    estimate_hours: 2.0
   - id: RF14c-16
-    title: Crear ECS Cluster (Fargate) y elegir red (usar VPC default + subnets) + security group (egress only)
+    title: Crear Secrets Manager secrets (OPENAI_API_KEY, LANGSMITH_API_KEY, etc.) y documentar cómo rotarlos/integrarlos
     estimate_hours: 1.2
   - id: RF14c-17
-    title: 'Crear Task Definition Fargate: cpu/mem, env vars, secrets, logConfiguration, ephemeralStorage (si hace falta),
-      command ''python -m ... run'''
+    title: 'Crear IAM: (a) ECS task execution role (pull ECR + logs + lectura de secretos inyectados), (b) task role (S3 read/write
+      y permisos runtime mínimos)'
     estimate_hours: 2.2
   - id: RF14c-18
-    title: Escribir/actualizar tests de integración (pytest) para este requisito
-    estimate_hours: 2.0
+    title: Crear ECS Cluster (Fargate) y elegir red (usar VPC default + subnets públicas) + assign public IP habilitado + security
+      group (egress only)
+    estimate_hours: 1.3
   - id: RF14c-19
-    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
+    title: 'Crear Task Definition Fargate: cpu/mem, imagen ECR, env vars, secrets, logConfiguration, ephemeralStorage (si hace
+      falta), command ''python -m ... run'' y distinguir configuración fija vs overrides por run'
+    estimate_hours: 2.2
   - id: RF14c-20
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
+    title: Lanzar primera ejecución manual con ecs run-task para PROCESS_SCOPE=p2p; verificar estado, exit code, outputs en S3,
+      logs en CloudWatch y traza en LangSmith
+    estimate_hours: 0.9
+  - id: RF14c-21
+    title: Lanzar ejecución manual para PROCESS_SCOPE=o2c y PROCESS_SCOPE=both; verificar outputs separados por run_id y dominio
     estimate_hours: 1.0
+  - id: RF14c-22
+    title: Configurar EventBridge Scheduler para re-ejecuciones programadas una vez estabilizado el run manual
+    estimate_hours: 1.2
+  - id: RF14c-23
+    title: Implementar trigger automático por cambio de artefactos con S3 Event + Lambda + comparación de artifact_hash antes
+      de llamar a ecs run-task
+    estimate_hours: 2.0
+  - id: RF14c-24
+    title: Escribir/actualizar tests de integración (pytest) para runner cloud, S3 IO, artifact_hash, state store y configuración
+      multi-dominio
+    estimate_hours: 2.2
+  - id: RF14c-25
+    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo; incluir docs/cloud_aws.md
+      y troubleshooting
+    estimate_hours: 1.2
+  - id: RF14c-26
+    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
+      logs/reportes + evidencias de consola AWS)
+    estimate_hours: 1.0
+  - id: RF14c-27
+    title: '(Opcional recomendado) GitHub Action: on push main → build/push a ECR y publicar imagen; guardar outputs del build'
+    estimate_hours: 2.0
 - id: RF15
   name: RF15 — LLM experto en tests + explicaciones (guardrails anti-alucinación)
   descripcion: '[Multiagente] Agente LLM que: (a) interpreta resultados de tests y (b) genera explicaciones auditor-style

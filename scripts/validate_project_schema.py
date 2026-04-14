@@ -165,8 +165,14 @@ def _validate_env_example() -> None:
     text = path.read_text(encoding="utf-8")
     required_keys = (
         "LANGSMITH_API_KEY",
-        "LANGSMITH_PROJECT",
         "OPENAI_API_KEY",
+        "RUN_MODE",
+        "S3_INPUT_URI",
+        "S3_OUTPUT_URI",
+        "S3_STATE_URI",
+        "PROCESS_SCOPE",
+        "LANGSMITH_TRACING",
+        "LANGSMITH_PROJECT",
         "AWS_REGION",
     )
     for key in required_keys:

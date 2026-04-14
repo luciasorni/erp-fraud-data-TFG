@@ -56,6 +56,8 @@ def build_run_metadata(
     tests_version: str | None = None,
     config_version: str | None = None,
     process_family: str = "p2p",
+    process_scope: str | None = None,
+    artifact_hash: str | None = None,
 ) -> dict:
     """Construye un metadata dict estable para una ejecución."""
     if not run_id or not run_id.strip():
@@ -65,6 +67,11 @@ def build_run_metadata(
     normalized_process_family = str(process_family).strip().lower() or "p2p"
     if normalized_process_family not in {"p2p", "o2c"}:
         raise ValueError("process_family debe ser 'p2p' u 'o2c'")
+    normalized_process_scope = str(process_scope).strip().lower() if process_scope is not None else ""
+    if not normalized_process_scope:
+        normalized_process_scope = normalized_process_family
+    if normalized_process_scope not in {"p2p", "o2c", "both"}:
+        raise ValueError("process_scope debe ser 'p2p', 'o2c' o 'both'")
 
     root = Path(project_root).resolve()
 
@@ -93,6 +100,8 @@ def build_run_metadata(
         "run_id": run_id.strip(),
         "dataset_hash": dataset_hash.strip(),
         "process_family": normalized_process_family,
+        "process_scope": normalized_process_scope,
+        "artifact_hash": str(artifact_hash or "").strip(),
         "timestamp_utc": timestamp_utc or _utc_timestamp_iso(),
         "versions": {
             "code": code_version or _safe_git_head(root),
@@ -114,6 +123,8 @@ def write_run_metadata_json(
     tests_version: str | None = None,
     config_version: str | None = None,
     process_family: str = "p2p",
+    process_scope: str | None = None,
+    artifact_hash: str | None = None,
 ) -> Path:
     """Genera `run_metadata.json` con serialización estable."""
     metadata = build_run_metadata(
@@ -125,6 +136,8 @@ def write_run_metadata_json(
         tests_version=tests_version,
         config_version=config_version,
         process_family=process_family,
+        process_scope=process_scope,
+        artifact_hash=artifact_hash,
     )
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)

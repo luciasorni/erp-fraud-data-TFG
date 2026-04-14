@@ -9,3 +9,4 @@ pypdf
 chromadb
 openai
 langsmith
+boto3

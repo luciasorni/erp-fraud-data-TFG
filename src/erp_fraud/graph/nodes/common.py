@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
+from ...config.env import parse_bool_env
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -37,14 +38,10 @@ def sha256_text(text: str) -> str:
 
 
 def langsmith_snapshot() -> dict[str, Any]:
-    tracing_raw = str(os.getenv("LANGSMITH_TRACING", "")).strip().lower()
-    tracing_v2_raw = str(os.getenv("LANGCHAIN_TRACING_V2", "")).strip().lower()
-    tracing_enabled = tracing_raw in {"1", "true", "yes", "on"} or tracing_v2_raw in {
-        "1",
-        "true",
-        "yes",
-        "on",
-    }
+    tracing_enabled = parse_bool_env(os.getenv("LANGSMITH_TRACING", ""), default=False) or parse_bool_env(
+        os.getenv("LANGCHAIN_TRACING_V2", ""),
+        default=False,
+    )
     api_key_present = bool(str(os.getenv("LANGSMITH_API_KEY", "")).strip())
     project = str(os.getenv("LANGSMITH_PROJECT", "")).strip()
     endpoint = str(os.getenv("LANGSMITH_ENDPOINT", "")).strip()
