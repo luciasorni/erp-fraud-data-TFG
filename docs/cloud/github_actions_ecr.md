@@ -20,10 +20,12 @@ En `push` a `main` (y `workflow_dispatch`):
 
 ## Secrets necesarios en GitHub
 
+Recomendado (OIDC):
+- `AWS_ROLE_TO_ASSUME` (ARN del rol IAM asumible por GitHub Actions)
+
+Alternativa (credenciales estáticas):
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
-
-Opcional si se usa sesión temporal:
 - `AWS_SESSION_TOKEN`
 
 ## Uso
