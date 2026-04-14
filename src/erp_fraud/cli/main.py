@@ -7,9 +7,11 @@ from datetime import datetime, timezone
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 from typing import Any
 from zipfile import BadZipFile, ZipFile
 
@@ -39,17 +41,26 @@ from ..ingest import (
 )
 from ..storage import (
     IngestJsonLogger,
+    RunOutputValidationError,
+    download_s3_prefix_to_local_dir,
+    download_required_inputs,
     get_duckdb_connection,
     load_table_to_duckdb_with_stats,
+    parse_s3_uri,
+    read_last_artifact_hash_state,
     run_technical_validation_before_tests,
+    upload_run_outputs,
+    write_last_artifact_hash_state,
     write_or_update_report_markdown_with_data_validation,
     write_or_update_report_markdown_with_drilldown_instructions,
     write_report_json,
     write_report_markdown_from_report_json,
     render_report_markdown_to_html,
     validate_report_artifact_paths_exist,
+    validate_required_run_outputs,
     write_run_metadata_json,
     write_schema_summary_json,
+    compute_artifact_hash,
 )
 from ..storage.o2c_transform import O2CTransformError, transform_raw_to_o2c_canonical
 from ..storage.o2c_validation import write_o2c_validation_report_json
@@ -81,6 +92,7 @@ from ..config import (
     DEFAULT_TABLE_NAME,
     DEFAULT_WEIGHTS_CONFIG,
 )
+from ..config.env import get_cloud_env_settings, validate_process_scope
 
 
 def _run_validate_dictionary(args: argparse.Namespace) -> int:
@@ -650,6 +662,7 @@ def _filter_catalog_test_ids(
 
 def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
     cfg = _load_config_file(args.config)
+    cloud_env = get_cloud_env_settings()
 
     def _pick(name: str, default: Any) -> Any:
         cli_value = getattr(args, name, None)
@@ -686,6 +699,12 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "o2c_identity_config": str(_pick("o2c_identity_config", DEFAULT_O2C_IDENTITY_CONFIG)),
         "o2c_mapping_config": str(_pick("o2c_mapping_config", DEFAULT_O2C_MAPPING_CONFIG)),
         "o2c_target_schema": str(_pick("o2c_target_schema", DEFAULT_O2C_TARGET_SCHEMA)),
+        "aws_region": cloud_env["aws_region"],
+        "run_mode": cloud_env["run_mode"],
+        "s3_input_uri": cloud_env["s3_input_uri"],
+        "s3_output_uri": cloud_env["s3_output_uri"],
+        "s3_state_uri": cloud_env["s3_state_uri"],
+        "process_scope": cloud_env["process_scope"],
     }
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
@@ -814,8 +833,213 @@ def _write_run_structure_manifest(*, run_id: str, run_dir: Path, paths: dict[str
     return output
 
 
+def _build_cloud_output_s3_uri(*, s3_output_uri: str, run_id: str) -> str:
+    base = str(s3_output_uri).strip().rstrip("/")
+    return f"{base}/{run_id}/"
+
+
+def _resolve_cloud_input_zip_path(*, workspace_dir: Path, requested_input_zip: str) -> Path:
+    requested = Path(str(requested_input_zip).strip())
+    if requested.is_absolute() and requested.exists():
+        return requested
+
+    candidate = workspace_dir / requested
+    if candidate.exists():
+        return candidate
+
+    basename = requested.name
+    matches = sorted(workspace_dir.rglob(basename))
+    if matches:
+        return matches[0]
+
+    zip_matches = sorted(workspace_dir.rglob("*.zip"))
+    if zip_matches:
+        return zip_matches[0]
+
+    raise FileNotFoundError(
+        f"No se encontró zip de entrada en workspace cloud. requested={requested_input_zip}"
+    )
+
+
+def _build_pipeline_args_for_workspace(
+    *,
+    settings: dict[str, Any],
+    run_id: str,
+    workspace_input_zip: Path,
+) -> argparse.Namespace:
+    return argparse.Namespace(
+        input_zip=str(workspace_input_zip),
+        run_id=run_id,
+        out_dir="run_results",
+        db_path="erp.duckdb",
+        schema_name=settings["schema_name"],
+        table_name=settings["table_name"],
+        catalog=settings["catalog"],
+        weights_config=settings["weights_config"],
+        timeout_ms=settings["timeout_ms"],
+        sample_top_n=settings["sample_top_n"],
+        top_k=settings["top_k"],
+        select_tests=settings["select_tests"],
+        select_fraud_types=settings["select_fraud_types"],
+        select_tags=settings["select_tags"],
+        config=None,
+        kb_index_enabled=settings["kb_index_enabled"],
+        kb_sources_config=settings["kb_sources_config"],
+        kb_chunking_config=settings["kb_chunking_config"],
+        kb_chroma_config=settings["kb_chroma_config"],
+        process_family=settings["process_family"],
+        o2c_canonical_schema_config=settings["o2c_canonical_schema_config"],
+        o2c_identity_config=settings["o2c_identity_config"],
+        o2c_mapping_config=settings["o2c_mapping_config"],
+        o2c_target_schema=settings["o2c_target_schema"],
+        llm_mode=settings["llm_mode"],
+    )
+
+
+def _execute_local_pipeline_in_workspace(*, inner_args: argparse.Namespace, resolved_settings: dict[str, Any]) -> int:
+    return _run_pipeline_local(inner_args, resolved_settings=resolved_settings)
+
+
+def _build_cloud_artifacts_mappings_uri(*, s3_input_uri: str, scope: str) -> str:
+    bucket, input_prefix = parse_s3_uri(s3_input_uri, allow_empty_prefix=True)
+    normalized = input_prefix.strip("/")
+    root_prefix = normalized
+    if normalized.endswith("/inputs"):
+        root_prefix = normalized[: -len("/inputs")]
+    elif normalized == "inputs":
+        root_prefix = ""
+    mapping_prefix = f"artifacts/mappings/{scope}/"
+    if root_prefix:
+        return f"s3://{bucket}/{root_prefix.strip('/')}/{mapping_prefix}"
+    return f"s3://{bucket}/{mapping_prefix}"
+
+
+def _restore_cloud_red_flags_mapping(
+    *,
+    workspace_dir: Path,
+    settings: dict[str, Any],
+    process_scope: str,
+) -> Path | None:
+    candidate_scopes: list[str] = [process_scope, "shared"]
+    if process_scope == "both":
+        candidate_scopes = ["both", "p2p", "o2c", "shared"]
+
+    target_path = workspace_dir / "config" / "red_flags_mapping.yaml"
+    for scope in candidate_scopes:
+        mapping_uri = _build_cloud_artifacts_mappings_uri(
+            s3_input_uri=str(settings["s3_input_uri"]),
+            scope=scope,
+        )
+        staging_dir = workspace_dir / ".cloud_restore" / "mappings" / scope
+        result = download_s3_prefix_to_local_dir(
+            s3_uri=mapping_uri,
+            local_dir=staging_dir,
+        )
+        source_path = staging_dir / "red_flags_mapping.yaml"
+        if int(result.get("downloaded_count", 0) or 0) <= 0 or not source_path.exists():
+            continue
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_bytes(source_path.read_bytes())
+        print(f"[cloud] restored red_flags_mapping -> {target_path}")
+        return target_path
+    return None
+
+
+def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> int:
+    run_id = str(settings["run_id"]).strip() if settings["run_id"] else _default_run_id()
+    process_scope = validate_process_scope(settings["process_scope"])
+    print(f"[cloud] RUN_MODE=cloud | run_id={run_id} | process_scope={process_scope}")
+
+    tmp_dir_obj: tempfile.TemporaryDirectory[str] | None = None
+    previous_cwd = Path.cwd()
+    previous_run_mode = os.getenv("RUN_MODE")
+    try:
+        tmp_dir_obj = tempfile.TemporaryDirectory(prefix="erp_fraud_cloud_")
+        workspace_dir = Path(tmp_dir_obj.name)
+        print(f"[cloud] workspace={workspace_dir}")
+
+        download_required_inputs(
+            local_input_dir=workspace_dir,
+            s3_input_uri=settings["s3_input_uri"],
+        )
+        _restore_cloud_red_flags_mapping(
+            workspace_dir=workspace_dir,
+            settings=settings,
+            process_scope=process_scope,
+        )
+
+        workspace_input_zip = _resolve_cloud_input_zip_path(
+            workspace_dir=workspace_dir,
+            requested_input_zip=settings["input_zip"],
+        )
+
+        artifact_payload = compute_artifact_hash(
+            project_root=workspace_dir,
+            process_scope=process_scope,
+        )
+        artifact_hash = str(artifact_payload.get("artifact_hash", "")).strip()
+        previous_state = read_last_artifact_hash_state(
+            process_scope=process_scope,
+            s3_state_uri=settings["s3_state_uri"],
+        )
+        print(
+            "[cloud] artifact_hash="
+            f"{artifact_hash[:12]}... | previous_state={'yes' if previous_state else 'no'}"
+        )
+
+        inner_args = _build_pipeline_args_for_workspace(
+            settings=settings,
+            run_id=run_id,
+            workspace_input_zip=workspace_input_zip,
+        )
+        os.chdir(workspace_dir)
+        os.environ["RUN_MODE"] = "local"
+        inner_settings = _resolve_run_settings(inner_args)
+        inner_settings["process_scope"] = process_scope
+        inner_settings["artifact_hash_override"] = artifact_hash
+
+        exit_code = _execute_local_pipeline_in_workspace(
+            inner_args=inner_args,
+            resolved_settings=inner_settings,
+        )
+        if exit_code != 0:
+            print("[cloud] pipeline local en workspace falló; no se actualiza state store")
+            return int(exit_code)
+
+        local_run_dir = workspace_dir / "run_results" / run_id
+        output_uri = _build_cloud_output_s3_uri(s3_output_uri=settings["s3_output_uri"], run_id=run_id)
+        upload_run_outputs(local_run_dir=local_run_dir, s3_output_uri=output_uri)
+
+        write_last_artifact_hash_state(
+            last_artifact_hash=artifact_hash,
+            last_run_id=run_id,
+            process_scope=process_scope,
+            s3_state_uri=settings["s3_state_uri"],
+        )
+        print(f"[cloud] run completado y estado actualizado | run_id={run_id}")
+        return 0
+    except Exception as exc:
+        print(f"ERROR: cloud runner falló: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        os.chdir(previous_cwd)
+        if previous_run_mode is None:
+            os.environ.pop("RUN_MODE", None)
+        else:
+            os.environ["RUN_MODE"] = previous_run_mode
+        if tmp_dir_obj is not None:
+            tmp_dir_obj.cleanup()
+
+
 def _run_pipeline(args: argparse.Namespace) -> int:
     settings = _resolve_run_settings(args)
+    if str(settings.get("run_mode", "local")).strip().lower() == "cloud":
+        return _run_pipeline_cloud(args, settings)
+    return _run_pipeline_local(args, resolved_settings=settings)
+
+
+def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str, Any] | None = None) -> int:
+    settings = resolved_settings or _resolve_run_settings(args)
     run_id = str(settings["run_id"]).strip() if settings["run_id"] else _default_run_id()
     run_dir = Path(settings["out_dir"]) / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -833,6 +1057,16 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             llm_mode=settings["llm_mode"],
             process_family=settings["process_family"],
         )
+        artifact_hash_override = str(settings.get("artifact_hash_override", "")).strip()
+        if artifact_hash_override:
+            artifact_payload = {"artifact_hash": artifact_hash_override, "process_scope": settings["process_scope"]}
+            artifact_hash = artifact_hash_override
+        else:
+            artifact_payload = compute_artifact_hash(
+                project_root=".",
+                process_scope=settings["process_scope"],
+            )
+            artifact_hash = str(artifact_payload.get("artifact_hash", "")).strip()
         if settings["process_family"] == "o2c":
             raw = Path(settings["input_zip"]).read_bytes()
             dataset_hash = hashlib.sha256(raw).hexdigest()
@@ -883,12 +1117,17 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 dataset_hash=dataset_hash,
                 project_root=".",
                 process_family=settings["process_family"],
+                process_scope=settings["process_scope"],
+                artifact_hash=artifact_hash,
             )
             try:
                 run_metadata_payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
                 if isinstance(run_metadata_payload, dict):
                     run_metadata_payload["llm_mode"] = settings["llm_mode"]
                     run_metadata_payload["process_family"] = settings["process_family"]
+                    run_metadata_payload["process_scope"] = settings["process_scope"]
+                    run_metadata_payload["artifact_hash"] = artifact_hash
+                    run_metadata_payload["artifact_files_count"] = int(artifact_payload.get("file_count", 0) or 0)
                     run_metadata_payload["o2c_target_schema"] = settings["o2c_target_schema"]
                     run_metadata_payload["o2c_transform_status"] = transform_payload
                     run_metadata_payload["o2c_raw_autoload"] = raw_autoload_summary
@@ -952,6 +1191,12 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 report_html_path=run_paths["report_html"],
             )
             _write_run_structure_manifest(run_id=run_id, run_dir=run_dir, paths=run_paths)
+            try:
+                validate_required_run_outputs(run_dir=run_dir)
+            except RunOutputValidationError as exc:
+                logger.log_error("Validación de outputs obligatorios falló", error=str(exc))
+                print(f"ERROR: outputs obligatorios incompletos: {exc}", file=sys.stderr)
+                return 1
 
             logger.log_ingest_end(
                 status=overall_status,
@@ -1026,12 +1271,17 @@ def _run_pipeline(args: argparse.Namespace) -> int:
             dataset_hash=dataset_hash,
             project_root=".",
             process_family=settings["process_family"],
+            process_scope=settings["process_scope"],
+            artifact_hash=artifact_hash,
         )
         try:
             run_metadata_payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
             if isinstance(run_metadata_payload, dict):
                 run_metadata_payload["llm_mode"] = settings["llm_mode"]
                 run_metadata_payload["process_family"] = settings["process_family"]
+                run_metadata_payload["process_scope"] = settings["process_scope"]
+                run_metadata_payload["artifact_hash"] = artifact_hash
+                run_metadata_payload["artifact_files_count"] = int(artifact_payload.get("file_count", 0) or 0)
                 run_metadata_path.write_text(
                     json.dumps(run_metadata_payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
                     encoding="utf-8",
@@ -1269,6 +1519,12 @@ def _run_pipeline(args: argparse.Namespace) -> int:
                 f"ERROR: report.json contiene {len(missing_links)} artifact_paths inexistentes",
                 file=sys.stderr,
             )
+            return 1
+        try:
+            validate_required_run_outputs(run_dir=run_dir)
+        except RunOutputValidationError as exc:
+            logger.log_error("Validación de outputs obligatorios falló", error=str(exc))
+            print(f"ERROR: outputs obligatorios incompletos: {exc}", file=sys.stderr)
             return 1
 
         logger.log_ingest_end(
