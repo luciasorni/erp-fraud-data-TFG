@@ -12,6 +12,27 @@ Este documento agrupa **solo tests de integración** del proyecto, indicando:
 
 Se consideran aquí tests que validan interacción entre múltiples componentes (nodos, scripts, persistencia, contratos E2E, tooling/config), no tests unitarios puros.
 
+## Cobertura RF14c (07-23)
+
+| Test file | Requisito/subrequisito cubierto | Propósito | Tipo | ¿Mocks/Fakes? |
+|---|---|---|---|---|
+| `tests/test_rf14c07_env_config.py` | RF14c-07 | Validar defaults/env parsing y validaciones de `RUN_MODE`, `PROCESS_SCOPE`, `LANGSMITH_TRACING` | Unit | No (usa `monkeypatch` de env local) |
+| `tests/test_rf14c08_s3_io.py` | RF14c-08 | Verificar parseo S3 URI, upload/download por prefijo y preservación de rutas relativas | Integration (capa IO) | Sí (`FakeS3Client`) |
+| `tests/test_rf14c09_artifact_hash.py` | RF14c-09 | Probar reproducibilidad y sensibilidad del `artifact_hash` por contenido/scope/orden estable | Unit/Integration (filesystem local) | No AWS, solo ficheros temporales |
+| `tests/test_rf14c09_run_metadata.py` | RF14c-09 | Garantizar persistencia de `artifact_hash` y `process_scope` en `run_metadata.json` | Unit | No |
+| `tests/test_rf14c10_state_store.py` | RF14c-10 | Validar rutas por scope y lectura/escritura idempotente de `last_artifact_hash.json` | Integration (state store API) | Sí (`FakeS3Client`, `ClientError` fake) |
+| `tests/test_rf14c11_cloud_runner.py` | RF14c-11 | Cubrir dispatcher local/cloud, flujo cloud, subida outputs, state update en éxito y no update en fallo | Integration | Sí (mocks de S3/runner/state) |
+| `tests/test_rf14c11_cloud_runner.py::test_rf14c11_cloud_restores_red_flags_mapping_from_scope` | RF14c-20/21 hardening | Verificar restore cloud de `config/red_flags_mapping.yaml` desde `artifacts/mappings/<scope>/` | Integration | Sí (fake download) |
+| `tests/test_rf14c11_cloud_runner.py::test_rf14c11_cloud_restores_weights_from_scope` | RF14c-20/21 hardening | Verificar restore cloud de `config/weights.yaml` desde `artifacts/mappings/<scope>/` | Integration | Sí (fake download) |
+| `tests/test_rf14c11_cloud_runner.py::test_rf14c11_ensure_report_dictionary_artifacts_creates_run_local_files` | RF14c-12 hardening cloud | Garantizar que artefactos de dictionary del run existen para validación de outputs/report | Unit | No |
+| `tests/test_rf14c12_run_outputs.py` | RF14c-12 | Validar outputs obligatorios, opcionales de grafo y metadatos mínimos (incl. `process_scope=both`) | Unit/Integration (contract) | No |
+| `tests/test_rf14c23_lambda_trigger.py` | RF14c-23 | Validar lógica Lambda de trigger: filtros de evento, comparación hash y decisión `skip/launch` | Unit/Integration (handler) | Sí (monkeypatch de funciones AWS) |
+
+### Nota sobre cobertura AWS real
+
+- Los tests RF14c en `pytest` **no** hacen integración real contra AWS (cuenta/recursos), por diseño.
+- Para AWS real se usan evidencias operativas de ejecución (`docs/cloud/rf14c_20_*.md`, `docs/cloud/rf14c_21_*.md`, `docs/cloud/RF14c_22_*.md`, `docs/cloud/RF14c_23_*.md` y `docs/cloud/evidences/*`).
+
 ## Mapa por requisito
 
 | Requisito | Test de integración | Tipo | Qué valida (resumen) | Documentación asociada |

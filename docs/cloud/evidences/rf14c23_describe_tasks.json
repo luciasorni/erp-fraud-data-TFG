@@ -1,0 +1,86 @@
+[
+    {
+        "taskArn": "arn:aws:ecs:eu-west-1:798350130349:task/tfg-fraud-dev-ecs-cluster/66fd820689e44067b24be48535cc4326",
+        "startedBy": "chronos-schedule/tfg-fraud-dev-sched",
+        "createdAt": "2026-04-14T19:15:04.697000+02:00",
+        "stoppedAt": "2026-04-14T19:16:38.817000+02:00",
+        "lastStatus": "STOPPED",
+        "exitCode": 0,
+        "overrides": [
+            {
+                "name": "erp-fraud-pipeline",
+                "command": [
+                    "run",
+                    "--input-zip",
+                    "erp_fraud_data.zip"
+                ],
+                "environment": [
+                    {
+                        "name": "RUN_MODE",
+                        "value": "cloud"
+                    },
+                    {
+                        "name": "PROCESS_SCOPE",
+                        "value": "p2p"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "taskArn": "arn:aws:ecs:eu-west-1:798350130349:task/tfg-fraud-dev-ecs-cluster/8c479408c2fe40cc965cf230b047f98a",
+        "startedBy": "events-rule/tfg-fraud-dev-artifacts-",
+        "createdAt": "2026-04-14T20:10:10.489000+02:00",
+        "stoppedAt": "2026-04-14T20:11:40.459000+02:00",
+        "lastStatus": "STOPPED",
+        "exitCode": 0,
+        "overrides": [
+            {
+                "name": "erp-fraud-pipeline",
+                "command": [
+                    "run",
+                    "--input-zip",
+                    "erp_fraud_data.zip"
+                ],
+                "environment": [
+                    {
+                        "name": "RUN_MODE",
+                        "value": "cloud"
+                    },
+                    {
+                        "name": "PROCESS_SCOPE",
+                        "value": "both"
+                    }
+                ]
+            }
+        ]
+    },
+    {
+        "taskArn": "arn:aws:ecs:eu-west-1:798350130349:task/tfg-fraud-dev-ecs-cluster/bd613b87d4f54cd2a7211e83fe6fb6d0",
+        "startedBy": "events-rule/tfg-fraud-dev-artifacts-",
+        "createdAt": "2026-04-14T20:01:33.495000+02:00",
+        "stoppedAt": "2026-04-14T20:02:55.410000+02:00",
+        "lastStatus": "STOPPED",
+        "exitCode": 0,
+        "overrides": [
+            {
+                "name": "erp-fraud-pipeline",
+                "command": [
+                    "run",
+                    "--input-zip",
+                    "erp_fraud_data.zip"
+                ],
+                "environment": [
+                    {
+                        "name": "RUN_MODE",
+                        "value": "cloud"
+                    },
+                    {
+                        "name": "PROCESS_SCOPE",
+                        "value": "both"
+                    }
+                ]
+            }
+        ]
+    }
+]

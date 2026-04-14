@@ -20,7 +20,10 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/langsmith_experiments.md`
 - `docs/langsmith_tracing_runbook.md`
 - `docs/rf14b_verification.md`
-- `docs/cloud_aws.md`
+- `docs/cloud/cloud_aws.md`
+- `docs/cloud/troubleshooting.md`
+- `docs/cloud/rf14c_final_verification.md`
+- `docs/cloud/github_actions_ecr.md`
 - `docs/rf15.md`
 - `docs/rf15_verification.md`
 - `docs/rf15b.md`
@@ -51,6 +54,16 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
   - `schema_summary.json`
   - `run_metadata.json`
   - logs JSONL de ingesta
+
+## Cloud AWS (RF14c)
+
+Documento consolidado:
+
+- `docs/cloud/cloud_aws.md`
+
+Evidencia de aceptación:
+
+- `docs/cloud/rf14c_final_verification.md`
 
 ## Estructura relevante
 

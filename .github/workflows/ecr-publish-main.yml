@@ -1,0 +1,66 @@
+name: ECR Publish Main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-west-1
+      AWS_ACCOUNT_ID: "798350130349"
+      ECR_REPOSITORY: tfg-fraud-dev-ecr-pipeline
+      IMAGE_NAME: erp-fraud-pipeline
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image tags
+        id: vars
+        run: |
+          SHORT_SHA="${GITHUB_SHA::12}"
+          echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "image_uri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        run: |
+          docker build -t "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" .
+
+      - name: Tag Docker image
+        run: |
+          docker tag "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" "${{ steps.vars.outputs.image_uri }}:${{ steps.vars.outputs.short_sha }}"
+          docker tag "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" "${{ steps.vars.outputs.image_uri }}:latest"
+
+      - name: Push image (sha)
+        run: |
+          docker push "${{ steps.vars.outputs.image_uri }}:${{ steps.vars.outputs.short_sha }}"
+
+      - name: Push image (latest)
+        run: |
+          docker push "${{ steps.vars.outputs.image_uri }}:latest"
+
+      - name: Publish summary
+        run: |
+          {
+            echo "## ECR publish result"
+            echo "- image (sha): \`${{ steps.vars.outputs.image_uri }}:${{ steps.vars.outputs.short_sha }}\`"
+            echo "- image (latest): \`${{ steps.vars.outputs.image_uri }}:latest\`"
+            echo "- region: \`${AWS_REGION}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,121 @@
+{
+    "tasks": [
+        {
+            "attachments": [
+                {
+                    "id": "94cd46f0-7459-40fe-859f-a51c3f83b66e",
+                    "type": "ElasticNetworkInterface",
+                    "status": "DELETED",
+                    "details": [
+                        {
+                            "name": "subnetId",
+                            "value": "subnet-091fb9bd171d238aa"
+                        },
+                        {
+                            "name": "networkInterfaceId",
+                            "value": "eni-0e46bd04b338a6bb3"
+                        },
+                        {
+                            "name": "macAddress",
+                            "value": "06:5b:83:4c:a1:ed"
+                        },
+                        {
+                            "name": "privateDnsName",
+                            "value": "ip-172-31-31-144.eu-west-1.compute.internal"
+                        },
+                        {
+                            "name": "privateIPv4Address",
+                            "value": "172.31.31.144"
+                        }
+                    ]
+                }
+            ],
+            "attributes": [
+                {
+                    "name": "ecs.cpu-architecture",
+                    "value": "x86_64"
+                }
+            ],
+            "availabilityZone": "eu-west-1a",
+            "clusterArn": "arn:aws:ecs:eu-west-1:798350130349:cluster/tfg-fraud-dev-ecs-cluster",
+            "connectivity": "CONNECTED",
+            "connectivityAt": "2026-04-14T18:23:44.558000+02:00",
+            "containers": [
+                {
+                    "containerArn": "arn:aws:ecs:eu-west-1:798350130349:container/tfg-fraud-dev-ecs-cluster/28a43872e29b47989c727f4c5b682e83/b59616f1-c975-48a0-92c4-aca5c1a0b36f",
+                    "taskArn": "arn:aws:ecs:eu-west-1:798350130349:task/tfg-fraud-dev-ecs-cluster/28a43872e29b47989c727f4c5b682e83",
+                    "name": "erp-fraud-pipeline",
+                    "image": "798350130349.dkr.ecr.eu-west-1.amazonaws.com/tfg-fraud-dev-ecr-pipeline:326910e",
+                    "imageDigest": "sha256:2f9241ea4cb98a5302c90d958217a344b15d998a27b676b1c7cfaa881a0af31f",
+                    "runtimeId": "28a43872e29b47989c727f4c5b682e83-3135060890",
+                    "lastStatus": "STOPPED",
+                    "exitCode": 0,
+                    "networkBindings": [],
+                    "networkInterfaces": [
+                        {
+                            "attachmentId": "94cd46f0-7459-40fe-859f-a51c3f83b66e",
+                            "privateIpv4Address": "172.31.31.144"
+                        }
+                    ],
+                    "healthStatus": "UNKNOWN",
+                    "cpu": "0"
+                }
+            ],
+            "cpu": "2048",
+            "createdAt": "2026-04-14T18:23:41.149000+02:00",
+            "desiredStatus": "STOPPED",
+            "enableExecuteCommand": false,
+            "executionStoppedAt": "2026-04-14T18:24:45.996000+02:00",
+            "group": "family:tfg-fraud-dev-task",
+            "healthStatus": "UNKNOWN",
+            "lastStatus": "STOPPED",
+            "launchType": "FARGATE",
+            "memory": "4096",
+            "overrides": {
+                "containerOverrides": [
+                    {
+                        "name": "erp-fraud-pipeline",
+                        "command": [
+                            "run",
+                            "--input-zip",
+                            "erp_fraud_data.zip",
+                            "--run-id",
+                            "rf14c21-o2c-001"
+                        ],
+                        "environment": [
+                            {
+                                "name": "RUN_MODE",
+                                "value": "cloud"
+                            },
+                            {
+                                "name": "PROCESS_SCOPE",
+                                "value": "o2c"
+                            }
+                        ]
+                    }
+                ],
+                "inferenceAcceleratorOverrides": []
+            },
+            "platformVersion": "1.4.0",
+            "platformFamily": "Linux",
+            "pullStartedAt": "2026-04-14T18:23:51.031000+02:00",
+            "pullStoppedAt": "2026-04-14T18:24:15.546000+02:00",
+            "startedAt": "2026-04-14T18:24:20.641000+02:00",
+            "stopCode": "EssentialContainerExited",
+            "stoppedAt": "2026-04-14T18:25:09.965000+02:00",
+            "stoppedReason": "Essential container in task exited",
+            "stoppingAt": "2026-04-14T18:24:56.034000+02:00",
+            "tags": [],
+            "taskArn": "arn:aws:ecs:eu-west-1:798350130349:task/tfg-fraud-dev-ecs-cluster/28a43872e29b47989c727f4c5b682e83",
+            "taskDefinitionArn": "arn:aws:ecs:eu-west-1:798350130349:task-definition/tfg-fraud-dev-task:6",
+            "version": 5,
+            "ephemeralStorage": {
+                "sizeInGiB": 20
+            },
+            "fargateEphemeralStorage": {
+                "sizeInGiB": 20
+            }
+        }
+    ],
+    "failures": []
+}

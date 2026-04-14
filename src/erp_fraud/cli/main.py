@@ -1210,6 +1210,15 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
                 "schema_summary_json_run": str(schema_summary_path),
                 "o2c_validation_report_json": str(data_validation_report_path),
             }
+            ranking_paths = write_ranking_outputs(
+                run_dir=run_dir,
+                ranking_rows=[],
+                formats=("json", "parquet"),
+                top_k=None,
+            )
+            extra_artifacts["ranking_json"] = str(ranking_paths["json"])
+            if "parquet" in ranking_paths:
+                extra_artifacts["ranking_parquet"] = str(ranking_paths["parquet"])
             dd_json_path, dd_md_path = _ensure_report_dictionary_artifacts(run_dir=run_dir)
             extra_artifacts["data_dictionary_json"] = str(dd_json_path)
             extra_artifacts["data_dictionary_md"] = str(dd_md_path)
