@@ -1732,55 +1732,53 @@ requirements:
       logs/reportes)
     estimate_hours: 1.0
 - id: RF20
-  name: RF20 — API de servicio (FastAPI) — opcional
-  descripcion: '[Opcional] Exponer endpoints para ejecutar runs, listar tests y hacer drilldown sin ejecutar SQL libre.'
-  criterio_validacion: 'Existe un servicio FastAPI con endpoints: /health, /tests, /run, /runs/{id}/report, /runs/{id}/drilldown.
-    Solo acepta test_ids allowlist y devuelve artefactos del run.'
-  estimador: 8
-  prioridad: Could
+  name: RF20 — API de aplicación para carga de ERP, ejecución de análisis y consulta de resultados
+  descripcion: 'Exponer una capa de aplicación basada en FastAPI para cargar datasets ERP controlados, lanzar runs cloud de análisis antifraude para P2P y O2C, consultar el estado de las ejecuciones y recuperar resultados del grafo y drilldown sin acceso directo a AWS ni SQL libre. Esta API servirá como backend de la futura interfaz de usuario, que se implementará con Streamlit.'
+  criterio_validacion: 'Existe una capa de aplicación compuesta por FastAPI + Streamlit que permite: registrar o subir un dataset ERP válido en formato controlado, lanzar ejecuciones cloud en modo graph para scope p2p, o2c y both (este último como orquestación de dos runs), consultar el estado del run, recuperar artefactos del grafo (hypotheses, selected_tests, findings, scores, explanations y second_level_analysis) y ejecutar drilldown seguro sin SQL libre. La interfaz incluye al menos las vistas Nuevo análisis, Ejecuciones, Resultados y Detalle/Drilldown. La validación se considera superada cuando se demuestra end-to-end el flujo completo: carga/selección de dataset, lanzamiento de run, seguimiento de estado, visualización de resultados y drilldown, con evidencias técnicas y visuales guardadas.'
+  estimador: 18
+  prioridad: Should
   riesgo: Medio
   tasks:
   - id: RF20-01
-    title: Escribir/actualizar tests unitarios relacionados (pytest) para este requisito
+    title: 'Redefinir contrato funcional de la capa de aplicación y UX mínima: flujo de carga ERP, lanzamiento de run, monitorización, resultados y drilldown'
     estimate_hours: 1.5
   - id: RF20-02
-    title: Actualizar documentación (README + runbook/docs) describiendo el comportamiento y cómo verificarlo
-    estimate_hours: 1.0
-  - id: RF20-03
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
-    estimate_hours: 1.0
-  - id: RF20-01
-    title: 'Definir contrato de API: endpoints, request/response schemas (OpenAPI) y límites'
-    estimate_hours: 1.5
-  - id: RF20-02
-    title: Implementar FastAPI app con /health y configuración (puerto, paths)
-    estimate_hours: 1.2
-  - id: RF20-03
-    title: Implementar endpoint GET /tests que devuelva catálogo (ids, versiones, fraud_type)
-    estimate_hours: 1.2
-  - id: RF20-04
-    title: Implementar endpoint POST /run que dispare un run (sincrónico o background simple) y devuelva run_id
+    title: 'Modelar schemas de API (Pydantic/OpenAPI) para datasets, runs, estado, resultados y drilldown; definir soporte para scope=p2p|o2c|both y kb_index_enabled'
     estimate_hours: 2.0
+  - id: RF20-03
+    title: Implementar/ajustar endpoints FastAPI para alta/listado de datasets y validación de ZIP controlado
+    estimate_hours: 2.0
+  - id: RF20-04
+    title: Implementar/ajustar endpoint POST /runs para lanzar análisis cloud en modo graph; both debe orquestar dos runs separados (p2p y o2c)
+    estimate_hours: 2.5
   - id: RF20-05
-    title: Implementar endpoint GET /runs/{run_id}/report que devuelva report.json
-    estimate_hours: 1.2
+    title: Implementar endpoints de consulta de runs, estado, report y resumen de artefactos graph (hypotheses, selected_tests, findings, scores)
+    estimate_hours: 2.0
   - id: RF20-06
-    title: Implementar endpoint POST /runs/{run_id}/drilldown que ejecute drilldown seguro (test_id + keys)
+    title: Implementar endpoint de drilldown seguro sin SQL libre, con allowlist de acciones y validación de payload
     estimate_hours: 1.8
   - id: RF20-07
-    title: 'Aplicar guardrails: solo test_ids allowlist; validar inputs; limitar tamaños de respuesta'
-    estimate_hours: 1.5
+    title: Crear la app Streamlit base con navegación multipágina, tema visual cuidado, layout profesional y componentes reutilizables
+    estimate_hours: 2.0
   - id: RF20-08
-    title: Añadir tests (pytest) de API usando TestClient y fixture de run
+    title: Diseñar la página Nuevo análisis para subir dataset, elegir scope (p2p/o2c/both), activar opcionalmente rebuild KB y lanzar ejecución
     estimate_hours: 2.0
   - id: RF20-09
-    title: Documentar uso de API y ejemplos curl
-    estimate_hours: 1.0
+    title: Diseñar la página Ejecuciones para listar runs, ver estado, timestamps, scope y acceder a detalle/resultados
+    estimate_hours: 1.8
   - id: RF20-10
-    title: Ejecutar verificación de criterios de aceptación y guardar evidencia (artefactos + enlace de traza LangSmith +
-      logs/reportes)
-    estimate_hours: 1.0
+    title: Diseñar la página Resultados para mostrar hypotheses, selected_tests, findings, scores, explanations y second_level_analysis de forma clara y usable
+    estimate_hours: 2.5
+  - id: RF20-11
+    title: Diseñar la página Detalle / drilldown para navegar por un hallazgo concreto y ver evidencia, explicación y recomendaciones
+    estimate_hours: 2.0
+  - id: RF20-12
+    title: Añadir tests de API e integración del flujo principal (upload/selección dataset -> run -> estado -> resultados -> drilldown) y documentarlos en integration_tests_registry.md
+    estimate_hours: 2.5
+  - id: RF20-13
+    title: Actualizar README/runbook/docs, verificar criterios de aceptación y guardar evidencias visuales y técnicas del flujo completo
+    estimate_hours: 1.5
+
 - id: RF21
   name: RF21 — Extensión RAG/KB local — opcional (solo diseño o PoC mínimo)
   descripcion: '[Opcional] Extensión para añadir una base de conocimiento local para explicaciones; fuera del core del TFG

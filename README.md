@@ -29,6 +29,7 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 - `docs/rf15b.md`
 - `docs/rf15c.md`
 - `docs/rf15e.md`
+- `docs/rf20.md`
 - `docs/scoring.md`
 - `docs/rf18_verification.md`
 - `docs/agents.md`
@@ -64,6 +65,94 @@ Documento consolidado:
 Evidencia de aceptación:
 
 - `docs/cloud/rf14c_final_verification.md`
+
+Modos de ejecución del comando `run`:
+
+- `--pipeline-mode deterministic` (default): pipeline técnico/determinista clásico.
+- `--pipeline-mode graph`: ejecuta pipeline base + grafo multiagente (`graph/*`) en el mismo `run_id`.
+
+## API de aplicación (RF20)
+
+Se añadió una capa backend `FastAPI` orientada a servir como base de la futura UI del TFG.
+
+Capacidades base ya implementadas:
+
+- alta/listado/detalle de datasets ERP controlados
+- lanzamiento de runs cloud `graph`
+- soporte de `scope=p2p|o2c|both`
+- consulta de estado de runs
+- lectura de resultados del grafo con shape preparado para UI
+- drilldown seguro sin SQL libre
+
+Estructura:
+
+- `app/api/main.py`
+- `app/api/routers/`
+- `app/api/schemas/`
+- `app/api/services/`
+
+Contrato base:
+
+- `GET /api/v1/health`
+- `POST /api/v1/datasets/upload`
+- `GET /api/v1/datasets`
+- `GET /api/v1/datasets/{dataset_id}`
+- `POST /api/v1/runs`
+- `GET /api/v1/runs`
+- `GET /api/v1/runs/{run_id}`
+- `GET /api/v1/runs/{run_id}/graph`
+- `GET /api/v1/runs/{run_id}/report`
+- `POST /api/v1/runs/{run_id}/drilldown`
+
+Reglas relevantes:
+
+- `scope=both` se implementa como dos runs separados (`p2p` y `o2c`)
+- no existe `process_family=both`
+- `pipeline_mode` expuesto por API queda fijado a `graph`
+- `kb_index` solo reconstruye cuando se solicita explícitamente
+
+Suite base RF20:
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf20_api.py \
+  tests/test_rf20_services.py \
+  tests/test_rf20_ui_api_client.py \
+  tests/test_rf20_ui_utils.py
+```
+
+## UI Streamlit (RF20-07 a RF20-11)
+
+Se añadió una interfaz Streamlit multipágina conectada a la API `/api/v1`.
+
+Pantallas base:
+
+- `Home`
+- `Nuevo análisis`
+- `Ejecuciones`
+- `Resultados`
+- `Detalle del hallazgo`
+
+Estructura:
+
+- `app/ui/Home.py`
+- `app/ui/pages/`
+- `app/ui/components/`
+- `app/ui/services/api_client.py`
+- `app/ui/utils/`
+
+Arranque local:
+
+```bash
+streamlit run app/ui/Home.py
+```
+
+Si la API no está en la URL por defecto:
+
+```bash
+export ERP_FRAUD_API_BASE_URL="http://localhost:8000/api/v1"
+streamlit run app/ui/Home.py
+```
 
 ## Estructura relevante
 

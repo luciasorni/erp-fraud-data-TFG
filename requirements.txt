@@ -10,3 +10,8 @@ chromadb
 openai
 langsmith
 boto3
+fastapi
+uvicorn
+python-multipart
+streamlit
+plotly

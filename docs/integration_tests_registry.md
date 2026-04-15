@@ -22,6 +22,8 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 | `tests/test_rf14c09_run_metadata.py` | RF14c-09 | Garantizar persistencia de `artifact_hash` y `process_scope` en `run_metadata.json` | Unit | No |
 | `tests/test_rf14c10_state_store.py` | RF14c-10 | Validar rutas por scope y lectura/escritura idempotente de `last_artifact_hash.json` | Integration (state store API) | Sí (`FakeS3Client`, `ClientError` fake) |
 | `tests/test_rf14c11_cloud_runner.py` | RF14c-11 | Cubrir dispatcher local/cloud, flujo cloud, subida outputs, state update en éxito y no update en fallo | Integration | Sí (mocks de S3/runner/state) |
+| `tests/test_rf14c11_cloud_runner.py::test_rf14c11_cloud_graph_mode_runs_graph_after_deterministic` | RF14c-11 + RF14c grafo cloud | Verificar `--pipeline-mode graph` en cloud: ejecuta base + invoca grafo y mantiene upload/state | Integration | Sí (mocks de runner/grafo/S3/state) |
+| `tests/test_rf14c11_cloud_runner.py::test_rf14c11_execute_graph_pipeline_invokes_run_graph_full` | RF14c-11 + RF14 | Verificar integración de `run_graph_full(...)` con `process_family` y persistencia mínima `graph/*` | Integration | Sí (mock de `run_graph_full`) |
 | `tests/test_rf14c11_cloud_runner.py::test_rf14c11_cloud_restores_red_flags_mapping_from_scope` | RF14c-20/21 hardening | Verificar restore cloud de `config/red_flags_mapping.yaml` desde `artifacts/mappings/<scope>/` | Integration | Sí (fake download) |
 | `tests/test_rf14c11_cloud_runner.py::test_rf14c11_cloud_restores_weights_from_scope` | RF14c-20/21 hardening | Verificar restore cloud de `config/weights.yaml` desde `artifacts/mappings/<scope>/` | Integration | Sí (fake download) |
 | `tests/test_rf14c11_cloud_runner.py::test_rf14c11_ensure_report_dictionary_artifacts_creates_run_local_files` | RF14c-12 hardening cloud | Garantizar que artefactos de dictionary del run existen para validación de outputs/report | Unit | No |
@@ -59,6 +61,10 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 | RF16 | `tests/test_rf16_runs_comparison.py` | Integración storage comparación de runs | Carga snapshots desde artefactos persistidos, comparación cross-process/single-run, selección de latest por familia | `docs/rf16.md` |
 | RF16 | `tests/test_rf16_cli_compare_runs.py` | Integración CLI RF16 | Comandos `list-runs` y `compare-runs`, con generación de `rf16_second_level_analysis.json/md` | `docs/rf16.md`, `docs/how_to_run.md` |
 | RF16 | `tests/test_rf16_second_level_agent_node.py` | Integración nodo/agente RF16 | Ejecución de `second_level_explainer` como último nodo del grafo, persistiendo `graph/second_level_analysis.json|md` | `docs/rf16.md`, `docs/langgraph_architecture.md` |
+| RF20 | `tests/test_rf20_api.py` | Integración API | Contrato HTTP base `/api/v1`, validación de payloads, `scope=both`, shape UI de `/graph` y rechazo de acciones inseguras en drilldown | `docs/rf20.md`, `README.md` |
+| RF20 | `tests/test_rf20_services.py` | Integración services | Orquestación de dos runs para `both` y adaptación de artefactos `graph/*` a respuestas legibles para UI | `docs/rf20.md` |
+| RF20 | `tests/test_rf20_ui_api_client.py` | Integración cliente UI | Centralización de llamadas HTTP de Streamlit sobre `/api/v1` y manejo básico de errores | `docs/rf20.md`, `README.md` |
+| RF20 | `tests/test_rf20_ui_utils.py` | Unit/Integration UI | Formateadores y mapeos visuales para métricas, estados y hallazgos de la interfaz Streamlit | `docs/rf20.md` |
 
 ## Suites de ejecución recomendadas
 
@@ -127,6 +133,16 @@ python3 -m pytest -q \
   tests/test_rf16_second_level_agent_node.py
 ```
 
+### RF20 (API de aplicación)
+
+```bash
+python3 -m pytest -q \
+  tests/test_rf20_api.py \
+  tests/test_rf20_services.py \
+  tests/test_rf20_ui_api_client.py \
+  tests/test_rf20_ui_utils.py
+```
+
 ## Evidencia documental por bloque
 
 - RF14: `docs/rf14.md`
@@ -135,6 +151,7 @@ python3 -m pytest -q \
 - RF18: `docs/scoring.md`, `docs/rf18_verification.md`
 - RF11/O2C: `docs/o2c/README.md`, `docs/o2c/rf11_13_o2c_integration_tests.md`
 - RF16: `docs/rf16.md`
+- RF20: `docs/rf20.md`
 - Operación de ejecución: `docs/how_to_run.md`
 
 ## Nota de trazabilidad

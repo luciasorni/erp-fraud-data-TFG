@@ -58,6 +58,17 @@ Estado validado:
 4. Esperar `tasks-stopped`.
 5. Verificar `exitCode`, logs y artefactos en S3.
 
+### Modos de pipeline en `run`
+
+- `--pipeline-mode deterministic` (default): genera artefactos mínimos (`report.*`, `ranking.*`, `run_metadata.json`, etc.).
+- `--pipeline-mode graph`: tras el pipeline base ejecuta `run_graph_full(...)` y persiste también `graph/*` (incluyendo `second_level_analysis.*` cuando aplica).
+
+`--process-family` debe informarse explícitamente para evitar ambigüedad:
+- `--process-family p2p`
+- `--process-family o2c`
+
+Nota: `PROCESS_SCOPE=both` se usa para alcance de artefactos/hash/state; no existe `process_family=both` en el grafo actual.
+
 ## 6) Flujo scheduler (RF14c-22)
 
 - Scheduler lanza `ecs:RunTask` periódico contra `tfg-fraud-dev-task`.
@@ -110,6 +121,20 @@ Mínimos esperados:
 - `schema_summary.json`
 - `report.json`
 - `ranking.json`
+
+Cuando se ejecuta con `--pipeline-mode graph`, además deben aparecer en S3:
+- `graph/graph_state.json`
+- `graph/hypotheses.json`
+- `graph/selected_tests.json`
+- `graph/findings.json`
+- `graph/scores.json`
+- `graph/manifest.json`
+
+Opcionales en modo graph:
+- `graph/explanations.json`
+- `graph/explanations.md`
+- `graph/second_level_analysis.json`
+- `graph/second_level_analysis.md`
 
 ### State store
 
