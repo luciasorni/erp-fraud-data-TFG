@@ -12,10 +12,10 @@ def render_explanations_panel(explanations: List[Dict[str, Any]]) -> None:
     for item in explanations:
         st.markdown(
             f"""
-            <div class="rf20-panel narrative">
-                <div class="rf20-heading">{item.get('title') or item.get('id') or 'Explicación'}</div>
-                <div class="rf20-subline">{item.get("subtitle") or ""}</div>
-                <div class="rf20-body">{item.get("summary") or "Sin resumen explicativo."}</div>
+            <div class="rf20-narrative">
+                <div class="rf20-list-title">{item.get('title') or item.get('id') or 'Explicación'}</div>
+                <div class="rf20-list-subtitle">{item.get("subtitle") or ""}</div>
+                <div class="rf20-meta-line">{item.get("summary") or "Sin resumen explicativo."}</div>
             </div>
             """,
             unsafe_allow_html=True,

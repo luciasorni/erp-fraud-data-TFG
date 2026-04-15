@@ -12,10 +12,10 @@ def render_recommendations_panel(recommendations: List[Dict[str, Any]]) -> None:
     for item in recommendations:
         st.markdown(
             f"""
-            <div class="rf20-panel recommendation">
-                <div class="rf20-heading">{item.get('title') or 'Recomendación'}</div>
-                <div class="rf20-subline">{item.get("subtitle") or ""}</div>
-                <div class="rf20-body">{item.get("summary") or "Sin recomendación detallada."}</div>
+            <div class="rf20-recommendation">
+                <div class="rf20-list-title">{item.get('title') or 'Recomendación'}</div>
+                <div class="rf20-list-subtitle">{item.get("subtitle") or ""}</div>
+                <div class="rf20-meta-line">{item.get("summary") or "Sin recomendación detallada."}</div>
             </div>
             """,
             unsafe_allow_html=True,

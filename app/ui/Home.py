@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.ui.components.header import configure_page, render_home_header
-from app.ui.components.run_metrics import render_run_metrics
+from app.ui.components.header import configure_page, render_divider, render_home_header, render_section_heading
 from app.ui.services.api_client import APIClient, APIClientError
-from app.ui.utils.mappers import build_execution_metrics
+from app.ui.utils.formatters import format_datetime, format_scope
 from app.ui.utils.session_state import init_session_state
 
 
@@ -16,59 +15,68 @@ def main() -> None:
 
     client = APIClient()
     runs = []
-    health = None
     try:
-        health = client.get_health()
-        runs = client.list_runs()[:6]
+        runs = client.list_runs()[:2]
     except APIClientError as exc:
-        st.warning(f"No se pudo conectar con la API: {exc}")
+        st.warning(f"No se pudo cargar la actividad reciente: {exc}")
 
-    left, right = st.columns([1.4, 1.0])
-    with left:
-        st.markdown(
-            """
-            <div class="rf20-section">
-                <div class="rf20-section-title">Qué puedes hacer desde aquí</div>
-                <div class="rf20-section-copy">
-                    Registrar datasets ERP controlados, lanzar análisis cloud en <code>graph</code>, seguir el estado de cada run
-                    y revisar hallazgos, explicaciones y recomendaciones de investigación con drilldown seguro.
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
+    lead, side = st.columns([1.4, 1.0], gap="large")
+    with lead:
+        render_section_heading(
+            title="Empieza por la acción principal",
+            subtitle="La aplicación está pensada para un flujo sencillo: registrar dataset, lanzar análisis y revisar resultados con drilldown seguro.",
         )
         cta1, cta2 = st.columns(2)
         with cta1:
-            st.page_link("pages/1_Nuevo_analisis.py", label="Nuevo análisis", icon=":material/add_circle:")
+            st.page_link("pages/1_Nuevo_analisis.py", label="Nuevo análisis", icon=":material/play_circle:")
         with cta2:
-            st.page_link("pages/2_Ejecuciones.py", label="Ver ejecuciones", icon=":material/monitoring:")
-    with right:
+            st.page_link("pages/2_Ejecuciones.py", label="Ir a ejecuciones", icon=":material/history:")
         st.markdown(
             """
-            <div class="rf20-section soft">
-                <div class="rf20-section-title">Estado del sistema</div>
-                <div class="rf20-section-copy">Arquitectura backend cloud validada sobre AWS y consumida vía <code>/api/v1</code>.</div>
+            <div class="rf20-mini-note" style="margin-top:0.55rem;">
+                Usa <strong>Nuevo análisis</strong> si vas a cargar un ERP o configurar un run nuevo.
+                Ve a <strong>Ejecuciones</strong> si quieres revisar resultados ya lanzados.
             </div>
             """,
             unsafe_allow_html=True,
         )
-        st.metric("API", "Operativa" if health and health.get("status") == "ok" else "Sin conexión")
-
-    st.markdown("### Actividad reciente")
-    render_run_metrics(build_execution_metrics(runs))
-    if runs:
-        for run in runs[:4]:
-            st.markdown(
-                f"""
-                <div class="rf20-panel soft">
-                    <div class="rf20-heading">{run.get('run_id')}</div>
-                    <div class="rf20-subline">{run.get('dataset_id') or '-'} · {run.get('scope') or '-'} · {run.get('status') or '-'}</div>
+    with side:
+        st.markdown(
+            """
+            <div class="rf20-callout">
+                <div class="rf20-section-title">Qué resuelve esta herramienta</div>
+                <div class="rf20-section-copy">
+                    Orquesta análisis antifraude ERP sobre P2P y O2C, recupera artefactos del grafo en formato legible y
+                    permite investigación detallada sin exponer SQL libre.
                 </div>
-                """,
-                unsafe_allow_html=True,
-            )
-    else:
-        st.info("Todavía no hay ejecuciones recientes disponibles.")
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    render_divider()
+    with st.expander("Ver actividad reciente", expanded=False):
+        render_section_heading(
+            title="Últimos análisis",
+            subtitle="Solo se muestran uno o dos runs recientes para no convertir la entrada en un dashboard.",
+        )
+        if runs:
+            for run in runs:
+                st.markdown(
+                    f"""
+                    <div class="rf20-list">
+                        <div class="rf20-list-item">
+                            <div class="rf20-list-title">{run.get("run_id")}</div>
+                            <div class="rf20-list-subtitle">{run.get("dataset_id") or "-"} · {format_scope(run.get("scope"))} · {format_datetime(run.get("created_at_utc"))}</div>
+                            <div class="rf20-meta-line">Estado: <span class="rf20-meta-inline">{run.get("status") or "-"}</span></div>
+                        </div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.info("Todavía no hay actividad reciente disponible.")
+        st.page_link("pages/2_Ejecuciones.py", label="Ver historial completo", icon=":material/open_in_new:")
 
 
 if __name__ == "__main__":

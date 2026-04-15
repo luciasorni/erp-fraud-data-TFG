@@ -5,7 +5,7 @@ import streamlit as st
 from app.ui.components.drilldown_table import render_drilldown_table
 from app.ui.components.explanations_panel import render_explanations_panel
 from app.ui.components.findings_detail import render_finding_detail
-from app.ui.components.header import configure_page, render_page_header
+from app.ui.components.header import configure_page, render_divider, render_page_header, render_section_heading
 from app.ui.components.recommendations_panel import render_recommendations_panel
 from app.ui.services.api_client import APIClient, APIClientError
 from app.ui.utils.constants import ALLOWED_DRILLDOWN_ACTIONS
@@ -18,14 +18,14 @@ def main() -> None:
     init_session_state()
     render_page_header(
         title="Detalle del hallazgo",
-        subtitle="Investiga qué se detectó, cuál es la evidencia asociada y qué siguiente paso se recomienda.",
+        subtitle="Analiza el caso de forma guiada: resumen, explicación, evidencia, recomendaciones y drilldown.",
     )
 
     run_id = st.session_state.selected_run_id
     finding = st.session_state.selected_finding
     graph = st.session_state.selected_graph_payload
     if not run_id:
-        st.info("Selecciona antes un run desde la página de Resultados o Ejecuciones.")
+        st.info("Selecciona antes un run desde Resultados o Ejecuciones.")
         return
     if not graph:
         st.info("No hay contexto de resultados cargado para este hallazgo.")
@@ -36,62 +36,44 @@ def main() -> None:
     explanation = explanation_for_test(graph.get("explanations", []), finding.get("test_id") if finding else None)
     recommendations = recommendations_for_finding(graph.get("second_level_analysis", []))
 
-    st.markdown(
-        """
-        <div class="rf20-section soft">
-            <div class="rf20-section-title">Qué se ha detectado</div>
-            <div class="rf20-section-copy">Interpretación narrativa del hallazgo a partir de la explicación del run.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_section_heading(
+        title="Qué se ha detectado",
+        subtitle="Lectura narrativa del hallazgo para entender por qué el caso merece revisión.",
     )
     render_explanations_panel([explanation] if explanation else [])
 
-    st.markdown(
-        """
-        <div class="rf20-section">
-            <div class="rf20-section-title">Evidencia principal</div>
-            <div class="rf20-section-copy">Claves mínimas conservadas para investigación y drilldown seguro.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_divider()
+    render_section_heading(
+        title="Evidencia principal",
+        subtitle="Claves de negocio mínimas conservadas para profundizar en el caso sin romper las guardas de seguridad.",
     )
     if finding and finding.get("sample_keys"):
         st.table([{"campo": key, "valor": value} for key, value in finding["sample_keys"].items()])
     else:
         st.info("No hay claves de evidencia disponibles para este hallazgo.")
 
-    st.markdown(
-        """
-        <div class="rf20-section toned">
-            <div class="rf20-section-title">Recomendaciones</div>
-            <div class="rf20-section-copy">Siguientes pasos sugeridos para investigación y contraste.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_divider()
+    render_section_heading(
+        title="Recomendaciones",
+        subtitle="Orientación para investigación, contraste y siguiente paso operativo.",
     )
     render_recommendations_panel(recommendations)
 
-    st.markdown(
-        """
-        <div class="rf20-section soft">
-            <div class="rf20-section-title">Drilldown</div>
-            <div class="rf20-section-copy">Recupera evidencia detallada del dataset sin exponer SQL libre.</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_divider()
+    render_section_heading(
+        title="Drilldown",
+        subtitle="Ejecuta recuperación de evidencia detallada a partir de las claves del hallazgo.",
     )
     if not finding or not finding.get("sample_keys"):
         st.info("Este hallazgo no dispone de claves mínimas para ejecutar drilldown.")
         return
 
     client = APIClient()
-    col1, col2, col3 = st.columns([1.2, 1.0, 1.0])
-    action = col1.selectbox("Acción", ALLOWED_DRILLDOWN_ACTIONS)
-    limit_rows = col2.slider("Límite de filas", min_value=10, max_value=200, value=50, step=10)
-    order_direction = col3.selectbox("Orden", ["ASC", "DESC"])
-
-    if st.button("Ejecutar drilldown", type="primary"):
+    controls = st.columns([1.2, 1.0, 1.0, 1.2])
+    action = controls[0].selectbox("Acción", ALLOWED_DRILLDOWN_ACTIONS)
+    limit_rows = controls[1].slider("Límite", min_value=10, max_value=200, value=50, step=10)
+    order_direction = controls[2].selectbox("Orden", ["ASC", "DESC"])
+    if controls[3].button("Ejecutar drilldown", type="primary", use_container_width=True):
         try:
             payload = client.post_drilldown(
                 run_id=run_id,

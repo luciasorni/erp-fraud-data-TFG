@@ -10,6 +10,9 @@ def init_session_state() -> None:
     defaults = {
         "selected_dataset_id": None,
         "selected_scope": "p2p",
+        "analysis_step": 1,
+        "llm_mode": "real",
+        "kb_index_enabled": False,
         "selected_run_id": None,
         "selected_run_ids": {},
         "selected_finding_id": None,

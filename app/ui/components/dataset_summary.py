@@ -10,15 +10,19 @@ def render_dataset_summary(dataset: Optional[Dict[str, Any]]) -> None:
     if not dataset:
         st.info("Selecciona o sube un dataset para ver su resumen.")
         return
-    with st.container(border=True):
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown(f"**{dataset.get('file_name', '-') }**")
-            st.caption(dataset.get("dataset_id", "-"))
-        with col2:
-            st.markdown(f"**Validación:** {dataset.get('validation_status', '-')}")
-        col3, col4, col5 = st.columns(3)
-        col3.metric("Fecha de alta", format_datetime(dataset.get("uploaded_at_utc")))
-        col4.metric("Tamaño", format_bytes(dataset.get("size_bytes")))
-        scopes = ", ".join(str(item).upper() for item in dataset.get("scopes", [])) or "-"
-        col5.metric("Scopes", scopes)
+    scopes = ", ".join(str(item).upper() for item in dataset.get("scopes", [])) or "-"
+    st.markdown(
+        f"""
+        <div class="rf20-callout tight">
+            <div class="rf20-list-title">{dataset.get('file_name', '-')}</div>
+            <div class="rf20-list-subtitle">{dataset.get("dataset_id", "-")}</div>
+            <div class="rf20-summary-strip">
+                <div class="rf20-summary-item"><div class="rf20-summary-label">Validación</div><div class="rf20-summary-value">{dataset.get("validation_status", "-")}</div></div>
+                <div class="rf20-summary-item"><div class="rf20-summary-label">Fecha de alta</div><div class="rf20-summary-value">{format_datetime(dataset.get("uploaded_at_utc"))}</div></div>
+                <div class="rf20-summary-item"><div class="rf20-summary-label">Tamaño</div><div class="rf20-summary-value">{format_bytes(dataset.get("size_bytes"))}</div></div>
+                <div class="rf20-summary-item"><div class="rf20-summary-label">Scopes</div><div class="rf20-summary-value">{scopes}</div></div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
