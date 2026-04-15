@@ -6,11 +6,13 @@ Workflow: `.github/workflows/ecr-publish-main.yml`
 
 En `push` a `main` (y `workflow_dispatch`):
 - checkout,
-- credenciales AWS desde secrets,
+- asume un rol AWS por OIDC,
+- valida identidad AWS y cuenta esperada,
+- valida que el repositorio ECR existe,
 - login en ECR,
 - build Docker,
 - push tag por SHA corto,
-- push opcional `latest`.
+- push `latest`.
 
 ## Parámetros fijados
 
@@ -18,15 +20,61 @@ En `push` a `main` (y `workflow_dispatch`):
 - Cuenta: `798350130349`
 - ECR repo: `tfg-fraud-dev-ecr-pipeline`
 
-## Secrets necesarios en GitHub
+## Requisito de autenticación
 
-Recomendado (OIDC):
-- `AWS_ROLE_TO_ASSUME` (ARN del rol IAM asumible por GitHub Actions)
+- `AWS_ROLE_TO_ASSUME`
+  ARN del rol IAM que GitHub Actions debe asumir por OIDC.
 
-Alternativa (credenciales estáticas):
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_SESSION_TOKEN`
+El workflow es deliberadamente fail-fast:
+- si falta `AWS_ROLE_TO_ASSUME`, falla;
+- si la identidad asumida no pertenece a la cuenta `798350130349`, falla;
+- si no existe el repo ECR `tfg-fraud-dev-ecr-pipeline`, falla.
+
+No hay fallback a access keys estáticas para evitar ejecuciones ambiguas o verdes falsos.
+
+## Configuración exacta OIDC
+
+1. En AWS IAM, crea o reutiliza un proveedor OIDC para GitHub:
+   `https://token.actions.githubusercontent.com`
+2. Crea un rol IAM asumible por GitHub Actions con permisos mínimos sobre ECR.
+3. Usa una trust policy restringida al repo y rama `main`.
+4. Guarda el ARN del rol en el secret del repositorio GitHub:
+   `AWS_ROLE_TO_ASSUME`
+
+Trust policy de ejemplo:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::798350130349:oidc-provider/token.actions.githubusercontent.com"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": "repo:luciasorni/erp-fraud-data-TFG:ref:refs/heads/main"
+        }
+      }
+    }
+  ]
+}
+```
+
+Permisos mínimos esperables en el rol:
+- `ecr:GetAuthorizationToken`
+- `ecr:BatchCheckLayerAvailability`
+- `ecr:InitiateLayerUpload`
+- `ecr:UploadLayerPart`
+- `ecr:CompleteLayerUpload`
+- `ecr:PutImage`
+- `ecr:BatchGetImage`
+- `ecr:DescribeRepositories`
 
 ## Uso
 
@@ -37,8 +85,9 @@ Alternativa (credenciales estáticas):
 
 - Imagen publicada en:
   - `798350130349.dkr.ecr.eu-west-1.amazonaws.com/tfg-fraud-dev-ecr-pipeline:<sha>`
-  - `798350130349.dkr.ecr.eu-west-1.amazonaws.com/tfg-fraud-dev-ecr-pipeline:latest` (si no se desactiva)
+  - `798350130349.dkr.ecr.eu-west-1.amazonaws.com/tfg-fraud-dev-ecr-pipeline:latest`
 
-## Limitación
+## Comportamiento ante fallo
 
-- El workflow no puede verificarse en local sin secrets reales del repositorio GitHub.
+- Si OIDC no está configurado correctamente, el workflow falla antes del login/push.
+- No se “silencia” el publish ni se marca verde si no ha publicado.

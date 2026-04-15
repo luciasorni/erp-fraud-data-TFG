@@ -43,6 +43,7 @@ def test_rf14_kb_index_node_ok_updates_state(monkeypatch: Any, tmp_path: Path) -
     monkeypatch.setattr(nodes, "build_kb_index", _fake_build_kb_index)
     state = create_initial_graph_state(run_id="rf14-04-ok")
     state.run_metadata["base_dir"] = str(tmp_path)
+    state.run_metadata["kb_index_enabled"] = True
     state.run_metadata["kb_manifest_path"] = str(manifest_path)
     state.run_metadata["kb_index_state_path"] = str(state_path)
 
@@ -55,4 +56,3 @@ def test_rf14_kb_index_node_ok_updates_state(monkeypatch: Any, tmp_path: Path) -
     assert out.run_metadata["kb_index_status"] == "OK"
     assert out.run_metadata["kb_index_manifest_path"] == str(manifest_path)
     assert out.run_metadata["kb_index_state_path"] == str(state_path)
-

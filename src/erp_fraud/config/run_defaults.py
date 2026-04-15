@@ -23,7 +23,7 @@ DEFAULT_PROCESS_SCOPE = "p2p"
 DEFAULT_LANGSMITH_TRACING = False
 DEFAULT_LANGSMITH_PROJECT = "erp-fraud-tfg"
 
-DEFAULT_KB_ENABLED = True
+DEFAULT_KB_ENABLED = False
 DEFAULT_KB_SOURCES_CONFIG = "config/kb_sources.yaml"
 DEFAULT_KB_CHUNKING_CONFIG = "config/kb_chunking.yaml"
 DEFAULT_KB_CHROMA_CONFIG = "config/kb_chroma.yaml"

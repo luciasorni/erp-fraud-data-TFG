@@ -19,6 +19,7 @@ from .observability import (
     summarize_graph_state,
 )
 from .state import GraphState, create_initial_graph_state
+from ..config import DEFAULT_KB_ENABLED
 
 
 DEFAULT_GRAPH_SEQUENCE_STUB: tuple[str, ...] = (
@@ -251,6 +252,16 @@ def _should_abort_before_planning(state: GraphState) -> bool:
     return False
 
 
+def _should_execute_kb_index_node(state: GraphState) -> bool:
+    metadata = _meta(state)
+    explicit_rebuild = metadata.get("kb_index_rebuild_requested", None)
+    if explicit_rebuild is not None:
+        return bool(explicit_rebuild)
+    # Retrocompatibilidad: si no existe el nuevo flag explícito,
+    # mantener comportamiento histórico basado en kb_index_enabled.
+    return bool(metadata.get("kb_index_enabled", DEFAULT_KB_ENABLED))
+
+
 def _mark_graph_abort(state: GraphState, *, reason: str) -> None:
     metadata = _meta(state)
     metadata["graph_status"] = "ABORTED"
@@ -280,6 +291,22 @@ def run_graph(
     metadata["langsmith"] = get_langsmith_snapshot()
     metadata.setdefault("node_trace_events", [])
     for node_id in sequence:
+        if node_id == "kb_index" and not _should_execute_kb_index_node(state):
+            metadata = _meta(state)
+            metadata["kb_index_status"] = "SKIPPED_NO_REBUILD"
+            node_status = metadata.setdefault("node_status", {})
+            if isinstance(node_status, dict):
+                node_status["kb_index"] = "SKIPPED"
+            append_trace_event(
+                run_metadata=metadata,
+                node_id="kb_index",
+                stage="end",
+                attempt=0,
+                duration_ms=0,
+                status="SKIPPED",
+                output_summary=summarize_graph_state(state),
+            )
+            continue
         if node_id != "persist" and _should_abort_before_planning(state):
             _mark_graph_abort(state, reason="precondition_failed_before_planning")
             if "persist" in sequence:
@@ -417,6 +444,8 @@ def run_graph_full(
     dataset_hash: str = "",
     input_zip: str = "",
     run_metadata_overrides: dict[str, Any] | None = None,
+    execute_kb_index: bool = True,
+    sequence: tuple[str, ...] | None = None,
 ) -> GraphState:
     """Ejecuta el flujo completo RF14 con ingest+kb+persist."""
     state = create_initial_graph_state(
@@ -426,4 +455,13 @@ def run_graph_full(
     )
     if isinstance(run_metadata_overrides, dict):
         state.run_metadata.update(run_metadata_overrides)
-    return run_graph(initial_state=state, sequence=DEFAULT_GRAPH_SEQUENCE_FULL)
+    effective_sequence = sequence or DEFAULT_GRAPH_SEQUENCE_FULL
+    if not execute_kb_index:
+        effective_sequence = tuple(node_id for node_id in effective_sequence if node_id != "kb_index")
+        metadata = _meta(state)
+        metadata["kb_index_rebuild_requested"] = False
+        metadata["kb_index_status"] = "SKIPPED_NO_REBUILD"
+        node_status = metadata.setdefault("node_status", {})
+        if isinstance(node_status, dict):
+            node_status["kb_index"] = "SKIPPED"
+    return run_graph(initial_state=state, sequence=effective_sequence)

@@ -32,7 +32,7 @@ def test_rf15e09_run_settings_include_kb_defaults() -> None:
         o2c_target_schema=None,
     )
     settings = _resolve_run_settings(args)
-    assert settings["kb_index_enabled"] is True
+    assert settings["kb_index_enabled"] is False
     assert settings["kb_sources_config"] == "config/kb_sources.yaml"
     assert settings["kb_chunking_config"] == "config/kb_chunking.yaml"
     assert settings["kb_chroma_config"] == "config/kb_chroma.yaml"
@@ -53,3 +53,10 @@ def test_rf15e09_cli_flag_no_kb_index_overrides_default() -> None:
     args = parser.parse_args(["run", "--input-zip", "erp_fraud_data.zip", "--no-kb-index"])
     settings = _resolve_run_settings(args)
     assert settings["kb_index_enabled"] is False
+
+
+def test_rf15e09_cli_flag_kb_index_enabled_turns_on_rebuild() -> None:
+    parser = build_parser()
+    args = parser.parse_args(["run", "--input-zip", "erp_fraud_data.zip", "--kb-index-enabled"])
+    settings = _resolve_run_settings(args)
+    assert settings["kb_index_enabled"] is True

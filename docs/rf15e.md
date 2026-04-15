@@ -213,7 +213,8 @@ Implementación:
 
 Comportamiento:
 
-- por defecto intenta reconstruir índice KB de forma incremental durante el run,
+- por defecto no reconstruye el índice KB durante el run,
+- solo reconstruye KB si se solicita explícitamente con `--kb-index-enabled`,
 - si falla el indexado KB, se registra warning y el pipeline continúa (no bloqueante),
 - `report.json` y metadatos del run incluyen estado/config de KB cuando aplica.
 

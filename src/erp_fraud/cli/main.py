@@ -31,6 +31,7 @@ from ..catalog import (
 )
 from ..catalog.test_spec_loader import load_test_specs_from_catalog
 from ..agents.kb_index import build_kb_index
+from ..agents.kb_sources import load_kb_sources_config
 from ..ingest import (
     calcular_dataset_hash,
     cargar_fichero_tabular_desde_zip,
@@ -73,6 +74,7 @@ from ..storage.runs_comparison import (
     pick_latest_run_ids_by_process_family,
     write_comparison_outputs,
 )
+from ..graph import run_graph_full
 from ..config import (
     DEFAULT_CATALOG_PATH,
     DEFAULT_DB_PATH,
@@ -606,6 +608,13 @@ def _normalize_process_family(raw_value: Any) -> str:
     return value
 
 
+def _normalize_pipeline_mode(raw_value: Any) -> str:
+    value = str(raw_value if raw_value is not None else "deterministic").strip().lower()
+    if value not in {"deterministic", "graph"}:
+        return "deterministic"
+    return value
+
+
 def _filter_catalog_test_ids(
     *,
     test_specs: list[dict[str, Any]],
@@ -680,6 +689,7 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "schema_name": str(_pick("schema_name", DEFAULT_SCHEMA_NAME)),
         "table_name": str(_pick("table_name", DEFAULT_TABLE_NAME)),
         "catalog": str(_pick("catalog", DEFAULT_CATALOG_PATH)),
+        "catalog_explicit": bool(getattr(args, "catalog", None) is not None or cfg.get("catalog") is not None),
         "weights_config": str(_pick("weights_config", DEFAULT_WEIGHTS_CONFIG)),
         "timeout_ms": _pick("timeout_ms", None),
         "sample_top_n": int(_pick("sample_top_n", DEFAULT_SAMPLE_TOP_N)),
@@ -688,11 +698,15 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "select_fraud_types": _parse_select_values(_pick("select_fraud_types", None)),
         "select_tags": _parse_select_values(_pick("select_tags", None)),
         "kb_index_enabled": bool(_pick("kb_index_enabled", DEFAULT_KB_ENABLED)),
+        "kb_index_explicit": bool(getattr(args, "kb_index_enabled", None) is not None or cfg.get("kb_index_enabled") is not None),
+        "kb_index_cli_explicit": bool(getattr(args, "kb_index_enabled", None) is not None),
         "kb_sources_config": str(_pick("kb_sources_config", DEFAULT_KB_SOURCES_CONFIG)),
         "kb_chunking_config": str(_pick("kb_chunking_config", DEFAULT_KB_CHUNKING_CONFIG)),
         "kb_chroma_config": str(_pick("kb_chroma_config", DEFAULT_KB_CHROMA_CONFIG)),
         "llm_mode": _normalize_llm_mode(_pick("llm_mode", "stub")),
+        "pipeline_mode": _normalize_pipeline_mode(_pick("pipeline_mode", "deterministic")),
         "process_family": _normalize_process_family(_pick("process_family", DEFAULT_PROCESS_FAMILY)),
+        "process_family_explicit": bool(getattr(args, "process_family", None) is not None or cfg.get("process_family") is not None),
         "o2c_canonical_schema_config": str(
             _pick("o2c_canonical_schema_config", DEFAULT_O2C_CANONICAL_SCHEMA_CONFIG)
         ),
@@ -888,6 +902,7 @@ def _build_pipeline_args_for_workspace(
     settings: dict[str, Any],
     run_id: str,
     workspace_input_zip: Path,
+    pipeline_mode: str = "deterministic",
 ) -> argparse.Namespace:
     return argparse.Namespace(
         input_zip=str(workspace_input_zip),
@@ -909,6 +924,7 @@ def _build_pipeline_args_for_workspace(
         kb_sources_config=settings["kb_sources_config"],
         kb_chunking_config=settings["kb_chunking_config"],
         kb_chroma_config=settings["kb_chroma_config"],
+        pipeline_mode=pipeline_mode,
         process_family=settings["process_family"],
         o2c_canonical_schema_config=settings["o2c_canonical_schema_config"],
         o2c_identity_config=settings["o2c_identity_config"],
@@ -920,6 +936,142 @@ def _build_pipeline_args_for_workspace(
 
 def _execute_local_pipeline_in_workspace(*, inner_args: argparse.Namespace, resolved_settings: dict[str, Any]) -> int:
     return _run_pipeline_local(inner_args, resolved_settings=resolved_settings)
+
+
+def _execute_graph_pipeline_in_workspace(
+    *,
+    settings: dict[str, Any],
+    run_id: str,
+    workspace_input_zip: Path,
+    process_scope: str,
+    artifact_hash: str,
+) -> int:
+    run_dir = Path("run_results") / run_id
+    schema_summary_path = (run_dir / "schema_summary.json").resolve()
+    if not schema_summary_path.exists():
+        raise FileNotFoundError(f"No existe schema_summary para ejecutar grafo: {schema_summary_path}")
+
+    run_metadata_path = (run_dir / "run_metadata.json").resolve()
+    dataset_hash = ""
+    if run_metadata_path.exists():
+        try:
+            payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                dataset_hash = str(payload.get("dataset_hash", "")).strip()
+        except Exception:
+            dataset_hash = ""
+
+    schema_name = str(settings.get("schema_name", "")).strip()
+    table_name = str(settings.get("table_name", "")).strip()
+    process_family = str(settings.get("process_family", "")).strip().lower()
+    if process_family == "o2c":
+        if not schema_name or schema_name == DEFAULT_SCHEMA_NAME:
+            schema_name = str(settings.get("o2c_target_schema", DEFAULT_O2C_TARGET_SCHEMA)).strip() or DEFAULT_O2C_TARGET_SCHEMA
+        if not table_name or table_name == DEFAULT_TABLE_NAME:
+            table_name = "o2c_order"
+
+    def _abs_from_workspace(raw_value: str, default_value: str) -> str:
+        value = str(raw_value).strip() or str(default_value).strip()
+        if not value:
+            return ""
+        path = Path(value)
+        if not path.is_absolute():
+            path = (Path.cwd() / path).resolve()
+        return str(path)
+
+    db_path_abs = _abs_from_workspace(str(settings.get("db_path", DEFAULT_DB_PATH)), DEFAULT_DB_PATH)
+    catalog_path_abs = _abs_from_workspace(str(settings.get("catalog", DEFAULT_CATALOG_PATH)), DEFAULT_CATALOG_PATH)
+    weights_config_abs = _abs_from_workspace(str(settings.get("weights_config", DEFAULT_WEIGHTS_CONFIG)), DEFAULT_WEIGHTS_CONFIG)
+    kb_sources_abs = _abs_from_workspace(str(settings.get("kb_sources_config", "")), "")
+    kb_chunking_abs = _abs_from_workspace(str(settings.get("kb_chunking_config", "")), "")
+    kb_chroma_abs = _abs_from_workspace(str(settings.get("kb_chroma_config", "")), "")
+
+    # Cloud graph:
+    # - kb_index => rebuild/reindex (solo si se pide explícitamente por CLI)
+    # - kb_search => uso de índice existente para contexto documental (activo por defecto)
+    kb_index_rebuild_requested = (
+        bool(settings.get("kb_index_enabled", False))
+        if bool(settings.get("kb_index_cli_explicit", False))
+        else False
+    )
+    kb_search_enabled_for_graph = True
+
+    graph_state = run_graph_full(
+        run_id=run_id,
+        dataset_hash=dataset_hash,
+        input_zip=str(workspace_input_zip),
+        execute_kb_index=kb_index_rebuild_requested,
+        run_metadata_overrides={
+            "schema_summary_path": str(schema_summary_path),
+            "catalog_path": catalog_path_abs,
+            "persist_base_dir": "run_results",
+            "weights_config": weights_config_abs,
+            "llm_mode": str(settings.get("llm_mode", "stub")).strip(),
+            "process_family": process_family,
+            "process_scope": process_scope,
+            "db_path": db_path_abs,
+            "schema_name": schema_name,
+            "table_name": table_name,
+            "kb_index_enabled": kb_index_rebuild_requested,
+            "kb_index_rebuild_requested": kb_index_rebuild_requested,
+            "kb_search_enabled": kb_search_enabled_for_graph,
+            "kb_sources_config": kb_sources_abs,
+            "kb_chunking_config": kb_chunking_abs,
+            "kb_chroma_config": kb_chroma_abs,
+            "rf16_include_current_run": True,
+            "rf16_auto_latest_p2p_o2c": True,
+            "rf16_base_dir": "run_results",
+            "artifact_hash": artifact_hash,
+        },
+    )
+
+    graph_metadata = getattr(graph_state, "run_metadata", {})
+    if not isinstance(graph_metadata, dict):
+        graph_metadata = {}
+    graph_status = str(graph_metadata.get("graph_status", "")).strip().upper()
+    if graph_status == "ABORTED":
+        reason = str(graph_metadata.get("graph_abort_reason", "")).strip() or "unknown"
+        kb_abort_reason = reason.lower().startswith("node_failed:kb_index:")
+        if kb_abort_reason and not kb_index_rebuild_requested:
+            graph_metadata["graph_status"] = "OK_WITH_WARNINGS"
+            graph_metadata["graph_warning"] = (
+                "kb_index_failed_but_rebuild_not_requested"
+            )
+            graph_metadata["kb_index_status"] = "SKIPPED_NO_REBUILD"
+            node_status = graph_metadata.setdefault("node_status", {})
+            if isinstance(node_status, dict):
+                node_status["kb_index"] = "SKIPPED"
+            print(
+                "[cloud] graph warning: kb_index abort ignorado "
+                "(rebuild no solicitado explícitamente)"
+            )
+            graph_state_path = run_dir / "graph" / "graph_state.json"
+            if graph_state_path.exists():
+                try:
+                    payload = json.loads(graph_state_path.read_text(encoding="utf-8"))
+                    if isinstance(payload, dict):
+                        payload["run_metadata"] = graph_metadata
+                        graph_state_path.write_text(
+                            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                            encoding="utf-8",
+                        )
+                except Exception:
+                    pass
+        else:
+            raise RuntimeError(f"Grafo ABORTED: {reason}")
+
+    required_graph_outputs = (
+        run_dir / "graph" / "graph_state.json",
+        run_dir / "graph" / "hypotheses.json",
+        run_dir / "graph" / "selected_tests.json",
+        run_dir / "graph" / "findings.json",
+        run_dir / "graph" / "scores.json",
+        run_dir / "graph" / "manifest.json",
+    )
+    missing = [str(path) for path in required_graph_outputs if not path.exists()]
+    if missing:
+        raise FileNotFoundError(f"Grafo ejecutado sin artefactos mínimos ({len(missing)}): {', '.join(missing)}")
+    return 0
 
 
 def _build_cloud_artifacts_mappings_uri(*, s3_input_uri: str, scope: str) -> str:
@@ -936,10 +1088,173 @@ def _build_cloud_artifacts_mappings_uri(*, s3_input_uri: str, scope: str) -> str
     return f"s3://{bucket}/{mapping_prefix}"
 
 
+def _build_cloud_artifacts_category_uri(*, s3_input_uri: str, category: str, scope: str) -> str:
+    bucket, input_prefix = parse_s3_uri(s3_input_uri, allow_empty_prefix=True)
+    normalized = input_prefix.strip("/")
+    root_prefix = normalized
+    if normalized.endswith("/inputs"):
+        root_prefix = normalized[: -len("/inputs")]
+    elif normalized == "inputs":
+        root_prefix = ""
+    cat_prefix = f"artifacts/{category}/{scope}/"
+    if root_prefix:
+        return f"s3://{bucket}/{root_prefix.strip('/')}/{cat_prefix}"
+    return f"s3://{bucket}/{cat_prefix}"
+
+
 def _candidate_cloud_mapping_scopes(process_scope: str) -> list[str]:
     if process_scope == "both":
         return ["both", "p2p", "o2c", "shared"]
     return [process_scope, "shared"]
+
+
+def _materialize_workspace_file_from_source_root(
+    *,
+    workspace_dir: Path,
+    source_root: Path,
+    relative_path: str,
+    log_label: str,
+) -> Path | None:
+    rel = Path(str(relative_path).strip())
+    if rel.is_absolute():
+        return rel if rel.exists() else None
+    target = workspace_dir / rel
+    if target.exists():
+        return target
+    source = source_root / rel
+    if not source.exists() or not source.is_file():
+        return None
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(source.read_bytes())
+    print(f"[cloud] restored {log_label} (image fallback) -> {target}")
+    return target
+
+
+def _materialize_workspace_dir_from_source_root(
+    *,
+    workspace_dir: Path,
+    source_root: Path,
+    relative_path: str,
+    log_label: str,
+) -> Path | None:
+    rel = Path(str(relative_path).strip())
+    if rel.is_absolute():
+        return rel if rel.exists() else None
+    target = workspace_dir / rel
+    if target.exists() and any(target.rglob("*")):
+        return target
+    source = source_root / rel
+    if not source.exists() or not source.is_dir():
+        return None
+    target.mkdir(parents=True, exist_ok=True)
+    for path in source.rglob("*"):
+        if not path.is_file():
+            continue
+        out = target / path.relative_to(source)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(path.read_bytes())
+    print(f"[cloud] restored {log_label} (image fallback) -> {target}")
+    return target
+
+
+def _materialize_workspace_glob_from_source_root(
+    *,
+    workspace_dir: Path,
+    source_root: Path,
+    glob_pattern: str,
+    log_label: str,
+) -> int:
+    pattern = str(glob_pattern).strip()
+    if not pattern:
+        return 0
+    restored_count = 0
+    for source in sorted(source_root.glob(pattern)):
+        if not source.is_file():
+            continue
+        rel = source.relative_to(source_root)
+        target = workspace_dir / rel
+        if target.exists():
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        restored_count += 1
+    if restored_count > 0:
+        print(f"[cloud] restored {log_label} (image fallback) -> {restored_count} files")
+    return restored_count
+
+
+def _materialize_cloud_kb_sources_from_source_root(
+    *,
+    workspace_dir: Path,
+    source_root: Path,
+    kb_sources_config_path: str,
+) -> int:
+    cfg_path = str(kb_sources_config_path).strip()
+    if not cfg_path:
+        return 0
+    config_payload = load_kb_sources_config(cfg_path)
+    sources = config_payload.get("sources", [])
+    if not isinstance(sources, list):
+        return 0
+
+    restored_total = 0
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        if not bool(source.get("enabled", True)):
+            continue
+        source_id = str(source.get("source_id", "")).strip() or "kb_source"
+        source_type = str(source.get("type", "")).strip()
+        source_path = str(source.get("path", "")).strip()
+        if source_type == "file":
+            restored = _materialize_workspace_file_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                relative_path=source_path,
+                log_label=f"kb_source:{source_id}",
+            )
+            if restored is not None:
+                restored_total += 1
+        elif source_type == "glob":
+            restored_total += _materialize_workspace_glob_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                glob_pattern=source_path,
+                log_label=f"kb_source:{source_id}",
+            )
+    return restored_total
+
+
+def _restore_cloud_catalog_dir(
+    *,
+    workspace_dir: Path,
+    settings: dict[str, Any],
+    process_family: str,
+    target_relative_path: str,
+) -> Path | None:
+    target = workspace_dir / target_relative_path
+    scopes = [process_family, "shared"]
+    for scope in scopes:
+        uri = _build_cloud_artifacts_category_uri(
+            s3_input_uri=str(settings["s3_input_uri"]),
+            category="catalogs",
+            scope=scope,
+        )
+        staging_dir = workspace_dir / ".cloud_restore" / "catalogs" / scope
+        result = download_s3_prefix_to_local_dir(s3_uri=uri, local_dir=staging_dir)
+        if int(result.get("downloaded_count", 0) or 0) <= 0:
+            continue
+        target.mkdir(parents=True, exist_ok=True)
+        for file_path in staging_dir.rglob("*"):
+            if not file_path.is_file():
+                continue
+            out = target / file_path.relative_to(staging_dir)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(file_path.read_bytes())
+        print(f"[cloud] restored catalog ({scope}) -> {target}")
+    if target.exists() and any(path.is_file() for path in target.rglob("*")):
+        return target
+    return None
 
 
 def _restore_cloud_config_file_from_mappings(
@@ -1007,6 +1322,15 @@ def _restore_cloud_weights_config(
 def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> int:
     run_id = str(settings["run_id"]).strip() if settings["run_id"] else _default_run_id()
     process_scope = validate_process_scope(settings["process_scope"])
+    pipeline_mode = str(settings.get("pipeline_mode", "deterministic")).strip().lower() or "deterministic"
+    process_family = str(settings.get("process_family", DEFAULT_PROCESS_FAMILY)).strip().lower() or DEFAULT_PROCESS_FAMILY
+    explicit_process_family = bool(settings.get("process_family_explicit", False))
+    if process_scope in {"o2c", "both"} and not explicit_process_family:
+        print(
+            "ERROR: en RUN_MODE=cloud con PROCESS_SCOPE=o2c|both debes indicar --process-family explícito (p2p|o2c)",
+            file=sys.stderr,
+        )
+        return 2
     print(f"[cloud] RUN_MODE=cloud | run_id={run_id} | process_scope={process_scope}")
 
     tmp_dir_obj: tempfile.TemporaryDirectory[str] | None = None
@@ -1015,22 +1339,82 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
     try:
         tmp_dir_obj = tempfile.TemporaryDirectory(prefix="erp_fraud_cloud_")
         workspace_dir = Path(tmp_dir_obj.name)
+        source_root = previous_cwd
         print(f"[cloud] workspace={workspace_dir}")
 
         download_required_inputs(
             local_input_dir=workspace_dir,
             s3_input_uri=settings["s3_input_uri"],
         )
-        _restore_cloud_red_flags_mapping(
+        # Restore catálogo esperado por process_family en workspace (S3 first, image fallback).
+        requested_catalog = str(settings.get("catalog", DEFAULT_CATALOG_PATH)).strip() or DEFAULT_CATALOG_PATH
+        if process_family == "o2c" and not bool(settings.get("catalog_explicit", False)):
+            requested_catalog = "tests/catalog_o2c"
+            settings["catalog"] = requested_catalog
+        restored_catalog = _restore_cloud_catalog_dir(
+            workspace_dir=workspace_dir,
+            settings=settings,
+            process_family=process_family,
+            target_relative_path=requested_catalog,
+        )
+        if restored_catalog is None:
+            restored_catalog = _materialize_workspace_dir_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                relative_path=requested_catalog,
+                log_label="catalog",
+            )
+        if restored_catalog is not None:
+            settings["catalog"] = str(restored_catalog)
+
+        # Materialize config files required by deterministic+graph flows.
+        for cfg_key in (
+            "weights_config",
+            "o2c_canonical_schema_config",
+            "o2c_identity_config",
+            "o2c_mapping_config",
+            "kb_sources_config",
+            "kb_chunking_config",
+            "kb_chroma_config",
+        ):
+            restored = _materialize_workspace_file_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                relative_path=str(settings.get(cfg_key, "")).strip(),
+                log_label=cfg_key,
+            )
+            if restored is not None:
+                settings[cfg_key] = str(restored)
+        red_flags_path = _restore_cloud_red_flags_mapping(
             workspace_dir=workspace_dir,
             settings=settings,
             process_scope=process_scope,
         )
-        _restore_cloud_weights_config(
+        if red_flags_path is None:
+            _materialize_workspace_file_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                relative_path="config/red_flags_mapping.yaml",
+                log_label="red_flags_mapping",
+            )
+        weights_path = _restore_cloud_weights_config(
             workspace_dir=workspace_dir,
             settings=settings,
             process_scope=process_scope,
         )
+        if weights_path is None:
+            _materialize_workspace_file_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                relative_path="config/weights.yaml",
+                log_label="weights",
+            )
+        if bool(settings.get("kb_index_enabled", False)):
+            _materialize_cloud_kb_sources_from_source_root(
+                workspace_dir=workspace_dir,
+                source_root=source_root,
+                kb_sources_config_path=str(settings.get("kb_sources_config", "")).strip(),
+            )
 
         workspace_input_zip = _resolve_cloud_input_zip_path(
             workspace_dir=workspace_dir,
@@ -1055,6 +1439,7 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
             settings=settings,
             run_id=run_id,
             workspace_input_zip=workspace_input_zip,
+            pipeline_mode="deterministic",
         )
         os.chdir(workspace_dir)
         os.environ["RUN_MODE"] = "local"
@@ -1069,6 +1454,28 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
         if exit_code != 0:
             print("[cloud] pipeline local en workspace falló; no se actualiza state store")
             return int(exit_code)
+
+        if pipeline_mode == "graph":
+            if process_scope == "both":
+                print(
+                    "ERROR: pipeline_mode=graph no soporta PROCESS_SCOPE=both en un único run. "
+                    "Lanza dos runs (p2p y o2c) con --process-family explícito.",
+                    file=sys.stderr,
+                )
+                return 2
+            if process_family not in {"p2p", "o2c"}:
+                print(f"ERROR: process_family inválido para graph: {process_family}", file=sys.stderr)
+                return 2
+            graph_code = _execute_graph_pipeline_in_workspace(
+                settings=inner_settings,
+                run_id=run_id,
+                workspace_input_zip=workspace_input_zip,
+                process_scope=process_scope,
+                artifact_hash=artifact_hash,
+            )
+            if graph_code != 0:
+                print("[cloud] ejecución del grafo falló; no se actualiza state store", file=sys.stderr)
+                return int(graph_code)
 
         local_run_dir = workspace_dir / "run_results" / run_id
         output_uri = _build_cloud_output_s3_uri(s3_output_uri=settings["s3_output_uri"], run_id=run_id)
@@ -1274,6 +1681,18 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
                 logger.log_error("Validación de outputs obligatorios falló", error=str(exc))
                 print(f"ERROR: outputs obligatorios incompletos: {exc}", file=sys.stderr)
                 return 1
+
+            if str(settings.get("pipeline_mode", "deterministic")).strip().lower() == "graph":
+                graph_code = _execute_graph_pipeline_in_workspace(
+                    settings=settings,
+                    run_id=run_id,
+                    workspace_input_zip=Path(settings["input_zip"]),
+                    process_scope=str(settings.get("process_scope", "p2p")).strip(),
+                    artifact_hash=artifact_hash,
+                )
+                if graph_code != 0:
+                    logger.log_error("Ejecución grafo falló tras pipeline base", error=str(graph_code))
+                    return int(graph_code)
 
             logger.log_ingest_end(
                 status=overall_status,
@@ -1608,6 +2027,18 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
             print(f"ERROR: outputs obligatorios incompletos: {exc}", file=sys.stderr)
             return 1
 
+        if str(settings.get("pipeline_mode", "deterministic")).strip().lower() == "graph":
+            graph_code = _execute_graph_pipeline_in_workspace(
+                settings=settings,
+                run_id=run_id,
+                workspace_input_zip=Path(settings["input_zip"]),
+                process_scope=str(settings.get("process_scope", "p2p")).strip(),
+                artifact_hash=artifact_hash,
+            )
+            if graph_code != 0:
+                logger.log_error("Ejecución grafo falló tras pipeline base", error=str(graph_code))
+                return int(graph_code)
+
         logger.log_ingest_end(
             status=overall_status,
             tables_loaded=len(loaded_tables),
@@ -1871,6 +2302,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         choices=["stub", "real"],
         help="Modo de nodos LLM del grafo (stub|real). Default: stub",
+    )
+    run_parser.add_argument(
+        "--pipeline-mode",
+        default=None,
+        choices=["deterministic", "graph"],
+        help="Modo de ejecución del comando run (deterministic|graph). Default: deterministic",
     )
     run_parser.add_argument(
         "--process-family",

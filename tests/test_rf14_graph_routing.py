@@ -71,6 +71,65 @@ def test_rf14_run_graph_full_executes_with_stubbed_nodes(monkeypatch: Any, tmp_p
     assert Path(out.run_metadata["persist_manifest_path"]).exists()
 
 
+def test_rf14_run_graph_skips_kb_index_when_rebuild_not_requested(monkeypatch: Any, tmp_path: Path) -> None:
+    import src.erp_fraud.graph.graph as graph_mod
+
+    calls: list[str] = []
+
+    def _fake_run_node_by_id(*, node_id: str, state: Any) -> Any:
+        calls.append(node_id)
+        if node_id == "persist":
+            graph_dir = Path(tmp_path / "run_results" / state.run_id / "graph")
+            graph_dir.mkdir(parents=True, exist_ok=True)
+            manifest = graph_dir / "manifest.json"
+            manifest.write_text("{}", encoding="utf-8")
+            state.run_metadata["persist_manifest_path"] = str(manifest)
+        return state
+
+    monkeypatch.setattr(graph_mod, "run_node_by_id", _fake_run_node_by_id)
+    out = run_graph_full(
+        run_id="rf14-11-kb-skip",
+        run_metadata_overrides={
+            "persist_base_dir": str(tmp_path / "run_results"),
+            "kb_index_enabled": True,
+            "kb_index_rebuild_requested": False,
+        },
+    )
+    assert out.run_metadata["graph_status"] == "OK"
+    assert out.run_metadata["kb_index_status"] == "SKIPPED_NO_REBUILD"
+    assert out.run_metadata["node_status"]["kb_index"] == "SKIPPED"
+    assert "kb_index" not in calls
+
+
+def test_rf14_run_graph_full_execute_kb_index_false_removes_node(monkeypatch: Any, tmp_path: Path) -> None:
+    import src.erp_fraud.graph.graph as graph_mod
+
+    calls: list[str] = []
+
+    def _fake_run_node_by_id(*, node_id: str, state: Any) -> Any:
+        calls.append(node_id)
+        if node_id == "kb_index":
+            raise AssertionError("kb_index should not execute when execute_kb_index=False")
+        if node_id == "persist":
+            graph_dir = Path(tmp_path / "run_results" / state.run_id / "graph")
+            graph_dir.mkdir(parents=True, exist_ok=True)
+            manifest = graph_dir / "manifest.json"
+            manifest.write_text("{}", encoding="utf-8")
+            state.run_metadata["persist_manifest_path"] = str(manifest)
+        return state
+
+    monkeypatch.setattr(graph_mod, "run_node_by_id", _fake_run_node_by_id)
+    out = run_graph_full(
+        run_id="rf14-11-kb-remove",
+        run_metadata_overrides={"persist_base_dir": str(tmp_path / "run_results")},
+        execute_kb_index=False,
+    )
+    assert out.run_metadata["graph_status"] == "OK"
+    assert out.run_metadata["kb_index_status"] == "SKIPPED_NO_REBUILD"
+    assert out.run_metadata["node_status"]["kb_index"] == "SKIPPED"
+    assert "kb_index" not in calls
+
+
 def test_rf14_run_graph_retries_node_then_succeeds(monkeypatch: Any) -> None:
     import src.erp_fraud.graph.graph as graph_mod
 
