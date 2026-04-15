@@ -26,16 +26,19 @@ def main() -> None:
             title="Empieza por la acción principal",
             subtitle="La aplicación está pensada para un flujo sencillo: registrar dataset, lanzar análisis y revisar resultados con drilldown seguro.",
         )
-        cta1, cta2 = st.columns(2)
+        cta1, cta2, cta3 = st.columns(3)
         with cta1:
             st.page_link("pages/1_Nuevo_analisis.py", label="Nuevo análisis", icon=":material/play_circle:")
         with cta2:
             st.page_link("pages/2_Ejecuciones.py", label="Ir a ejecuciones", icon=":material/history:")
+        with cta3:
+            st.page_link("pages/5_Como_funciona.py", label="Cómo funciona", icon=":material/info:")
         st.markdown(
             """
             <div class="rf20-mini-note" style="margin-top:0.55rem;">
                 Usa <strong>Nuevo análisis</strong> si vas a cargar un ERP o configurar un run nuevo.
-                Ve a <strong>Ejecuciones</strong> si quieres revisar resultados ya lanzados.
+                Ve a <strong>Ejecuciones</strong> si quieres revisar resultados ya lanzados y a <strong>Cómo funciona</strong>
+                si necesitas contexto sobre P2P, O2C, hypotheses, findings y scoring.
             </div>
             """,
             unsafe_allow_html=True,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import time
 
 import streamlit as st
 
@@ -74,6 +75,8 @@ def main() -> None:
 
     if runs:
         _render_featured_run(runs[0])
+        if str(runs[0].get("status", "")).upper() in {"RUNNING", "SUBMITTED"}:
+            st.info("Hay una ejecución en curso. El historial se refresca automáticamente cada 4 segundos para mostrar actividad.")
         if st.button("Abrir esta ejecución", type="primary"):
             remember_run_selection(run_id=runs[0]["run_id"])
             st.switch_page("pages/3_Resultados.py")
@@ -103,6 +106,10 @@ def main() -> None:
         st.switch_page("pages/3_Resultados.py")
 
     render_run_table(filtered_runs, on_open=_open_run)
+
+    if any(str(item.get("status", "")).upper() in {"RUNNING", "SUBMITTED"} for item in runs):
+        time.sleep(4)
+        st.rerun()
 
 
 if __name__ == "__main__":

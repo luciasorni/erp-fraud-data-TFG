@@ -1,6 +1,7 @@
 API_BASE_URL = "http://localhost:8000/api/v1"
 APP_TITLE = "ERP Fraud Analysis Workbench"
 APP_SUBTITLE = "Backend cloud multiagente para análisis antifraude ERP sobre P2P y O2C."
+DISPLAY_TIMEZONE = "Europe/Madrid"
 
 PAGE_ICON = "app/ui/assets/logo_placeholder.png"
 
@@ -44,4 +45,3 @@ DEFAULT_RUN_FILTERS = {
 }
 
 ALLOWED_DRILLDOWN_ACTIONS = ["finding_rows"]
-

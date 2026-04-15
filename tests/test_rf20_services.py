@@ -142,14 +142,21 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
             }
         ],
         "graph/second_level_analysis.json": {
-            "recommendations": [
-                {
-                    "title": "Review vendor V01",
-                    "category": "follow_up",
-                    "priority": "high",
-                    "summary": "Open manual review",
+            "deterministic_comparison": {
+                "summary": {
+                    "common_selected_tests": ["TST-UNUSUAL-AMOUNT-BY-VENDOR"],
+                    "common_fraud_types_with_findings": ["amount_anomaly"],
                 }
-            ]
+            },
+            "llm_insights": {
+                "executive_summary": "The case deviates from the expected vendor pattern.",
+                "cross_process_conclusions": [
+                    "The same anomaly appears consistently in the selected evidence."
+                ],
+                "audit_procedures": ["Validate invoice lineage for vendor V01."],
+                "recommended_tests": ["Compare V01 against peer vendors for amount dispersion."],
+                "next_actions": ["Open a targeted manual review for vendor V01."],
+            },
         },
     }
 
@@ -164,10 +171,77 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
     assert out.counts.findings == 1
     assert out.counts.scores == 1
     assert out.counts.explanations == 1
-    assert out.counts.second_level_analysis == 1
+    assert out.counts.second_level_analysis == 3
+    assert out.executive_summary == "The case deviates from the expected vendor pattern."
     assert out.hypotheses[0].title == "Amount anomaly"
     assert out.findings[0].attributes["sample_entity_key"] == "betrag=100|kreditor=V01"
-    assert out.second_level_analysis[0].title == "Review vendor V01"
+    assert out.second_level_analysis[0].title == "Recomendación"
+    assert out.comparison_insights[0].title == "Desviación relevante"
+    assert out.scores[0].attributes["confidence"] == 0.8
+
+
+def test_rf20_results_service_marks_technical_explanation_errors(monkeypatch) -> None:
+    artifacts = {
+        "graph/graph_state.json": {"run_metadata": {"graph_status": "OK", "kb_index_status": "OK", "process_scope": "o2c"}},
+        "graph/hypotheses.json": [],
+        "graph/selected_tests.json": [],
+        "graph/findings.json": [],
+        "graph/scores.json": [],
+        "graph/explanations.json": [
+            {
+                "test_id": "TST-O2C-ERR",
+                "fraud_type": "collection_manipulation",
+                "status": "ERROR",
+                "summary": "TST-O2C-ERR terminó en ERROR; revisar error_summary y logs del runner.",
+            }
+        ],
+        "graph/second_level_analysis.json": {},
+    }
+    monkeypatch.setattr(
+        "app.api.services.results_service._read_json_artifact",
+        lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
+    )
+    out = load_graph_results(run_id="run-err", status="FAILED", scope="o2c", settings=_settings(), s3_client=object())
+    assert out.explanations[0].attributes["technical_error"] is True
+
+
+def test_rf20_results_service_synthesizes_executive_summary_when_second_level_is_deterministic(monkeypatch) -> None:
+    artifacts = {
+        "graph/graph_state.json": {"run_metadata": {"graph_status": "OK", "kb_index_status": "OK", "process_scope": "p2p"}},
+        "graph/hypotheses.json": [],
+        "graph/selected_tests.json": [],
+        "graph/findings.json": [
+            {
+                "test_id": "TST-001",
+                "fraud_type": "amount_anomaly",
+                "status": "OK",
+                "finding_count": 3,
+                "columns": ["vendor"],
+                "rows": [{"entity_key": "vendor=V01", "keys": {"vendor": "V01"}}],
+            }
+        ],
+        "graph/scores.json": [{"final_label": "amount_anomaly", "confidence": 0.35, "evidence_summary": "summary"}],
+        "graph/explanations.json": [
+            {
+                "test_id": "TST-001",
+                "fraud_type": "amount_anomaly",
+                "status": "OK",
+                "summary": "Se observan importes anómalos frente al patrón habitual del proveedor V01.",
+            }
+        ],
+        "graph/second_level_analysis.json": {
+            "llm_insights": {
+                "executive_summary": "Comparación RF16 completada con base determinista. Tipologías comunes detectadas: amount_anomaly."
+            }
+        },
+    }
+    monkeypatch.setattr(
+        "app.api.services.results_service._read_json_artifact",
+        lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
+    )
+    out = load_graph_results(run_id="run-002", status="COMPLETED", scope="p2p", settings=_settings(), s3_client=object())
+    assert "Comparación RF16 completada" not in str(out.executive_summary)
+    assert "proveedor V01" in str(out.executive_summary)
 
 
 def test_rf20_results_service_load_report_supports_real_ranking_object(monkeypatch) -> None:

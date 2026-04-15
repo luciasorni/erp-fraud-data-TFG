@@ -8,9 +8,10 @@ from fastapi.testclient import TestClient
 
 from app.api.main import create_app
 from app.api.schemas.datasets import DatasetDetailResponse, DatasetSummaryResponse, DatasetUploadResponse
-from app.api.schemas.drilldown import DrilldownResponse
+from app.api.schemas.drilldown import DrilldownJobResponse, DrilldownResponse
 from app.api.schemas.results import GraphResultsResponse, ReportRanking, ReportResponse
 from app.api.schemas.runs import RunCreateResponse, RunDetailResponse, RunSummaryResponse
+from app.api.schemas.operations import OperationStatusResponse
 
 
 def _client() -> TestClient:
@@ -68,6 +69,35 @@ def test_rf20_datasets_upload_endpoint(monkeypatch) -> None:
     assert payload["scopes"] == ["p2p", "o2c"]
     assert payload["expected_files"] == ["README.txt", "fraud_1.csv", "normal_1.csv"]
     assert payload["size_bytes"] == 2048
+
+
+def test_rf20_datasets_upload_job_endpoint(monkeypatch) -> None:
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    monkeypatch.setattr(
+        "app.api.routers.datasets.create_job",
+        lambda **kwargs: OperationStatusResponse(
+            job_id="job-upload-001",
+            kind="dataset_upload",
+            status="QUEUED",
+            stage="queued",
+            message="Dataset upload queued.",
+            progress=0,
+            created_at_utc=now,
+            updated_at_utc=now,
+            result=None,
+            error=None,
+        ),
+    )
+    monkeypatch.setattr("app.api.routers.datasets.run_job_in_thread", lambda **kwargs: None)
+    response = _client().post(
+        "/api/v1/datasets/upload-jobs",
+        data={"scope": "both"},
+        files={"file": ("erp_fraud_data.zip", _valid_zip_bytes(), "application/zip")},
+    )
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["job_id"] == "job-upload-001"
+    assert payload["kind"] == "dataset_upload"
 
 
 def test_rf20_runs_post_supports_scope_both(monkeypatch) -> None:
@@ -246,3 +276,35 @@ def test_rf20_drilldown_endpoint_returns_safe_payload(monkeypatch) -> None:
     payload = response.json()
     assert payload["query_id"] == "drilldown_duplicate_postings_v1"
     assert payload["allowed_actions"] == ["finding_rows"]
+
+
+def test_rf20_drilldown_job_endpoint_returns_job_handle(monkeypatch) -> None:
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    monkeypatch.setattr(
+        "app.api.routers.drilldown.create_job",
+        lambda **kwargs: DrilldownJobResponse(
+            job_id="job-drilldown-001",
+            kind="drilldown",
+            status="QUEUED",
+            stage="queued",
+            message="Drilldown queued.",
+            progress=0,
+            created_at_utc=now,
+            updated_at_utc=now,
+            result=None,
+            error=None,
+        ),
+    )
+    monkeypatch.setattr("app.api.routers.drilldown.run_job_in_thread", lambda **kwargs: None)
+    response = _client().post(
+        "/api/v1/runs/run-001/drilldown-jobs",
+        json={
+            "action": "finding_rows",
+            "test_id": "TST-DUPLICATE-POSTINGS",
+            "keys": {"kreditor": "V1", "belegnummer": "1", "position": "1", "betrag": "10"},
+        },
+    )
+    assert response.status_code == 202
+    payload = response.json()
+    assert payload["job_id"] == "job-drilldown-001"
+    assert payload["kind"] == "drilldown"

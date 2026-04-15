@@ -1,18 +1,28 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
-from .constants import SCOPE_LABELS, STATUS_LABELS
+from .constants import DISPLAY_TIMEZONE, SCOPE_LABELS, STATUS_LABELS
 
 
-def format_datetime(value: Optional[str]) -> str:
+def format_datetime(value: Optional[Any]) -> str:
     if not value:
         return "-"
     try:
-        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if isinstance(value, datetime):
+            dt = value
+        else:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError:
-        return value
+        return str(value)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    try:
+        dt = dt.astimezone(ZoneInfo(DISPLAY_TIMEZONE))
+    except Exception:
+        pass
     return dt.strftime("%d/%m/%Y %H:%M")
 
 
@@ -56,4 +66,3 @@ def coalesce_text(*values: Any) -> str:
         if text:
             return text
     return "-"
-

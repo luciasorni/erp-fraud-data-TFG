@@ -235,6 +235,10 @@ def inject_global_styles() -> None:
             border-radius: 0 14px 14px 0;
             margin-bottom: 0.75rem;
         }
+        .rf20-finding-item {
+            background: #FBFCFB;
+            border-left: 4px solid #BFDCD6;
+        }
         .rf20-stepnav {
             display: flex;
             gap: 0.55rem;
@@ -291,7 +295,7 @@ def render_home_header() -> None:
     )
 
 
-def render_page_header(*, title: str, subtitle: str, eyebrow: str = "RF20 Application Layer") -> None:
+def render_page_header(*, title: str, subtitle: str, eyebrow: str = "ERP Fraud Analysis") -> None:
     inject_global_styles()
     st.markdown(
         f"""

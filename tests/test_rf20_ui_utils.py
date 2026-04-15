@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-from app.ui.utils.formatters import format_bool, format_bytes, format_scope, format_status
-from app.ui.utils.mappers import build_execution_metrics, build_run_kpis, findings_table_rows
+from app.ui.utils.formatters import format_bool, format_bytes, format_datetime, format_scope, format_status
+from app.ui.utils.mappers import (
+    build_execution_metrics,
+    build_run_kpis,
+    extract_score_value,
+    findings_table_rows,
+    split_recommendation_sections,
+)
 
 
 def test_rf20_ui_formatters_render_expected_labels() -> None:
@@ -9,6 +15,7 @@ def test_rf20_ui_formatters_render_expected_labels() -> None:
     assert format_status("COMPLETED") == "Completada"
     assert format_bool(True) == "Sí"
     assert format_bytes(1024) == "1.0 KB"
+    assert format_datetime("2026-04-15T10:00:00+00:00") == "15/04/2026 12:00"
 
 
 def test_rf20_ui_mappers_generate_metrics_and_findings_rows() -> None:
@@ -43,3 +50,18 @@ def test_rf20_ui_mappers_generate_metrics_and_findings_rows() -> None:
     assert findings[0]["finding_id"] == "TST-001"
     assert findings[0]["sample_keys"]["doc"] == "1"
 
+
+def test_rf20_ui_mappers_extract_score_and_split_recommendations() -> None:
+    score = extract_score_value({"attributes": {"confidence": 0.82}, "subtitle": "confidence=0.20"})
+    assert score == 0.82
+
+    sections = split_recommendation_sections(
+        [
+            {"status": "recommended_action", "summary": "review"},
+            {"status": "recommended_test", "summary": "retest"},
+            {"status": "audit_procedure", "summary": "audit"},
+        ]
+    )
+    assert len(sections["recommendations"]) == 1
+    assert len(sections["recommended_tests"]) == 1
+    assert len(sections["audit_procedures"]) == 1

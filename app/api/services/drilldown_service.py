@@ -88,10 +88,13 @@ def execute_drilldown(
     payload: DrilldownRequest,
     settings: AWSAPISettings,
     s3_client: Any | None = None,
+    status_callback: Any | None = None,
 ) -> DrilldownResponse:
     if payload.action not in ALLOWED_DRILLDOWN_ACTIONS:
         raise ValueError(f"action no permitida: {payload.action}")
     client = s3_client or create_s3_client(settings=settings)
+    if status_callback:
+        status_callback(stage="loading_run", message="Cargando contexto del run...", progress=10)
     run = get_run(run_id=run_id, settings=settings, s3_client=client)
     if run is None:
         raise ValueError(f"run_id no encontrado: {run_id}")
@@ -105,6 +108,8 @@ def execute_drilldown(
     dataset_key = dataset.s3_keys.get(run.scope)
     if not dataset_key:
         raise ValueError(f"dataset_id {run.dataset_id} no tiene ZIP para scope={run.scope}")
+    if status_callback:
+        status_callback(stage="building_cache", message="Preparando cache analítica para drilldown...", progress=35)
     db_path, schema_name, table_name = _build_db_cache(
         dataset_id=run.dataset_id,
         scope=run.scope,
@@ -112,6 +117,8 @@ def execute_drilldown(
         settings=settings,
         s3_client=client,
     )
+    if status_callback:
+        status_callback(stage="querying", message="Ejecutando drilldown sobre evidencia del hallazgo...", progress=75)
     rows = drilldown(
         test_id=payload.test_id,
         schema_name=schema_name,
@@ -122,7 +129,7 @@ def execute_drilldown(
         order_direction=payload.order_direction,
         extra_filters=payload.extra_filters,
     )
-    return DrilldownResponse(
+    response = DrilldownResponse(
         run_id=run_id,
         action=payload.action,
         test_id=payload.test_id,
@@ -131,3 +138,6 @@ def execute_drilldown(
         rows=rows,
         allowed_actions=list(ALLOWED_DRILLDOWN_ACTIONS),
     )
+    if status_callback:
+        status_callback(stage="completed", message="Drilldown completado.", progress=100)
+    return response

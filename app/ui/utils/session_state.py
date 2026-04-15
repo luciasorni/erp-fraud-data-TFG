@@ -17,6 +17,7 @@ def init_session_state() -> None:
         "selected_run_ids": {},
         "selected_finding_id": None,
         "selected_finding": None,
+        "selected_finding_row_key": None,
         "selected_graph_payload": None,
         "selected_run_detail": None,
         "last_run_response": None,
@@ -36,6 +37,7 @@ def remember_run_selection(*, run_id: str, run_detail: Optional[Dict[str, Any]] 
 def remember_finding_selection(*, finding_id: str, finding: Optional[Dict[str, Any]] = None) -> None:
     st.session_state.selected_finding_id = finding_id
     st.session_state.selected_finding = finding
+    st.session_state.selected_finding_row_key = None
 
 
 def remember_last_run_response(payload: dict) -> None:

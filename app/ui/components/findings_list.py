@@ -17,7 +17,7 @@ def render_findings_list(
         return
     st.markdown('<div class="rf20-list">', unsafe_allow_html=True)
     for row in rows:
-        st.markdown('<div class="rf20-list-item">', unsafe_allow_html=True)
+        st.markdown('<div class="rf20-list-item rf20-finding-item">', unsafe_allow_html=True)
         top_left, top_right = st.columns([5.0, 1.0])
         with top_left:
             st.markdown(
@@ -28,7 +28,7 @@ def render_findings_list(
         with top_right:
             render_status_badge(row.get("status"))
         if row.get("summary"):
-            st.markdown(f'<div class="rf20-meta-line">{row.get("summary")}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="rf20-meta-line" style="color:#12302B;">{row.get("summary")}</div>', unsafe_allow_html=True)
         st.markdown(
             f"""
             <div class="rf20-meta-line">

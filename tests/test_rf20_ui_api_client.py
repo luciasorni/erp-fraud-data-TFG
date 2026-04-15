@@ -73,3 +73,14 @@ def test_rf20_ui_pages_use_relative_streamlit_paths() -> None:
     for path in checked:
         content = path.read_text(encoding="utf-8")
         assert "app/ui/pages/" not in content
+
+
+def test_rf20_ui_api_client_supports_job_endpoints() -> None:
+    session = _FakeSession()
+    client = APIClient(base_url="http://localhost:8000/api/v1", session=session)
+    upload = client.get_upload_dataset_job("job-001")
+    drilldown = client.get_drilldown_job(run_id="run-001", job_id="job-002")
+    assert upload["status"] == "ok"
+    assert drilldown["status"] == "ok"
+    assert session.calls[0][1] == "http://localhost:8000/api/v1/datasets/upload-jobs/job-001"
+    assert session.calls[1][1] == "http://localhost:8000/api/v1/runs/run-001/drilldown-jobs/job-002"

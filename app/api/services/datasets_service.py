@@ -66,27 +66,36 @@ def _registry_bucket_prefix(*, settings: AWSAPISettings) -> tuple[str, str]:
     return bucket, prefix
 
 
-def upload_dataset(
+def upload_dataset_from_bytes(
     *,
-    file: UploadFile,
+    file_name: str,
+    body: bytes,
     scope: str,
     settings: AWSAPISettings,
     s3_client: Any | None = None,
+    status_callback: Any | None = None,
 ) -> DatasetUploadResponse:
-    file_name = str(file.filename or "").strip() or "erp_fraud_data.zip"
+    file_name = str(file_name or "").strip() or "erp_fraud_data.zip"
     if Path(file_name).suffix.lower() != ".zip":
         raise ValueError("El dataset debe ser un fichero .zip")
-    body = file.file.read()
     if not body:
         raise ValueError("El dataset ZIP está vacío")
 
+    if status_callback:
+        status_callback(stage="validating", message="Validando estructura del ZIP...", progress=15)
     files_detected, dataset_hash = _validate_dataset_upload(file_name, body)
     dataset_id = _dataset_id_from_content(file_name, body)
     scopes = _normalize_scopes(scope)
     uploaded_at = _utc_now()
     client = s3_client or create_s3_client(settings=settings)
     s3_keys: dict[str, str] = {}
-    for item_scope in scopes:
+    for index, item_scope in enumerate(scopes, start=1):
+        if status_callback:
+            status_callback(
+                stage="uploading",
+                message=f"Registrando ZIP para scope={item_scope}...",
+                progress=35 + int((index - 1) * 30 / max(1, len(scopes))),
+            )
         zip_key = dataset_zip_key(dataset_id=dataset_id, scope=item_scope, settings=settings)
         put_bytes_to_s3(
             key=zip_key,
@@ -109,9 +118,30 @@ def upload_dataset(
         "size_bytes": len(body),
         "s3_keys": s3_keys,
     }
+    if status_callback:
+        status_callback(stage="registering", message="Registrando metadatos del dataset...", progress=85)
     registry_key = dataset_registry_key(dataset_id=dataset_id, settings=settings)
     put_json_to_s3(key=registry_key, payload=metadata, settings=settings, s3_client=client)
+    if status_callback:
+        status_callback(stage="completed", message="Dataset listo para análisis.", progress=100)
     return DatasetUploadResponse(**metadata)
+
+
+def upload_dataset(
+    *,
+    file: UploadFile,
+    scope: str,
+    settings: AWSAPISettings,
+    s3_client: Any | None = None,
+) -> DatasetUploadResponse:
+    body = file.file.read()
+    return upload_dataset_from_bytes(
+        file_name=str(file.filename or "").strip() or "erp_fraud_data.zip",
+        body=body,
+        scope=scope,
+        settings=settings,
+        s3_client=s3_client,
+    )
 
 
 def _load_dataset_metadata(
@@ -179,4 +209,3 @@ def ensure_dataset_supports_scope(*, dataset: DatasetDetailResponse, scope: str)
         raise ValueError(
             "dataset_id no disponible para los scopes requeridos: " + ", ".join(missing)
         )
-

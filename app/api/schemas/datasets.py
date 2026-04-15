@@ -6,6 +6,7 @@ from typing import Dict, List, Literal
 from pydantic import Field
 
 from .common import APIModel
+from .operations import OperationStatusResponse
 
 
 DatasetScope = Literal["p2p", "o2c", "both"]
@@ -45,3 +46,7 @@ class DatasetDetailResponse(APIModel):
     s3_keys: Dict[str, str]
     metadata_key: str
     size_bytes: int = Field(ge=0)
+
+
+class DatasetUploadJobResponse(OperationStatusResponse):
+    pass

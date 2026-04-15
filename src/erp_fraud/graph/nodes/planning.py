@@ -92,6 +92,7 @@ def _normalize_llm_hypotheses_output(
         row = dict(seed)
         row["hypothesis_id"] = hypothesis_id
         row["fraud_type"] = fraud_type
+        row["source"] = "planner_llm"
         if str(decision.get("process_step", "")).strip():
             row["process_step"] = str(decision.get("process_step", "")).strip()
         row["candidate_test_ids"] = catalog_tests_by_fraud_type.get(fraud_type, row.get("candidate_test_ids", []))[:3]

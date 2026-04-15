@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Literal
 from pydantic import Field
 
 from .common import APIModel
+from .operations import OperationStatusResponse
 
 
 DrilldownAction = Literal["finding_rows"]
@@ -28,3 +29,7 @@ class DrilldownResponse(APIModel):
     row_count: int
     rows: List[Dict[str, Any]]
     allowed_actions: List[str]
+
+
+class DrilldownJobResponse(OperationStatusResponse):
+    pass

@@ -4,16 +4,21 @@ import streamlit as st
 from typing import Any, Dict, List
 
 
-def render_recommendations_panel(recommendations: List[Dict[str, Any]]) -> None:
+def render_recommendations_panel(
+    recommendations: List[Dict[str, Any]],
+    *,
+    title: str = "Recomendaciones y siguientes pasos",
+    empty_message: str = "No hay recomendaciones adicionales disponibles.",
+) -> None:
     if not recommendations:
-        st.info("No hay recomendaciones adicionales disponibles.")
+        st.info(empty_message)
         return
-    st.markdown("#### Recomendaciones y siguientes pasos")
+    st.markdown(f"#### {title}")
     for item in recommendations:
         st.markdown(
             f"""
             <div class="rf20-recommendation">
-                <div class="rf20-list-title">{item.get('title') or 'Recomendación'}</div>
+                <div class="rf20-list-title">{item.get('title') or title}</div>
                 <div class="rf20-list-subtitle">{item.get("subtitle") or ""}</div>
                 <div class="rf20-meta-line">{item.get("summary") or "Sin recomendación detallada."}</div>
             </div>

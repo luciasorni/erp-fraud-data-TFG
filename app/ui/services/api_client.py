@@ -40,26 +40,50 @@ class APIClient:
             detail = response.text
         raise APIClientError(f"API {response.status_code}: {detail}")
 
-    def get_health(self) -> Dict[str, Any]:
-        response = self.session.get(self._url("health"), timeout=self.timeout_seconds)
+    def _get(self, path: str, *, timeout: Optional[int] = None) -> Any:
+        try:
+            response = self.session.get(self._url(path), timeout=timeout or self.timeout_seconds)
+        except requests.exceptions.Timeout as exc:
+            raise APIClientError("La operación tardó demasiado en responder.") from exc
+        except requests.RequestException as exc:
+            raise APIClientError(f"No se pudo conectar con la API: {exc}") from exc
         return self._handle_response(response)
+
+    def _post(self, path: str, *, timeout: Optional[int] = None, **kwargs: Any) -> Any:
+        try:
+            response = self.session.post(self._url(path), timeout=timeout or self.timeout_seconds, **kwargs)
+        except requests.exceptions.Timeout as exc:
+            raise APIClientError("La operación tardó demasiado en responder.") from exc
+        except requests.RequestException as exc:
+            raise APIClientError(f"No se pudo conectar con la API: {exc}") from exc
+        return self._handle_response(response)
+
+    def get_health(self) -> Dict[str, Any]:
+        return self._get("health")
 
     def list_datasets(self) -> list[dict[str, Any]]:
-        response = self.session.get(self._url("datasets"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get("datasets")
 
     def get_dataset(self, dataset_id: str) -> Dict[str, Any]:
-        response = self.session.get(self._url(f"datasets/{dataset_id}"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get(f"datasets/{dataset_id}")
 
     def upload_dataset(self, *, file_name: str, file_bytes: bytes, scope: str) -> Dict[str, Any]:
-        response = self.session.post(
-            self._url("datasets/upload"),
+        return self._post(
+            "datasets/upload",
             data={"scope": scope},
             files={"file": (file_name, file_bytes, "application/zip")},
-            timeout=self.timeout_seconds,
         )
-        return self._handle_response(response)
+
+    def start_upload_dataset_job(self, *, file_name: str, file_bytes: bytes, scope: str) -> Dict[str, Any]:
+        return self._post(
+            "datasets/upload-jobs",
+            data={"scope": scope},
+            files={"file": (file_name, file_bytes, "application/zip")},
+            timeout=15,
+        )
+
+    def get_upload_dataset_job(self, job_id: str) -> Dict[str, Any]:
+        return self._get(f"datasets/upload-jobs/{job_id}", timeout=10)
 
     def create_run(
         self,
@@ -70,8 +94,8 @@ class APIClient:
         llm_mode: str,
         kb_index_enabled: bool,
     ) -> Dict[str, Any]:
-        response = self.session.post(
-            self._url("runs"),
+        return self._post(
+            "runs",
             json={
                 "dataset_id": dataset_id,
                 "scope": scope,
@@ -79,25 +103,19 @@ class APIClient:
                 "llm_mode": llm_mode,
                 "kb_index_enabled": kb_index_enabled,
             },
-            timeout=self.timeout_seconds,
         )
-        return self._handle_response(response)
 
     def list_runs(self) -> list[dict[str, Any]]:
-        response = self.session.get(self._url("runs"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get("runs")
 
     def get_run(self, run_id: str) -> Dict[str, Any]:
-        response = self.session.get(self._url(f"runs/{run_id}"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get(f"runs/{run_id}")
 
     def get_run_graph(self, run_id: str) -> Dict[str, Any]:
-        response = self.session.get(self._url(f"runs/{run_id}/graph"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get(f"runs/{run_id}/graph")
 
     def get_run_report(self, run_id: str) -> Dict[str, Any]:
-        response = self.session.get(self._url(f"runs/{run_id}/report"), timeout=self.timeout_seconds)
-        return self._handle_response(response)
+        return self._get(f"runs/{run_id}/report")
 
     def post_drilldown(
         self,
@@ -110,8 +128,8 @@ class APIClient:
         order_direction: str = "ASC",
         extra_filters: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        response = self.session.post(
-            self._url(f"runs/{run_id}/drilldown"),
+        return self._post(
+            f"runs/{run_id}/drilldown",
             json={
                 "action": action,
                 "test_id": test_id,
@@ -120,6 +138,31 @@ class APIClient:
                 "order_direction": order_direction,
                 "extra_filters": extra_filters or {},
             },
-            timeout=self.timeout_seconds,
         )
-        return self._handle_response(response)
+
+    def start_drilldown_job(
+        self,
+        *,
+        run_id: str,
+        action: str,
+        test_id: str,
+        keys: Dict[str, str],
+        limit_rows: int = 50,
+        order_direction: str = "ASC",
+        extra_filters: Optional[Dict[str, str]] = None,
+    ) -> Dict[str, Any]:
+        return self._post(
+            f"runs/{run_id}/drilldown-jobs",
+            json={
+                "action": action,
+                "test_id": test_id,
+                "keys": keys,
+                "limit_rows": limit_rows,
+                "order_direction": order_direction,
+                "extra_filters": extra_filters or {},
+            },
+            timeout=15,
+        )
+
+    def get_drilldown_job(self, *, run_id: str, job_id: str) -> Dict[str, Any]:
+        return self._get(f"runs/{run_id}/drilldown-jobs/{job_id}", timeout=10)

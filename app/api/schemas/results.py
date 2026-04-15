@@ -13,6 +13,7 @@ class GraphResultsResponse(APIModel):
     status: str
     graph_status: Optional[str] = None
     kb_index_status: Optional[str] = None
+    executive_summary: Optional[str] = None
     counts: CountsSummary
     hypotheses: List[UISectionItem] = Field(default_factory=list)
     selected_tests: List[UISectionItem] = Field(default_factory=list)
@@ -20,6 +21,7 @@ class GraphResultsResponse(APIModel):
     scores: List[UISectionItem] = Field(default_factory=list)
     explanations: List[UISectionItem] = Field(default_factory=list)
     second_level_analysis: List[UISectionItem] = Field(default_factory=list)
+    comparison_insights: List[UISectionItem] = Field(default_factory=list)
 
 
 class ReportRanking(APIModel):
