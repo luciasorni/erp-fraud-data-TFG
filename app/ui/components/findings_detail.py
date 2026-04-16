@@ -3,6 +3,8 @@ from __future__ import annotations
 import streamlit as st
 from typing import Any, Dict, Optional
 
+from app.ui.components.recommendations_panel import render_presentable_content
+
 
 def render_finding_detail(finding: Optional[Dict[str, Any]]) -> None:
     if not finding:
@@ -14,7 +16,6 @@ def render_finding_detail(finding: Optional[Dict[str, Any]]) -> None:
             <div class="rf20-eyebrow">Test y hallazgos asociados</div>
             <div class="rf20-title" style="font-size:1.35rem; margin-bottom:0.12rem;">{finding.get('title') or finding.get('test_id') or 'Hallazgo'}</div>
             <div class="rf20-subtitle">{finding.get("test_id") or "-"}</div>
-            <div class="rf20-lead" style="font-size:0.98rem; margin-top:0.45rem;">{finding.get("summary") or "Sin resumen adicional."}</div>
             <div class="rf20-summary-strip">
                 <div class="rf20-summary-item"><div class="rf20-summary-label">Test asociado</div><div class="rf20-summary-value">{finding.get("test_id") or "-"}</div></div>
                 <div class="rf20-summary-item"><div class="rf20-summary-label">Fraud type</div><div class="rf20-summary-value">{finding.get("fraud_type") or "-"}</div></div>
@@ -25,3 +26,6 @@ def render_finding_detail(finding: Optional[Dict[str, Any]]) -> None:
         """,
         unsafe_allow_html=True,
     )
+    render_presentable_content(finding.get("summary") or "Sin resumen adicional.")
+    if finding.get("drilldown_error"):
+        st.warning(str(finding.get("drilldown_error")))

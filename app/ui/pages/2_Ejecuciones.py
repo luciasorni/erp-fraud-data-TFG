@@ -15,6 +15,13 @@ from app.ui.utils.mappers import build_execution_metrics
 from app.ui.utils.session_state import init_session_state, remember_run_selection
 
 
+def _list_runs_safe(client: APIClient, *, limit: int) -> list[dict]:
+    try:
+        return client.list_runs(limit=limit)
+    except TypeError:
+        return client.list_runs()
+
+
 def _matches_filters(run: dict, filters: dict) -> bool:
     if filters["dataset"] != "Todos" and run.get("dataset_id") != filters["dataset"]:
         return False
@@ -55,15 +62,17 @@ def _render_featured_run(run: dict) -> None:
 def main() -> None:
     configure_page(page_title="Ejecuciones")
     init_session_state()
+    st.session_state["_active_page"] = "executions"
     render_page_header(
         title="Ejecuciones",
         subtitle="Revisa la ejecución más reciente y navega después por el historial completo de análisis.",
     )
 
     client = APIClient()
+    current_limit = int(st.session_state.get("executions_runs_limit", 20) or 20)
     runs = []
     try:
-        runs = client.list_runs()
+        runs = _list_runs_safe(client, limit=current_limit)
     except APIClientError as exc:
         st.error(f"No se pudieron cargar las ejecuciones: {exc}")
 
@@ -88,6 +97,10 @@ def main() -> None:
         title="Historial",
         subtitle="Filtra por dataset, scope, estado o fecha si necesitas localizar una ejecución concreta.",
     )
+    load_more_col, _ = st.columns([1, 4])
+    if load_more_col.button("Cargar más", use_container_width=True):
+        st.session_state.executions_runs_limit = current_limit + 20
+        st.rerun()
     datasets = ["Todos"] + sorted({item.get("dataset_id") for item in runs if item.get("dataset_id")})
     scopes = ["Todos"] + sorted({item.get("scope") for item in runs if item.get("scope")})
     statuses = ["Todos"] + sorted({item.get("status") for item in runs if item.get("status")})

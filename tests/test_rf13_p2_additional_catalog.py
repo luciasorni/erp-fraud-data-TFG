@@ -51,3 +51,50 @@ def test_rf13_p2_unusual_posting_times_and_large_even_entries_execute(tmp_path) 
 
     assert by_id["TST-LARGE-EVEN-DOLLAR-ENTRIES"]["status"] == "OK"
     assert int(by_id["TST-LARGE-EVEN-DOLLAR-ENTRIES"]["finding_count"]) >= 2
+
+
+def test_rf13_p2_large_even_entries_skips_rows_with_incomplete_drilldown_keys(tmp_path) -> None:
+    db_path = tmp_path / "rf13_p2_even_keys.duckdb"
+    conn = duckdb.connect(str(db_path))
+    try:
+        conn.execute(
+            """
+            CREATE TABLE fraud_1 (
+              Kreditor VARCHAR,
+              Belegnummer VARCHAR,
+              Position VARCHAR,
+              Betrag DOUBLE,
+              Erfassungsuhrzeit VARCHAR,
+              Transaktionsart VARCHAR,
+              Sachkonto VARCHAR,
+              "Soll/Haben-Kennz_" VARCHAR
+            )
+            """
+        )
+        conn.executemany(
+            "INSERT INTO fraud_1 VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                ("V01", "5000000010", "10", 12000.0, "23:55:00", "N", "400000", "H"),
+                (None, "5000000011", "10", 14000.0, "10:15:00", "N", "400000", "H"),
+                ("", "5000000012", "20", 16000.0, "04:20:00", "N", "410000", "S"),
+                ("V03", None, "20", 18000.0, "21:59:00", "N", "410000", "S"),
+                ("V04", "", "20", 20000.0, "21:59:00", "N", "410000", "S"),
+            ],
+        )
+
+        runner = TestRunner(db_path=db_path, schema_name="main", table_name="fraud_1")
+        results = runner.run_all(
+            selected_tests=["TST-LARGE-EVEN-DOLLAR-ENTRIES"],
+            catalog_path="tests/catalog",
+            validate_schema=True,
+        )
+    finally:
+        conn.close()
+
+    result = next(row for row in results if isinstance(row, dict) and row.get("test_id") == "TST-LARGE-EVEN-DOLLAR-ENTRIES")
+    assert result["status"] == "OK"
+    assert int(result["finding_count"]) == 1
+    keys = result["rows"][0]["keys"]
+    assert keys["kreditor"] == "V01"
+    assert keys["belegnummer"] == "5000000010"
+    assert keys["betrag"] == "12000.0"

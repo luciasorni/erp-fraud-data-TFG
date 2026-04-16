@@ -6,6 +6,8 @@ from typing import Any
 from ..schemas.common import CountsSummary, UISectionItem
 from ..schemas.results import GraphResultsResponse, ReportRanking, ReportResponse
 from .aws_service import AWSAPISettings, create_s3_client, get_json_from_s3, get_s3_text, run_output_key, runs_prefix
+from src.erp_fraud.catalog.drilldown_keys import get_minimum_keys_for_test_id, get_missing_or_empty_minimum_keys_for_test_id, normalize_drilldown_keys
+from src.erp_fraud.catalog.drilldown_templates import get_drilldown_query_id_for_test_id
 
 
 def _bucket(settings: AWSAPISettings) -> str:
@@ -125,21 +127,62 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
         first_row = rows[0] if isinstance(rows, list) and rows else {}
         first_row = first_row if isinstance(first_row, dict) else {}
         metadata = raw.get("metadata", {}) if isinstance(raw.get("metadata"), dict) else {}
+        test_id = str(raw.get("test_id", "")).strip()
+        evidence_columns = list(raw.get("columns", []))
+
+        def _normalize_finding_row(row: dict[str, Any]) -> dict[str, Any]:
+            row_keys = row.get("keys", {}) if isinstance(row.get("keys"), dict) else {}
+            template = row.get("drilldown_template", {}) if isinstance(row.get("drilldown_template"), dict) else {}
+            template_params = template.get("params", {}) if isinstance(template.get("params"), dict) else {}
+            merged_keys = normalize_drilldown_keys({**template_params, **row_keys})
+            query_id = str(template.get("query_id", "")).strip()
+            required_keys: list[str] = []
+            missing_keys: list[str] = []
+            ready = False
+            error = None
+            try:
+                required_keys = list(get_minimum_keys_for_test_id(test_id))
+                missing_keys = get_missing_or_empty_minimum_keys_for_test_id(test_id, merged_keys)
+                query_id = query_id or get_drilldown_query_id_for_test_id(test_id)
+                ready = not missing_keys
+                if missing_keys:
+                    error = f"Faltan keys mínimas para {test_id}: {missing_keys}"
+            except (ValueError, KeyError) as exc:
+                error = str(exc)
+            return {
+                **row,
+                "keys": merged_keys,
+                "query_id": query_id or None,
+                "required_keys": required_keys,
+                "missing_keys": missing_keys,
+                "drilldown_ready": ready,
+                "drilldown_error": error,
+                "evidence_columns": evidence_columns or list(merged_keys.keys()),
+            }
+
+        normalized_rows = [_normalize_finding_row(row) for row in rows if isinstance(row, dict)]
+        sample_row = normalized_rows[0] if normalized_rows else {}
         return UISectionItem(
-            id=str(raw.get("test_id", "")).strip() or None,
-            title=str(raw.get("test_id", "")).strip() or None,
+            id=test_id or None,
+            title=test_id or None,
             subtitle=str(raw.get("fraud_type", "")).strip() or None,
             status=str(raw.get("status", "")).strip() or None,
             summary=f"{int(raw.get('finding_count', 0) or 0)} hallazgos detectados",
             attributes={
                 "finding_count": int(raw.get("finding_count", 0) or 0),
-                "columns": list(raw.get("columns", [])),
-                "sample_entity_key": first_row.get("entity_key"),
-                "sample_keys": first_row.get("keys", {}),
-                "sample_drilldown_template": first_row.get("drilldown_template", {}),
+                "columns": evidence_columns,
+                "evidence_columns": evidence_columns,
+                "sample_entity_key": sample_row.get("entity_key") or first_row.get("entity_key"),
+                "sample_keys": sample_row.get("keys", {}),
+                "sample_query_id": sample_row.get("query_id"),
+                "sample_drilldown_template": sample_row.get("drilldown_template", {}),
+                "required_keys": sample_row.get("required_keys", []),
+                "missing_keys": sample_row.get("missing_keys", []),
+                "drilldown_ready": sample_row.get("drilldown_ready", False),
+                "drilldown_error": sample_row.get("drilldown_error"),
                 "error_summary": str(raw.get("error_summary", "")).strip() or None,
                 "process_step": metadata.get("process_step"),
-                "rows": [row for row in rows if isinstance(row, dict)],
+                "rows": normalized_rows,
             },
         )
     if kind == "score":

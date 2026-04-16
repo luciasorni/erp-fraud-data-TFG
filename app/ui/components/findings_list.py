@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import streamlit as st
 
+from app.ui.components.recommendations_panel import render_presentable_content
 from app.ui.components.status_badge import render_status_badge
 
 
@@ -28,7 +29,7 @@ def render_findings_list(
         with top_right:
             render_status_badge(row.get("status"))
         if row.get("summary"):
-            st.markdown(f'<div class="rf20-meta-line" style="color:#12302B;">{row.get("summary")}</div>', unsafe_allow_html=True)
+            render_presentable_content(row.get("summary"))
         st.markdown(
             f"""
             <div class="rf20-meta-line">

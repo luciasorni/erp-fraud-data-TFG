@@ -106,12 +106,33 @@ def get_minimum_keys_for_test_id(test_id: str) -> tuple[str, ...]:
     return tuple(DRILLDOWN_MIN_KEYS_BY_TEST_ID[key])
 
 
+def normalize_drilldown_keys(keys: Mapping[str, object]) -> dict[str, str]:
+    """Normaliza keys de drilldown a strings no vacíos."""
+    if not isinstance(keys, Mapping):
+        raise TypeError("keys debe ser un mapping")
+    normalized: dict[str, str] = {}
+    for raw_key, raw_value in keys.items():
+        key = str(raw_key or "").strip()
+        if not key:
+            continue
+        value = str(raw_value).strip() if raw_value is not None else ""
+        if value:
+            normalized[key] = value
+    return normalized
+
+
+def get_missing_or_empty_minimum_keys_for_test_id(test_id: str, keys: Mapping[str, object]) -> list[str]:
+    required = get_minimum_keys_for_test_id(test_id)
+    normalized = normalize_drilldown_keys(keys)
+    return [name for name in required if name not in normalized]
+
+
 def validate_minimum_keys_for_test_id(test_id: str, keys: Mapping[str, object]) -> None:
     """Valida que el mapping `keys` contiene las keys mínimas para ese test."""
     if not isinstance(keys, Mapping):
         raise TypeError("keys debe ser un mapping")
     required = get_minimum_keys_for_test_id(test_id)
-    missing = [name for name in required if name not in keys]
+    missing = get_missing_or_empty_minimum_keys_for_test_id(test_id, keys)
     if missing:
         raise ValueError(
             f"keys incompletas para test_id={test_id}. Faltan: {missing}. "

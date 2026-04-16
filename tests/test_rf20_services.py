@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 from app.api.schemas.datasets import DatasetDetailResponse
 from app.api.schemas.results import GraphResultsResponse
 from app.api.schemas.runs import RunCreateRequest
 from app.api.services.aws_service import AWSAPISettings
+from app.api.services import drilldown_service
 from app.api.services.results_service import load_graph_results, load_report
-from app.api.services.runs_service import create_run
+from app.api.services.runs_service import create_run, list_runs
 
 
 def _settings() -> AWSAPISettings:
@@ -72,6 +74,118 @@ def test_rf20_runs_service_both_orchestrates_two_runs(monkeypatch) -> None:
     assert out.run_ids.o2c is not None
     assert {item["process_scope"] for item in submitted} == {"p2p", "o2c"}
     assert {item["process_family"] for item in submitted} == {"p2p", "o2c"}
+
+
+def test_rf20_runs_service_list_runs_is_lightweight_and_limited(monkeypatch) -> None:
+    prefixes = [
+        "runs/api-p2p-graph-20260415-120000/",
+        "runs/api-p2p-graph-20260416-110000/",
+        "runs/api-o2c-graph-20260416-113000/",
+    ]
+    api_requests = {
+        "api-o2c-graph-20260416-113000": {
+            "dataset_id": "ds-o2c",
+            "scope": "o2c",
+            "pipeline_mode": "graph",
+            "llm_mode": "real",
+            "kb_index_enabled": False,
+            "task_arn": "task-o2c",
+            "submitted_at_utc": "2026-04-16T11:30:00+00:00",
+        },
+        "api-p2p-graph-20260416-110000": {
+            "dataset_id": "ds-p2p",
+            "scope": "p2p",
+            "pipeline_mode": "graph",
+            "llm_mode": "real",
+            "kb_index_enabled": True,
+            "task_arn": "task-p2p",
+            "submitted_at_utc": "2026-04-16T11:00:00+00:00",
+        },
+    }
+    graph_states = {
+        "api-o2c-graph-20260416-113000": {
+            "run_metadata": {
+                "graph_status": "OK",
+                "kb_index_status": "SKIPPED_NO_REBUILD",
+                "process_scope": "o2c",
+                "process_family": "o2c",
+                "updated_at_utc": "2026-04-16T11:35:00+00:00",
+            }
+        },
+        "api-p2p-graph-20260416-110000": {
+            "run_metadata": {
+                "graph_status": "ABORTED",
+                "kb_index_status": "OK",
+                "process_scope": "p2p",
+                "process_family": "p2p",
+                "updated_at_utc": "2026-04-16T11:05:00+00:00",
+            }
+        },
+    }
+
+    monkeypatch.setattr("app.api.services.runs_service.list_s3_common_prefixes", lambda **kwargs: prefixes)
+    monkeypatch.setattr("app.api.services.runs_service.get_run", lambda **kwargs: (_ for _ in ()).throw(AssertionError("get_run should not be used")))
+    monkeypatch.setattr(
+        "app.api.services.runs_service._load_run_api_request",
+        lambda *, run_id, settings, s3_client: api_requests.get(run_id),
+    )
+    monkeypatch.setattr(
+        "app.api.services.runs_service._load_run_metadata",
+        lambda *, run_id, settings, s3_client: None,
+    )
+    monkeypatch.setattr(
+        "app.api.services.runs_service._load_graph_state",
+        lambda *, run_id, settings, s3_client: graph_states.get(run_id),
+    )
+
+    out = list_runs(settings=_settings(), s3_client=object(), limit=2)
+    assert [item.run_id for item in out] == [
+        "api-o2c-graph-20260416-113000",
+        "api-p2p-graph-20260416-110000",
+    ]
+    assert out[0].status == "COMPLETED"
+    assert out[1].status == "FAILED"
+
+
+def test_rf20_runs_service_list_runs_uses_short_cache(monkeypatch) -> None:
+    call_count = {"prefixes": 0}
+
+    def _fake_prefixes(**kwargs):
+        call_count["prefixes"] += 1
+        return ["runs/api-p2p-graph-20260416-110000/"]
+
+    monkeypatch.setattr("app.api.services.runs_service._RUNS_LIST_CACHE", {})
+    monkeypatch.setattr("app.api.services.runs_service.list_s3_common_prefixes", _fake_prefixes)
+    monkeypatch.setattr(
+        "app.api.services.runs_service._load_run_api_request",
+        lambda *, run_id, settings, s3_client: {
+            "dataset_id": "ds-001",
+            "scope": "p2p",
+            "pipeline_mode": "graph",
+            "llm_mode": "real",
+            "kb_index_enabled": False,
+            "task_arn": "task-001",
+            "submitted_at_utc": "2026-04-16T11:00:00+00:00",
+        },
+    )
+    monkeypatch.setattr("app.api.services.runs_service._load_run_metadata", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "app.api.services.runs_service._load_graph_state",
+        lambda **kwargs: {
+            "run_metadata": {
+                "graph_status": "OK",
+                "kb_index_status": "SKIPPED_NO_REBUILD",
+                "process_scope": "p2p",
+                "updated_at_utc": "2026-04-16T11:05:00+00:00",
+            }
+        },
+    )
+
+    first = list_runs(settings=_settings(), s3_client=object(), limit=20)
+    second = list_runs(settings=_settings(), s3_client=object(), limit=20)
+    assert len(first) == 1
+    assert len(second) == 1
+    assert call_count["prefixes"] == 1
 
 
 def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) -> None:
@@ -178,6 +292,240 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
     assert out.second_level_analysis[0].title == "Recomendación"
     assert out.comparison_insights[0].title == "Desviación relevante"
     assert out.scores[0].attributes["confidence"] == 0.8
+
+
+def test_rf20_results_service_normalizes_drilldown_context_for_o2c_findings(monkeypatch) -> None:
+    artifacts = {
+        "graph/graph_state.json": {
+            "run_metadata": {
+                "graph_status": "OK",
+                "kb_index_status": "OK",
+                "process_scope": "o2c",
+            }
+        },
+        "graph/hypotheses.json": [],
+        "graph/selected_tests.json": [],
+        "graph/findings.json": [
+            {
+                "test_id": "TST-O2C-DELIVERY-QUANTITY-MISMATCH",
+                "fraud_type": "delivery_manipulation",
+                "status": "OK",
+                "finding_count": 1,
+                "columns": ["delivery_id", "delivery_item_id", "delivered_quantity"],
+                "rows": [
+                    {
+                        "entity_key": "delivery_id=D1|delivery_item_id=10",
+                        "keys": {"delivery_id": "D1", "delivery_item_id": "10"},
+                        "drilldown_template": {
+                            "query_id": "drilldown_o2c_delivery_quantity_mismatch_v1",
+                            "params": {"delivery_id": "D1", "delivery_item_id": "10"},
+                        },
+                    }
+                ],
+            }
+        ],
+        "graph/scores.json": [],
+        "graph/explanations.json": [],
+        "graph/second_level_analysis.json": {},
+    }
+    monkeypatch.setattr(
+        "app.api.services.results_service._read_json_artifact",
+        lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
+    )
+    out = load_graph_results(run_id="run-o2c", status="COMPLETED", scope="o2c", settings=_settings(), s3_client=object())
+    finding = out.findings[0]
+    assert finding.attributes["drilldown_ready"] is True
+    assert finding.attributes["sample_query_id"] == "drilldown_o2c_delivery_quantity_mismatch_v1"
+    assert finding.attributes["rows"][0]["query_id"] == "drilldown_o2c_delivery_quantity_mismatch_v1"
+
+
+def test_rf20_drilldown_service_rebuilds_o2c_cache_if_required_table_missing(tmp_path, monkeypatch) -> None:
+    cache_root = tmp_path / "cache"
+    db_dir = cache_root / "ds-001" / "o2c"
+    db_dir.mkdir(parents=True, exist_ok=True)
+    db_path = db_dir / "erp.duckdb"
+    db_path.write_text("stale-cache", encoding="utf-8")
+
+    calls = {"ensure": 0}
+
+    monkeypatch.setattr(drilldown_service, "_cache_root", lambda: cache_root)
+    monkeypatch.setattr(drilldown_service, "_download_dataset_zip", lambda **kwargs: tmp_path / "erp_fraud_data.zip")
+    monkeypatch.setattr(drilldown_service, "validar_ficheros_esperados_joint_datasets", lambda *args, **kwargs: None)
+
+    class _Conn:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(drilldown_service, "get_duckdb_connection", lambda path: _Conn())
+    monkeypatch.setattr(drilldown_service, "_load_o2c_raw_tables_from_zip_if_needed", lambda **kwargs: {"status": "OK"})
+    monkeypatch.setattr(drilldown_service, "_ensure_o2c_optional_placeholders", lambda conn: [])
+    monkeypatch.setattr(
+        drilldown_service,
+        "_ensure_required_o2c_entities",
+        lambda **kwargs: (calls.__setitem__("ensure", calls["ensure"] + 1), db_path.write_text("rebuilt-cache", encoding="utf-8"))[-1],
+    )
+
+    def _fake_table_exists(*, db_path: Path, schema_name: str, table_name: str) -> bool:
+        return db_path.read_text(encoding="utf-8") == "rebuilt-cache" and table_name == "o2c_delivery"
+
+    monkeypatch.setattr(drilldown_service, "_duckdb_table_exists", _fake_table_exists)
+
+    out = drilldown_service._build_db_cache(
+        dataset_id="ds-001",
+        scope="o2c",
+        dataset_key="inputs/datasets/o2c/ds-001/erp_fraud_data.zip",
+        query_id="drilldown_o2c_delivery_quantity_mismatch_v1",
+        settings=_settings(),
+        s3_client=object(),
+    )
+    assert calls["ensure"] == 1
+    assert out == (db_path, "o2c", "o2c_order")
+
+
+def test_rf20_drilldown_service_o2c_build_cache_uses_raw_autoload(tmp_path, monkeypatch) -> None:
+    db_path = tmp_path / "cache" / "ds-001" / "o2c" / "erp.duckdb"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    calls = {"autoload": 0, "placeholders": 0, "ensure": 0}
+
+    monkeypatch.setattr(drilldown_service, "_cache_root", lambda: tmp_path / "cache")
+    monkeypatch.setattr(drilldown_service, "_download_dataset_zip", lambda **kwargs: tmp_path / "erp_fraud_data.zip")
+    monkeypatch.setattr(drilldown_service, "validar_ficheros_esperados_joint_datasets", lambda *args, **kwargs: None)
+
+    class _Conn:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(drilldown_service, "get_duckdb_connection", lambda path: _Conn())
+    monkeypatch.setattr(
+        drilldown_service,
+        "_load_o2c_raw_tables_from_zip_if_needed",
+        lambda **kwargs: calls.__setitem__("autoload", calls["autoload"] + 1) or {"status": "OK"},
+    )
+    monkeypatch.setattr(
+        drilldown_service,
+        "_ensure_o2c_optional_placeholders",
+        lambda conn: calls.__setitem__("placeholders", calls["placeholders"] + 1) or [],
+    )
+    monkeypatch.setattr(
+        drilldown_service,
+        "_ensure_required_o2c_entities",
+        lambda **kwargs: calls.__setitem__("ensure", calls["ensure"] + 1) or None,
+    )
+    monkeypatch.setattr(drilldown_service, "_duckdb_table_exists", lambda **kwargs: True)
+
+    out = drilldown_service._build_db_cache(
+        dataset_id="ds-001",
+        scope="o2c",
+        dataset_key="inputs/datasets/o2c/ds-001/erp_fraud_data.zip",
+        query_id="drilldown_o2c_delivery_quantity_mismatch_v1",
+        settings=_settings(),
+        s3_client=object(),
+    )
+    assert calls == {"autoload": 1, "placeholders": 1, "ensure": 1}
+    assert out == (db_path, "o2c", "o2c_order")
+
+
+def test_rf20_drilldown_service_o2c_query_id_maps_expected_required_tables() -> None:
+    assert drilldown_service._required_o2c_tables_for_query_id("drilldown_o2c_delivery_quantity_mismatch_v1") == {"o2c_delivery"}
+    assert drilldown_service._required_o2c_tables_for_query_id("drilldown_o2c_clearing_anomaly_v1") == {"o2c_collection"}
+    assert drilldown_service._required_o2c_tables_for_query_id("drilldown_o2c_invoice_amount_anomaly_v1") == {"o2c_invoice"}
+
+
+def test_rf20_drilldown_service_builds_only_required_o2c_entity(tmp_path, monkeypatch) -> None:
+    db_path = tmp_path / "erp.duckdb"
+    db_path.write_text("db", encoding="utf-8")
+    created_entities = []
+
+    class _Conn:
+        def __init__(self) -> None:
+            self.tables = {("main", "lips")}
+
+        def execute(self, query: str, params=None):
+            normalized = " ".join(query.split()).lower()
+            if normalized.startswith("create schema if not exists"):
+                self._fetchone = None
+                return self
+            if "from information_schema.tables" in normalized:
+                schema_name, table_name = params
+                self._fetchone = (1,) if (str(schema_name).lower(), str(table_name).lower()) in self.tables else None
+                return self
+            self._fetchone = None
+            return self
+
+        def fetchone(self):
+            return self._fetchone
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    conn = _Conn()
+    monkeypatch.setattr(drilldown_service, "get_duckdb_connection", lambda path: conn)
+    monkeypatch.setattr(drilldown_service, "_load_yaml", lambda path: {"entities": {"o2c_delivery": {"required_source_tables": ["LIPS"]}}})
+    monkeypatch.setattr(drilldown_service, "_entity_required_tables", lambda schema_cfg, entity: ["LIPS"])
+
+    def _fake_create_or_replace_entity_table(connection, *, entity, target_schema, sql_body):
+        created_entities.append(entity)
+        connection.tables.add((target_schema.lower(), entity.lower()))
+        return 1
+
+    monkeypatch.setattr(drilldown_service, "_create_or_replace_entity_table", _fake_create_or_replace_entity_table)
+
+    drilldown_service._ensure_required_o2c_entities(
+        db_path=db_path,
+        target_schema="o2c",
+        query_id="drilldown_o2c_delivery_quantity_mismatch_v1",
+    )
+    assert created_entities == ["o2c_delivery"]
+
+
+def test_rf20_drilldown_service_missing_required_raw_tables_returns_useful_error(tmp_path, monkeypatch) -> None:
+    db_path = tmp_path / "erp.duckdb"
+    db_path.write_text("db", encoding="utf-8")
+
+    class _Conn:
+        def execute(self, query: str, params=None):
+            normalized = " ".join(query.split()).lower()
+            if normalized.startswith("create schema if not exists"):
+                self._fetchone = None
+                return self
+            if "from information_schema.tables" in normalized:
+                self._fetchone = None
+                return self
+            self._fetchone = None
+            return self
+
+        def fetchone(self):
+            return self._fetchone
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(drilldown_service, "get_duckdb_connection", lambda path: _Conn())
+    monkeypatch.setattr(drilldown_service, "_load_yaml", lambda path: {"entities": {"o2c_order": {"required_source_tables": ["VBAK", "VBAP"]}}})
+    monkeypatch.setattr(drilldown_service, "_entity_required_tables", lambda schema_cfg, entity: ["VBAK", "VBAP"])
+
+    try:
+        drilldown_service._ensure_required_o2c_entities(
+            db_path=db_path,
+            target_schema="o2c",
+            query_id="drilldown_o2c_discount_policy_breach_v1",
+        )
+    except ValueError as exc:
+        assert "faltan tablas raw requeridas VBAK, VBAP" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError")
 
 
 def test_rf20_results_service_marks_technical_explanation_errors(monkeypatch) -> None:

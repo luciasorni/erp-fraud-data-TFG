@@ -69,8 +69,10 @@ from .result_writer import (
 )
 from .drilldown_keys import (
     DRILLDOWN_MIN_KEYS_BY_TEST_ID,
+    get_missing_or_empty_minimum_keys_for_test_id,
     get_drilldown_min_keys_by_test_id,
     get_minimum_keys_for_test_id,
+    normalize_drilldown_keys,
     validate_minimum_keys_for_test_id,
 )
 from .drilldown_templates import (
@@ -149,8 +151,10 @@ __all__ = [
     "get_explanation_schema_required_fields",
     "load_test_specs_from_catalog",
     "get_drilldown_min_keys_by_test_id",
+    "get_missing_or_empty_minimum_keys_for_test_id",
     "get_drilldown_query_id_for_test_id",
     "get_minimum_keys_for_test_id",
+    "normalize_drilldown_keys",
     "sort_result_rows_stable",
     "validate_minimum_keys_for_test_id",
     "write_test_result_jsonl",

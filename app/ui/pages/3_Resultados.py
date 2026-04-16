@@ -9,7 +9,7 @@ import streamlit as st
 from app.ui.components.explanations_panel import render_explanations_panel
 from app.ui.components.findings_list import render_findings_list
 from app.ui.components.header import configure_page, render_divider, render_page_header, render_section_heading
-from app.ui.components.recommendations_panel import render_recommendations_panel
+from app.ui.components.recommendations_panel import render_presentable_content, render_recommendations_panel
 from app.ui.components.run_metrics import render_result_kpis
 from app.ui.components.status_badge import render_status_badge
 from app.ui.services.api_client import APIClient, APIClientError
@@ -26,23 +26,26 @@ from app.ui.utils.mappers import (
 from app.ui.utils.session_state import init_session_state, remember_finding_selection, remember_run_selection
 
 
+def _list_runs_safe(client: APIClient, *, limit: int) -> list[dict]:
+    try:
+        return client.list_runs(limit=limit)
+    except TypeError:
+        return client.list_runs()
+
+
 def _render_hypotheses(items: List[Dict[str, Any]]) -> None:
     if not items:
         st.info("No hay hipótesis generadas para este run.")
         return
     for item in items:
         attrs = item.get("attributes", {}) or {}
-        st.markdown(
-            f"""
-            <div class="rf20-narrative">
-                <div class="rf20-list-title">{item.get('title') or item.get('id') or 'Hypothesis'}</div>
-                <div class="rf20-list-subtitle">{item.get("subtitle") or ""}</div>
-                <div class="rf20-meta-line">{item.get("summary") or "Sin resumen."}</div>
-                <div class="rf20-mini-note">Tests candidatos: {", ".join(attrs.get("candidate_test_ids", [])) or "-"}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="rf20-narrative">', unsafe_allow_html=True)
+        st.markdown(f"**{item.get('title') or item.get('id') or 'Hypothesis'}**")
+        if item.get("subtitle"):
+            st.caption(str(item.get("subtitle")))
+        render_presentable_content(item.get("summary") or "Sin resumen.")
+        st.caption(f"Tests candidatos: {', '.join(attrs.get('candidate_test_ids', [])) or '-'}")
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def _render_selected_tests(items: List[Dict[str, Any]]) -> None:
@@ -52,21 +55,22 @@ def _render_selected_tests(items: List[Dict[str, Any]]) -> None:
     st.markdown('<div class="rf20-list">', unsafe_allow_html=True)
     for item in items:
         attrs = item.get("attributes") or {}
+        st.markdown('<div class="rf20-list-item">', unsafe_allow_html=True)
+        st.markdown(f"**{item.get('id') or '-'}**")
+        if item.get("subtitle"):
+            st.caption(str(item.get("subtitle")))
+        render_presentable_content(item.get("summary") or "Sin motivo de selección detallado.")
         st.markdown(
             f"""
-            <div class="rf20-list-item">
-                <div class="rf20-list-title">{item.get("id") or "-"}</div>
-                <div class="rf20-list-subtitle">{item.get("subtitle") or "-"}</div>
-                <div class="rf20-meta-line">{item.get("summary") or "Sin motivo de selección detallado."}</div>
-                <div class="rf20-meta-line">
-                    Origen: <span class="rf20-meta-inline">{item.get("status") or "-"}</span>
-                    &nbsp;&nbsp;·&nbsp;&nbsp;
-                    Score: <span class="rf20-meta-inline">{attrs.get("score", "-")}</span>
-                </div>
+            <div class="rf20-meta-line">
+                Origen: <span class="rf20-meta-inline">{item.get("status") or "-"}</span>
+                &nbsp;&nbsp;·&nbsp;&nbsp;
+                Score: <span class="rf20-meta-inline">{attrs.get("score", "-")}</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -117,7 +121,7 @@ def _render_scores(items: List[Dict[str, Any]]) -> None:
     for row in rows:
         if row.get("summary"):
             with st.expander(f"Ver detalle de score: {row.get('label')}", expanded=False):
-                st.write(row["summary"])
+                render_presentable_content(row["summary"])
 
 
 def _render_comparison_insights(items: List[Dict[str, Any]]) -> None:
@@ -129,46 +133,75 @@ def _render_comparison_insights(items: List[Dict[str, Any]]) -> None:
         runs_compared = attrs.get("runs_compared", []) or []
         common_tests = attrs.get("common_selected_tests", []) or []
         common_types = attrs.get("common_fraud_types_with_findings", []) or []
+        st.markdown('<div class="rf20-recommendation">', unsafe_allow_html=True)
+        st.markdown(f"**{item.get('title') or 'Insight comparativo'}**")
+        if item.get("subtitle"):
+            st.caption(str(item.get("subtitle")))
+        render_presentable_content(item.get("summary") or "")
         st.markdown(
             f"""
-            <div class="rf20-recommendation">
-                <div class="rf20-list-title">{item.get("title") or "Insight comparativo"}</div>
-                <div class="rf20-list-subtitle">{item.get("subtitle") or ""}</div>
-                <div class="rf20-meta-line">{item.get("summary") or ""}</div>
-                <div class="rf20-meta-line">
-                    Comparado contra: <span class="rf20-meta-inline">{", ".join(runs_compared) or "otros runs del análisis secundario"}</span>
-                    &nbsp;&nbsp;·&nbsp;&nbsp;
-                    Tests compartidos: <span class="rf20-meta-inline">{", ".join(common_tests) or "-"}</span>
-                    &nbsp;&nbsp;·&nbsp;&nbsp;
-                    Tipologías coincidentes: <span class="rf20-meta-inline">{", ".join(common_types) or "-"}</span>
-                </div>
+            <div class="rf20-meta-line">
+                Comparado contra: <span class="rf20-meta-inline">{", ".join(runs_compared) or "otros runs del análisis secundario"}</span>
+                &nbsp;&nbsp;·&nbsp;&nbsp;
+                Tests compartidos: <span class="rf20-meta-inline">{", ".join(common_tests) or "-"}</span>
+                &nbsp;&nbsp;·&nbsp;&nbsp;
+                Tipologías coincidentes: <span class="rf20-meta-inline">{", ".join(common_types) or "-"}</span>
             </div>
             """,
             unsafe_allow_html=True,
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
 def main() -> None:
     configure_page(page_title="Resultados")
     init_session_state()
+    st.session_state["_active_page"] = "results"
     render_page_header(
         title="Resultados del análisis",
         subtitle="Abre el análisis actual, revisa el scoring principal y navega por hallazgos, explicación, comparativas y recomendaciones.",
     )
 
     client = APIClient()
-    runs = []
-    try:
-        runs = client.list_runs()
-    except APIClientError as exc:
-        st.error(f"No se pudo cargar el historial de runs: {exc}")
-
-    run_ids = [item["run_id"] for item in runs]
-    selected_run_id = st.session_state.selected_run_id if st.session_state.selected_run_id in run_ids else (run_ids[0] if run_ids else None)
-    selected_run_id = st.selectbox("Análisis abierto", run_ids, index=run_ids.index(selected_run_id) if selected_run_id in run_ids else 0) if run_ids else None
+    selected_run_id = st.session_state.selected_run_id
+    runs: list[dict[str, Any]] = []
     if not selected_run_id:
-        st.info("Todavía no hay runs disponibles.")
-        return
+        try:
+            runs = _list_runs_safe(client, limit=20)
+        except APIClientError as exc:
+            st.error(f"No se pudo cargar el historial de runs: {exc}")
+            return
+        run_ids = [item["run_id"] for item in runs]
+        selected_run_id = run_ids[0] if run_ids else None
+        if not selected_run_id:
+            st.info("Todavía no hay runs disponibles.")
+            return
+        st.session_state.selected_run_id = selected_run_id
+    else:
+        top_left_sel, top_right_sel = st.columns([3.2, 1.2], gap="large")
+        with top_left_sel:
+            st.caption(f"Análisis activo: `{selected_run_id}`")
+        with top_right_sel:
+            if st.button("Cambiar análisis", use_container_width=True):
+                st.session_state.results_show_run_picker = not bool(st.session_state.get("results_show_run_picker", False))
+        if st.session_state.get("results_show_run_picker", False):
+            try:
+                runs = _list_runs_safe(client, limit=20)
+            except APIClientError as exc:
+                st.error(f"No se pudo cargar el historial de runs: {exc}")
+                return
+            run_ids = [item["run_id"] for item in runs]
+            if run_ids:
+                picked = st.selectbox(
+                    "Selecciona otro análisis",
+                    run_ids,
+                    index=run_ids.index(selected_run_id) if selected_run_id in run_ids else 0,
+                )
+                if picked != selected_run_id:
+                    selected_run_id = picked
+                    st.session_state.selected_run_id = picked
+                    st.session_state.selected_graph_payload = None
+                    st.rerun()
 
     try:
         detail = client.get_run(selected_run_id)
@@ -182,7 +215,7 @@ def main() -> None:
 
     findings_total = report_findings_count(report) or graph.get("counts", {}).get("findings", 0)
     scores = graph.get("scores", [])
-    executive_summary = str(graph.get("executive_summary") or "").strip()
+    executive_summary = graph.get("executive_summary")
     score_value = "-"
     score_summary = "El scoring resume la señal final prioritaria del run."
     score_label = "-"
@@ -229,15 +262,10 @@ def main() -> None:
         )
 
     if executive_summary:
-        st.markdown(
-            f"""
-            <div class="rf20-callout" style="margin-top:0.9rem; background:#F7FBFA;">
-                <div class="rf20-summary-label">Resumen ejecutivo del hallazgo</div>
-                <div class="rf20-lead" style="margin-top:0.3rem; max-width:none;">{executive_summary}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown('<div class="rf20-callout" style="margin-top:0.9rem; background:#F7FBFA;">', unsafe_allow_html=True)
+        st.markdown("**Resumen ejecutivo del hallazgo**")
+        render_presentable_content(executive_summary)
+        st.markdown("</div>", unsafe_allow_html=True)
 
     render_result_kpis(build_run_kpis(graph), score_value=score_value)
 
@@ -283,15 +311,10 @@ def main() -> None:
     with tab_rec:
         sections = split_recommendation_sections(graph.get("second_level_analysis", []))
         if executive_summary:
-            st.markdown(
-                f"""
-                <div class="rf20-callout tight" style="background:#F7FBFA; margin-bottom:0.8rem;">
-                    <div class="rf20-summary-label">Resumen ejecutivo del hallazgo</div>
-                    <div class="rf20-meta-line" style="font-size:0.95rem; color:#12302B;">{executive_summary}</div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown('<div class="rf20-callout tight" style="background:#F7FBFA; margin-bottom:0.8rem;">', unsafe_allow_html=True)
+            st.markdown("**Resumen ejecutivo del hallazgo**")
+            render_presentable_content(executive_summary)
+            st.markdown("</div>", unsafe_allow_html=True)
         render_recommendations_panel(
             sections["recommendations"],
             title="Recomendaciones",

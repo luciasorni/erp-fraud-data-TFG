@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import ast
 from datetime import datetime, timezone
+import json
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
@@ -66,3 +68,83 @@ def coalesce_text(*values: Any) -> str:
         if text:
             return text
     return "-"
+
+
+def normalize_structured_content(value: Any) -> Any:
+    if value is None:
+        return None
+    if isinstance(value, dict):
+        return {str(key): normalize_structured_content(item) for key, item in value.items()}
+    if isinstance(value, tuple):
+        return [normalize_structured_content(item) for item in value]
+    if isinstance(value, list):
+        return [normalize_structured_content(item) for item in value]
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return ""
+        if text[:1] in {"{", "[", "("}:
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, (dict, list, tuple)):
+                    return normalize_structured_content(parsed)
+            except Exception:
+                pass
+            try:
+                parsed = ast.literal_eval(text)
+                if isinstance(parsed, (dict, list, tuple)):
+                    return normalize_structured_content(parsed)
+            except Exception:
+                pass
+        return text
+    return value
+
+
+def presentable_label(value: Any) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return "-"
+    custom = {
+        "key_evidence": "Evidencia clave",
+        "overall_assessment": "Valoración global",
+        "risk_posture": "Postura de riesgo",
+        "action": "Acción",
+        "owner": "Responsable",
+        "urgency": "Urgencia",
+        "conclusion": "Conclusión",
+        "evidence": "Evidencia",
+        "severity": "Severidad",
+        "procedure": "Procedimiento",
+        "why": "Motivo",
+        "rationale": "Justificación",
+        "priority": "Prioridad",
+        "expected_value": "Valor esperado",
+        "recommended_tests": "Tests recomendados",
+        "audit_procedures": "Procedimientos de auditoría",
+    }
+    if text in custom:
+        return custom[text]
+    return text.replace("_", " ").strip().capitalize()
+
+
+def summarize_structured_content(value: Any) -> str:
+    normalized = normalize_structured_content(value)
+    if normalized is None:
+        return "-"
+    if isinstance(normalized, dict):
+        parts = []
+        for key, item in normalized.items():
+            if isinstance(item, (dict, list)):
+                continue
+            text = str(item).strip()
+            if text:
+                parts.append(f"{presentable_label(key)}: {text}")
+        if parts:
+            return " · ".join(parts)
+        return ", ".join(presentable_label(key) for key in normalized.keys()) or "-"
+    if isinstance(normalized, list):
+        scalar_items = [str(item).strip() for item in normalized if not isinstance(item, (dict, list)) and str(item).strip()]
+        if scalar_items:
+            return "; ".join(scalar_items)
+        return f"{len(normalized)} elementos"
+    return str(normalized).strip() or "-"

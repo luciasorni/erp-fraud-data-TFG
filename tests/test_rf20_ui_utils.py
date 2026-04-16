@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from app.ui.utils.formatters import format_bool, format_bytes, format_datetime, format_scope, format_status
+from app.ui.utils.formatters import (
+    format_bool,
+    format_bytes,
+    format_datetime,
+    format_scope,
+    format_status,
+    normalize_structured_content,
+    summarize_structured_content,
+)
 from app.ui.utils.mappers import (
     build_execution_metrics,
     build_run_kpis,
@@ -43,12 +51,19 @@ def test_rf20_ui_mappers_generate_metrics_and_findings_rows() -> None:
                     "finding_count": 2,
                     "sample_entity_key": "x",
                     "sample_keys": {"doc": "1"},
+                    "sample_query_id": "drilldown_x_v1",
+                    "required_keys": ["doc"],
+                    "missing_keys": [],
+                    "drilldown_ready": True,
+                    "drilldown_error": None,
                 },
             }
         ]
     )
     assert findings[0]["finding_id"] == "TST-001"
     assert findings[0]["sample_keys"]["doc"] == "1"
+    assert findings[0]["sample_query_id"] == "drilldown_x_v1"
+    assert findings[0]["drilldown_ready"] is True
 
 
 def test_rf20_ui_mappers_extract_score_and_split_recommendations() -> None:
@@ -65,3 +80,24 @@ def test_rf20_ui_mappers_extract_score_and_split_recommendations() -> None:
     assert len(sections["recommendations"]) == 1
     assert len(sections["recommended_tests"]) == 1
     assert len(sections["audit_procedures"]) == 1
+
+
+def test_rf20_ui_normalize_structured_content_handles_real_dict_and_list() -> None:
+    assert normalize_structured_content({"key_evidence": ["a", "b"]}) == {"key_evidence": ["a", "b"]}
+    assert normalize_structured_content(["a", "b"]) == ["a", "b"]
+
+
+def test_rf20_ui_normalize_structured_content_parses_json_string() -> None:
+    parsed = normalize_structured_content('{"overall_assessment":"ok","key_evidence":["a"]}')
+    assert parsed == {"overall_assessment": "ok", "key_evidence": ["a"]}
+
+
+def test_rf20_ui_normalize_structured_content_parses_python_repr_string() -> None:
+    parsed = normalize_structured_content("{'risk_posture': 'Moderado', 'key_evidence': ['uno', 'dos']}")
+    assert parsed == {"risk_posture": "Moderado", "key_evidence": ["uno", "dos"]}
+
+
+def test_rf20_ui_normalize_structured_content_falls_back_to_text() -> None:
+    text = "No parece JSON pero sí texto útil {sin cerrar"
+    assert normalize_structured_content(text) == text
+    assert summarize_structured_content(text) == text

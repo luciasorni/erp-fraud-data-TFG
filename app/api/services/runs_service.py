@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import json
+import re
+import time
 from typing import Any
 
 from ..schemas.runs import RunCreateRequest, RunCreateResponse, RunDetailResponse, RunSummaryResponse
@@ -19,6 +21,11 @@ from .aws_service import (
     write_run_submission_record,
 )
 from .datasets_service import ensure_dataset_supports_scope, get_dataset
+
+
+_RUN_ID_TIMESTAMP_RE = re.compile(r"(\d{8}-\d{6})$")
+_RUNS_LIST_CACHE_TTL_SECONDS = 12
+_RUNS_LIST_CACHE: dict[tuple[str, int], tuple[float, list[RunSummaryResponse]]] = {}
 
 
 def _utc_now() -> datetime:
@@ -46,6 +53,7 @@ def create_run(
     s3_client: Any | None = None,
     ecs_client: Any | None = None,
 ) -> RunCreateResponse:
+    _RUNS_LIST_CACHE.clear()
     client_s3 = s3_client or create_s3_client(settings=settings)
     client_ecs = ecs_client or create_ecs_client(settings=settings)
     dataset = get_dataset(dataset_id=payload.dataset_id, settings=settings, s3_client=client_s3)
@@ -184,6 +192,54 @@ def _load_graph_state(
     )
 
 
+def _parse_iso_datetime(raw: Any) -> datetime | None:
+    value = str(raw or "").strip()
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _run_id_sort_key(run_id: str) -> tuple[datetime, str]:
+    match = _RUN_ID_TIMESTAMP_RE.search(str(run_id).strip())
+    if match:
+        try:
+            return (
+                datetime.strptime(match.group(1), "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc),
+                run_id,
+            )
+        except ValueError:
+            pass
+    return (datetime.min.replace(tzinfo=timezone.utc), run_id)
+
+
+def _compute_run_status_light(
+    *,
+    api_request: dict[str, Any] | None,
+    run_metadata: dict[str, Any] | None,
+    graph_state: dict[str, Any] | None,
+) -> str:
+    if graph_state:
+        meta = graph_state.get("run_metadata", {})
+        if isinstance(meta, dict):
+            graph_status = str(meta.get("graph_status", "")).strip().upper()
+            if graph_status in {"OK", "OK_WITH_WARNINGS"}:
+                return "COMPLETED"
+            if graph_status == "ABORTED":
+                return "FAILED"
+    if run_metadata:
+        summary = run_metadata.get("summary", {}) if isinstance(run_metadata, dict) else {}
+        overall = str(summary.get("overall_status", "")).strip().upper()
+        if overall == "OK":
+            return "COMPLETED"
+        if overall == "ERROR":
+            return "FAILED"
+    task_arn = str((api_request or {}).get("task_arn", "")).strip()
+    return "SUBMITTED" if task_arn else "UNKNOWN"
+
+
 def _compute_run_status(
     *,
     api_request: dict[str, Any] | None,
@@ -281,37 +337,64 @@ def list_runs(
     *,
     settings: AWSAPISettings,
     s3_client: Any | None = None,
-    ecs_client: Any | None = None,
+    limit: int = 20,
 ) -> list[RunSummaryResponse]:
+    cache_key = (settings.s3_output_uri, limit)
+    now = time.time()
+    cached = _RUNS_LIST_CACHE.get(cache_key)
+    if cached and now - cached[0] < _RUNS_LIST_CACHE_TTL_SECONDS:
+        return cached[1]
+
     client_s3 = s3_client or create_s3_client(settings=settings)
-    client_ecs = ecs_client or create_ecs_client(settings=settings)
     bucket, prefix = runs_prefix(settings=settings)
     base_prefix = prefix.rstrip("/") + "/"
     run_prefixes = list_s3_common_prefixes(bucket=bucket, prefix=base_prefix, settings=settings, s3_client=client_s3)
-    out: list[RunSummaryResponse] = []
-    for item in sorted(run_prefixes):
+    run_ids = []
+    for item in run_prefixes:
         run_id = item[len(base_prefix) :].strip("/ ")
-        if not run_id:
+        if run_id:
+            run_ids.append(run_id)
+    recent_run_ids = [
+        item for item in sorted(run_ids, key=_run_id_sort_key, reverse=True)[:limit]
+    ]
+    out: list[RunSummaryResponse] = []
+    for run_id in recent_run_ids:
+        api_request = _load_run_api_request(run_id=run_id, settings=settings, s3_client=client_s3)
+        run_metadata = _load_run_metadata(run_id=run_id, settings=settings, s3_client=client_s3)
+        graph_state = _load_graph_state(run_id=run_id, settings=settings, s3_client=client_s3)
+        if api_request is None and run_metadata is None and graph_state is None:
             continue
-        detail = get_run(run_id=run_id, settings=settings, s3_client=client_s3, ecs_client=client_ecs)
-        if detail is None:
-            continue
+        graph_meta = graph_state.get("run_metadata", {}) if isinstance(graph_state, dict) else {}
+        graph_meta = graph_meta if isinstance(graph_meta, dict) else {}
+        created_at = _parse_iso_datetime((api_request or {}).get("submitted_at_utc"))
+        updated_at = _parse_iso_datetime(graph_meta.get("updated_at_utc")) or created_at
         out.append(
             RunSummaryResponse(
-                run_id=detail.run_id,
-                dataset_id=detail.dataset_id,
-                scope=detail.scope,
-                pipeline_mode=detail.pipeline_mode,
-                llm_mode=detail.llm_mode,
-                kb_index_enabled=detail.kb_index_enabled,
-                status=detail.status,
-                graph_status=detail.graph_status,
-                kb_index_status=detail.kb_index_status,
-                process_family=detail.process_family,
-                task_arn=detail.task_arn,
-                created_at_utc=detail.created_at_utc,
-                updated_at_utc=detail.updated_at_utc,
+                run_id=run_id,
+                dataset_id=str((api_request or {}).get("dataset_id", "")).strip() or None,
+                scope=str((api_request or {}).get("scope", "")).strip()
+                or str(graph_meta.get("process_scope", "")).strip()
+                or None,
+                pipeline_mode=str((api_request or {}).get("pipeline_mode", "")).strip() or None,
+                llm_mode=str((api_request or {}).get("llm_mode", "")).strip()
+                or str(graph_meta.get("llm_mode", "")).strip()
+                or None,
+                kb_index_enabled=(api_request or {}).get("kb_index_enabled"),
+                status=_compute_run_status_light(
+                    api_request=api_request,
+                    run_metadata=run_metadata,
+                    graph_state=graph_state,
+                ),
+                graph_status=str(graph_meta.get("graph_status", "")).strip() or None,
+                kb_index_status=str(graph_meta.get("kb_index_status", "")).strip() or None,
+                process_family=str(graph_meta.get("process_family", "")).strip()
+                or str((api_request or {}).get("scope", "")).strip()
+                or None,
+                task_arn=str((api_request or {}).get("task_arn", "")).strip() or None,
+                created_at_utc=created_at,
+                updated_at_utc=updated_at,
             )
         )
-    return sorted(out, key=lambda item: item.created_at_utc or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-
+    result = sorted(out, key=lambda item: item.created_at_utc or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    _RUNS_LIST_CACHE[cache_key] = (now, result)
+    return result

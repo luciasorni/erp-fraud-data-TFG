@@ -84,3 +84,35 @@ def test_rf20_ui_api_client_supports_job_endpoints() -> None:
     assert drilldown["status"] == "ok"
     assert session.calls[0][1] == "http://localhost:8000/api/v1/datasets/upload-jobs/job-001"
     assert session.calls[1][1] == "http://localhost:8000/api/v1/runs/run-001/drilldown-jobs/job-002"
+
+
+def test_rf20_ui_api_client_list_runs_supports_limit() -> None:
+    session = _FakeSession()
+    client = APIClient(base_url="http://localhost:8000/api/v1", session=session)
+    client.list_runs(limit=7)
+    assert session.calls[0][1] == "http://localhost:8000/api/v1/runs?limit=7"
+
+
+def test_rf20_ui_api_client_detail_endpoints_build_expected_paths() -> None:
+    session = _FakeSession()
+    client = APIClient(base_url="http://localhost:8000/api/v1", session=session)
+    client.get_run("run-001")
+    client.get_run_graph("run-001")
+    client.get_run_report("run-001")
+    assert session.calls[0][1] == "http://localhost:8000/api/v1/runs/run-001"
+    assert session.calls[1][1] == "http://localhost:8000/api/v1/runs/run-001/graph"
+    assert session.calls[2][1] == "http://localhost:8000/api/v1/runs/run-001/report"
+
+
+def test_rf20_ui_api_client_sends_query_id_for_drilldown() -> None:
+    session = _FakeSession()
+    client = APIClient(base_url="http://localhost:8000/api/v1", session=session)
+    client.start_drilldown_job(
+        run_id="run-001",
+        action="finding_rows",
+        test_id="TST-O2C-DELIVERY-QUANTITY-MISMATCH",
+        keys={"delivery_id": "D1", "delivery_item_id": "10"},
+        query_id="drilldown_o2c_delivery_quantity_mismatch_v1",
+    )
+    body = session.calls[0][3]["json"]
+    assert body["query_id"] == "drilldown_o2c_delivery_quantity_mismatch_v1"

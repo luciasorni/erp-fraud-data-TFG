@@ -134,6 +134,36 @@ def test_rf20_runs_post_supports_scope_both(monkeypatch) -> None:
     assert payload["run_ids"]["o2c"] == "run-o2c-001"
 
 
+def test_rf20_runs_list_endpoint_passes_limit(monkeypatch) -> None:
+    captured = {}
+
+    def _fake_list_runs(*, settings, limit):
+        captured["limit"] = limit
+        return [
+            RunSummaryResponse(
+                run_id="run-001",
+                dataset_id="ds-001",
+                scope="p2p",
+                pipeline_mode="graph",
+                llm_mode="real",
+                kb_index_enabled=False,
+                status="COMPLETED",
+                graph_status="OK",
+                kb_index_status="SKIPPED_NO_REBUILD",
+                process_family="p2p",
+                task_arn="task-001",
+                created_at_utc=None,
+                updated_at_utc=None,
+            )
+        ]
+
+    monkeypatch.setattr("app.api.routers.runs.list_runs", _fake_list_runs)
+    response = _client().get("/api/v1/runs?limit=5")
+    assert response.status_code == 200
+    assert captured["limit"] == 5
+    assert response.json()[0]["run_id"] == "run-001"
+
+
 def test_rf20_runs_graph_endpoint_returns_ui_payload(monkeypatch) -> None:
     def _fake_get_run(*, run_id, settings):
         return RunDetailResponse(
@@ -251,6 +281,7 @@ def test_rf20_drilldown_rejects_unknown_action_schema_level() -> None:
 
 def test_rf20_drilldown_endpoint_returns_safe_payload(monkeypatch) -> None:
     def _fake_execute_drilldown(*, run_id, payload, settings):
+        assert payload.query_id == "drilldown_o2c_delivery_quantity_mismatch_v1"
         return DrilldownResponse(
             run_id=run_id,
             action=payload.action,
@@ -268,6 +299,7 @@ def test_rf20_drilldown_endpoint_returns_safe_payload(monkeypatch) -> None:
             "action": "finding_rows",
             "test_id": "TST-DUPLICATE-POSTINGS",
             "keys": {"kreditor": "V1", "belegnummer": "1", "position": "1", "betrag": "10"},
+            "query_id": "drilldown_o2c_delivery_quantity_mismatch_v1",
             "limit_rows": 20,
             "order_direction": "ASC",
         },
@@ -276,6 +308,23 @@ def test_rf20_drilldown_endpoint_returns_safe_payload(monkeypatch) -> None:
     payload = response.json()
     assert payload["query_id"] == "drilldown_duplicate_postings_v1"
     assert payload["allowed_actions"] == ["finding_rows"]
+
+
+def test_rf20_drilldown_endpoint_returns_useful_error_when_keys_missing(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.api.routers.drilldown.execute_drilldown",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("Faltan keys mínimas para el test X")),
+    )
+    response = _client().post(
+        "/api/v1/runs/run-001/drilldown",
+        json={
+            "action": "finding_rows",
+            "test_id": "TST-O2C-CLEARING-ANOMALY",
+            "keys": {"company_code": "1000"},
+        },
+    )
+    assert response.status_code == 400
+    assert "Faltan keys mínimas" in str(response.json()["detail"])
 
 
 def test_rf20_drilldown_job_endpoint_returns_job_handle(monkeypatch) -> None:

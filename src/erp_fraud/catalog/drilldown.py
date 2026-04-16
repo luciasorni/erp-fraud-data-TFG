@@ -6,11 +6,18 @@ from pathlib import Path
 from typing import Any
 
 from ..storage.duckdb_store import DEFAULT_DUCKDB_PATH, get_duckdb_connection
-from .drilldown_keys import validate_minimum_keys_for_test_id
+from .drilldown_keys import normalize_drilldown_keys, validate_minimum_keys_for_test_id
 from .drilldown_templates import get_drilldown_query_id_for_test_id
 
 DEFAULT_DRILLDOWN_LIMIT = 200
 MAX_DRILLDOWN_LIMIT = 200
+
+
+def _eq_normalized_sql(column_expr: str) -> str:
+    return (
+        f"REGEXP_REPLACE(TRIM(CAST({column_expr} AS VARCHAR)), '\\.0+$', '') = "
+        f"REGEXP_REPLACE(TRIM(CAST(? AS VARCHAR)), '\\.0+$', '')"
+    )
 
 
 def _normalize_limit(limit_rows: int) -> int:
@@ -32,21 +39,23 @@ def _build_drilldown_query_and_params(
     *,
     test_id: str,
     keys: dict[str, str],
+    query_id: str | None = None,
     schema_name: str = "main",
     table_name: str = "fraud_1",
     limit_rows: int = DEFAULT_DRILLDOWN_LIMIT,
     order_direction: str = "ASC",
     extra_filters: dict[str, str] | None = None,
 ) -> tuple[str, list[object]]:
-    query_id = get_drilldown_query_id_for_test_id(test_id)
-    validate_minimum_keys_for_test_id(test_id, keys)
+    resolved_query_id = str(query_id or "").strip() or get_drilldown_query_id_for_test_id(test_id)
+    normalized_keys = normalize_drilldown_keys(keys)
+    validate_minimum_keys_for_test_id(test_id, normalized_keys)
     resolved_limit = _normalize_limit(limit_rows)
     resolved_order_direction = _normalize_order_direction(order_direction)
     filters = dict(extra_filters or {})
 
     table_ref = f'"{schema_name}"."{table_name}"'
 
-    if query_id == "drilldown_duplicate_postings_v1":
+    if resolved_query_id == "drilldown_duplicate_postings_v1":
         if any(key not in {"Transaktionsart"} for key in filters.keys()):
             raise ValueError("extra_filters no permitidos para duplicate_postings; permitido: Transaktionsart")
         query = f"""
@@ -67,18 +76,18 @@ def _build_drilldown_query_and_params(
             LIMIT ?
         """
         params: list[object] = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["position"],
-            keys["betrag"],
-            keys["betrag"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["position"],
+            normalized_keys["betrag"],
+            normalized_keys["betrag"],
             filters.get("Transaktionsart"),
             filters.get("Transaktionsart"),
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_unusual_amount_by_vendor_v1":
+    if resolved_query_id == "drilldown_unusual_amount_by_vendor_v1":
         if any(key not in {"Transaktionsart"} for key in filters.keys()):
             raise ValueError(
                 "extra_filters no permitidos para unusual_amount_by_vendor; permitido: Transaktionsart"
@@ -86,22 +95,22 @@ def _build_drilldown_query_and_params(
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
+            WHERE {_eq_normalized_sql('"Kreditor"')}
               AND TRY_CAST("Betrag" AS DOUBLE) = TRY_CAST(? AS DOUBLE)
               AND (? IS NULL OR "Transaktionsart" = ?)
             ORDER BY "Kreditor" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["betrag"],
+            normalized_keys["kreditor"],
+            normalized_keys["betrag"],
             filters.get("Transaktionsart"),
             filters.get("Transaktionsart"),
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_round_dollar_payments_v1":
+    if resolved_query_id == "drilldown_round_dollar_payments_v1":
         if any(key not in {"Transaktionsart"} for key in filters.keys()):
             raise ValueError(
                 "extra_filters no permitidos para round_dollar_payments; permitido: Transaktionsart"
@@ -109,119 +118,112 @@ def _build_drilldown_query_and_params(
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
               AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
               AND (? IS NULL OR "Transaktionsart" = ?)
             ORDER BY "Belegnummer" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["betrag"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["betrag"],
             filters.get("Transaktionsart"),
             filters.get("Transaktionsart"),
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_just_below_auth_threshold_v1":
+    if resolved_query_id == "drilldown_just_below_auth_threshold_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
               AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
             ORDER BY "Belegnummer" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["betrag"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["betrag"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_split_payments_near_limit_v1":
+    if resolved_query_id == "drilldown_split_payments_near_limit_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
             ORDER BY "Position" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_invoice_sequence_gaps_v1":
+    if resolved_query_id == "drilldown_invoice_sequence_gaps_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
             ORDER BY "Belegnummer" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_negative_quantity_receipts_v1":
+    if resolved_query_id == "drilldown_negative_quantity_receipts_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
-              AND "Material" = ?
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
+              AND {_eq_normalized_sql('"Material"')}
             ORDER BY TRY_CAST("Menge" AS DOUBLE) ASC
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["material"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["material"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_duplicate_material_items_v1":
+    if resolved_query_id == "drilldown_duplicate_material_items_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
-              AND REGEXP_REPLACE(CAST("Position" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
-              AND "Material" = ?
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
+              AND {_eq_normalized_sql('"Position"')}
+              AND {_eq_normalized_sql('"Material"')}
             ORDER BY "Position" {resolved_order_direction}, "Material" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["position"],
-            keys["material"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["position"],
+            normalized_keys["material"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_unusual_posting_times_v1":
+    if resolved_query_id == "drilldown_unusual_posting_times_v1":
         if any(key not in {"Transaktionsart"} for key in filters.keys()):
             raise ValueError(
                 "extra_filters no permitidos para unusual_posting_times; permitido: Transaktionsart"
@@ -229,44 +231,42 @@ def _build_drilldown_query_and_params(
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
               AND TRIM(CAST("Erfassungsuhrzeit" AS VARCHAR)) = TRIM(CAST(? AS VARCHAR))
               AND (? IS NULL OR "Transaktionsart" = ?)
             ORDER BY "Erfassungsuhrzeit" {resolved_order_direction}, "Belegnummer" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["erfassungsuhrzeit"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["erfassungsuhrzeit"],
             filters.get("Transaktionsart"),
             filters.get("Transaktionsart"),
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_large_even_dollar_entries_v1":
+    if resolved_query_id == "drilldown_large_even_dollar_entries_v1":
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE "Kreditor" = ?
-              AND REGEXP_REPLACE(CAST("Belegnummer" AS VARCHAR), '\\.0+$', '') =
-                  REGEXP_REPLACE(CAST(? AS VARCHAR), '\\.0+$', '')
+            WHERE {_eq_normalized_sql('"Kreditor"')}
+              AND {_eq_normalized_sql('"Belegnummer"')}
               AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
             ORDER BY TRY_CAST("Betrag" AS DOUBLE) {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            keys["kreditor"],
-            keys["belegnummer"],
-            keys["betrag"],
+            normalized_keys["kreditor"],
+            normalized_keys["belegnummer"],
+            normalized_keys["betrag"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_o2c_price_outlier_v1":
+    if resolved_query_id == "drilldown_o2c_price_outlier_v1":
         table_ref = '"o2c"."o2c_order"'
         query = f"""
             SELECT *
@@ -275,10 +275,10 @@ def _build_drilldown_query_and_params(
               AND sales_order_item_id = ?
             LIMIT ?
         """
-        params = [keys["sales_order_id"], keys["sales_order_item_id"], resolved_limit]
+        params = [normalized_keys["sales_order_id"], normalized_keys["sales_order_item_id"], resolved_limit]
         return query, params
 
-    if query_id == "drilldown_o2c_discount_policy_breach_v1":
+    if resolved_query_id == "drilldown_o2c_discount_policy_breach_v1":
         table_ref = '"o2c"."o2c_order"'
         query = f"""
             SELECT *
@@ -287,10 +287,10 @@ def _build_drilldown_query_and_params(
               AND sales_order_item_id = ?
             LIMIT ?
         """
-        params = [keys["sales_order_id"], keys["sales_order_item_id"], resolved_limit]
+        params = [normalized_keys["sales_order_id"], normalized_keys["sales_order_item_id"], resolved_limit]
         return query, params
 
-    if query_id == "drilldown_o2c_delivery_quantity_mismatch_v1":
+    if resolved_query_id == "drilldown_o2c_delivery_quantity_mismatch_v1":
         table_ref = '"o2c"."o2c_delivery"'
         query = f"""
             SELECT *
@@ -299,10 +299,10 @@ def _build_drilldown_query_and_params(
               AND delivery_item_id = ?
             LIMIT ?
         """
-        params = [keys["delivery_id"], keys["delivery_item_id"], resolved_limit]
+        params = [normalized_keys["delivery_id"], normalized_keys["delivery_item_id"], resolved_limit]
         return query, params
 
-    if query_id == "drilldown_o2c_negative_delivery_quantity_v1":
+    if resolved_query_id == "drilldown_o2c_negative_delivery_quantity_v1":
         table_ref = '"o2c"."o2c_delivery"'
         query = f"""
             SELECT *
@@ -311,10 +311,10 @@ def _build_drilldown_query_and_params(
               AND delivery_item_id = ?
             LIMIT ?
         """
-        params = [keys["delivery_id"], keys["delivery_item_id"], resolved_limit]
+        params = [normalized_keys["delivery_id"], normalized_keys["delivery_item_id"], resolved_limit]
         return query, params
 
-    if query_id == "drilldown_o2c_clearing_anomaly_v1":
+    if resolved_query_id == "drilldown_o2c_clearing_anomaly_v1":
         table_ref = '"o2c"."o2c_collection"'
         query = f"""
             SELECT *
@@ -325,14 +325,14 @@ def _build_drilldown_query_and_params(
             LIMIT ?
         """
         params = [
-            keys["company_code"],
-            keys["receivable_document_id"],
-            keys["fiscal_year"],
+            normalized_keys["company_code"],
+            normalized_keys["receivable_document_id"],
+            normalized_keys["fiscal_year"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_o2c_invoice_amount_anomaly_v1":
+    if resolved_query_id == "drilldown_o2c_invoice_amount_anomaly_v1":
         table_ref = '"o2c"."o2c_invoice"'
         query = f"""
             SELECT *
@@ -343,14 +343,14 @@ def _build_drilldown_query_and_params(
             LIMIT ?
         """
         params = [
-            keys["company_code"],
-            keys["accounting_document_id"],
-            keys["fiscal_year"],
+            normalized_keys["company_code"],
+            normalized_keys["accounting_document_id"],
+            normalized_keys["fiscal_year"],
             resolved_limit,
         ]
         return query, params
 
-    if query_id == "drilldown_o2c_invoice_date_sequence_v1":
+    if resolved_query_id == "drilldown_o2c_invoice_date_sequence_v1":
         table_ref = '"o2c"."o2c_invoice"'
         query = f"""
             SELECT *
@@ -361,20 +361,21 @@ def _build_drilldown_query_and_params(
             LIMIT ?
         """
         params = [
-            keys["company_code"],
-            keys["accounting_document_id"],
-            keys["fiscal_year"],
+            normalized_keys["company_code"],
+            normalized_keys["accounting_document_id"],
+            normalized_keys["fiscal_year"],
             resolved_limit,
         ]
         return query, params
 
-    raise KeyError(f"query_id no soportado para drilldown: {query_id}")
+    raise KeyError(f"query_id no soportado para drilldown: {resolved_query_id}")
 
 
 def drilldown(
     *,
     test_id: str,
     keys: dict[str, str],
+    query_id: str | None = None,
     db_path: str | Path = DEFAULT_DUCKDB_PATH,
     schema_name: str = "main",
     table_name: str = "fraud_1",
@@ -386,6 +387,7 @@ def drilldown(
     query, params = _build_drilldown_query_and_params(
         test_id=test_id,
         keys=keys,
+        query_id=query_id,
         schema_name=schema_name,
         table_name=table_name,
         limit_rows=limit_rows,

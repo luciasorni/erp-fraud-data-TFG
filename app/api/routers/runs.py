@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from ..schemas.results import GraphResultsResponse, ReportResponse
 from ..schemas.runs import RunCreateRequest, RunCreateResponse, RunDetailResponse, RunSummaryResponse
@@ -21,8 +21,8 @@ def post_runs(payload: RunCreateRequest) -> RunCreateResponse:
 
 
 @router.get("/runs", response_model=list[RunSummaryResponse])
-def get_runs() -> list[RunSummaryResponse]:
-    return list_runs(settings=load_aws_api_settings())
+def get_runs(limit: int = Query(default=20, ge=1, le=200)) -> list[RunSummaryResponse]:
+    return list_runs(settings=load_aws_api_settings(), limit=limit)
 
 
 @router.get("/runs/{run_id}", response_model=RunDetailResponse)
@@ -57,4 +57,3 @@ def get_run_report(run_id: str) -> ReportResponse:
         scope=detail.scope,
         settings=load_aws_api_settings(),
     )
-

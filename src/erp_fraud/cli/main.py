@@ -1611,40 +1611,129 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
             except Exception:
                 pass
 
+            test_specs = load_test_specs_from_catalog(settings["catalog"], validate_schema=True)
+            test_runner = TestRunner(
+                db_path=settings["db_path"],
+                schema_name=settings["o2c_target_schema"],
+                table_name="o2c_order",
+            )
+            if validation_status != "OK":
+                results = []
+                logger.log_warning(
+                    "Run O2C bloqueado por validación técnica crítica",
+                    validation_report=data_validation_report_path,
+                    validation_status=validation_status,
+                )
+            else:
+                selected_ids = _filter_catalog_test_ids(
+                    test_specs=test_specs,
+                    select_tests=settings["select_tests"],
+                    select_fraud_types=settings["select_fraud_types"],
+                    select_tags=settings["select_tags"],
+                )
+                if selected_ids is not None:
+                    results = test_runner.run_all(
+                        selected_ids,
+                        catalog_path=settings["catalog"],
+                        validate_schema=True,
+                        timeout_ms=settings["timeout_ms"],
+                        run_id=run_id,
+                        log_path=run_paths["test_runner_log"],
+                    )
+                else:
+                    results = test_runner.run_all_from_catalog(
+                        catalog_path=settings["catalog"],
+                        validate_schema=True,
+                        timeout_ms=settings["timeout_ms"],
+                        run_id=run_id,
+                        log_path=run_paths["test_runner_log"],
+                    )
+
+            test_runs_payload = test_runner.build_test_runs_payload(results=results, run_id=run_id)
+            test_runs_path = test_runner.write_test_runs_json(
+                output_path=run_paths["test_runs"],
+                run_id=run_id,
+                results=results,
+            )
+            test_runs = list(test_runs_payload.get("test_runs", []))
+            test_output_paths = write_test_results_by_test_id(
+                run_dir=run_dir,
+                test_results=results,
+                formats=("jsonl", "parquet"),
+                sample_top_n=settings["sample_top_n"],
+            )
+            specs_by_id = {
+                str(spec.get("id", "")).strip(): spec
+                for spec in test_specs
+                if isinstance(spec, dict) and str(spec.get("id", "")).strip()
+            }
+            executed_specs = [
+                specs_by_id[test_id]
+                for test_id in sorted(test_output_paths.keys())
+                if test_id in specs_by_id
+            ]
+            test_report_cards = _build_test_report_cards(
+                test_specs=executed_specs,
+                test_output_paths=test_output_paths,
+            )
+            red_flags_activated = _build_red_flags_activated(
+                test_specs=executed_specs,
+                test_results=results,
+                test_output_paths=test_output_paths,
+            )
+            weights_cfg = load_weights_config(settings["weights_config"])
+            if settings["top_k"] is not None:
+                top_k = int(settings["top_k"])
+            else:
+                top_k = resolve_ranking_top_k(weights_config=weights_cfg, default_top_k=20)
+            ranking_rows = aggregate_findings_by_entity(
+                test_results=results,
+                weights_config=weights_cfg,
+            )
+            ranking_paths = write_ranking_outputs(
+                run_dir=run_dir,
+                ranking_rows=ranking_rows,
+                formats=("json", "parquet"),
+                top_k=top_k,
+            )
+            tests_ok = sum(1 for row in test_runs if str(row.get("status", "")).upper() == "OK")
+            tests_error = sum(1 for row in test_runs if str(row.get("status", "")).upper() == "ERROR")
+            tests_timeout = sum(1 for row in test_runs if str(row.get("status", "")).upper() == "TIMEOUT")
+            findings_total = sum(int(item.get("finding_count", 0) or 0) for item in results)
+            overall_status = "ERROR" if (validation_status != "OK" or tests_error > 0) else "OK"
+
             extra_artifacts: dict[str, str] = {
                 "run_metadata_json": str(run_metadata_path),
                 "schema_summary_json": str(schema_summary_path),
                 "schema_summary_json_run": str(schema_summary_path),
                 "o2c_validation_report_json": str(data_validation_report_path),
+                "test_runs_json": str(test_runs_path),
             }
-            ranking_paths = write_ranking_outputs(
-                run_dir=run_dir,
-                ranking_rows=[],
-                formats=("json", "parquet"),
-                top_k=None,
-            )
-            extra_artifacts["ranking_json"] = str(ranking_paths["json"])
-            if "parquet" in ranking_paths:
-                extra_artifacts["ranking_parquet"] = str(ranking_paths["parquet"])
             dd_json_path, dd_md_path = _ensure_report_dictionary_artifacts(run_dir=run_dir)
             extra_artifacts["data_dictionary_json"] = str(dd_json_path)
             extra_artifacts["data_dictionary_md"] = str(dd_md_path)
+            for key, path in ranking_paths.items():
+                extra_artifacts[f"ranking_{key}"] = str(path)
+            for test_id, paths in test_output_paths.items():
+                for kind, path in paths.items():
+                    extra_artifacts[f"tests_outputs.{test_id}.{kind}"] = str(path)
+
             report_payload = build_report_json_payload(
                 run_id=run_id,
                 dataset_hash=dataset_hash,
                 out_dir=settings["out_dir"],
                 summary={
                     "overall_status": overall_status,
-                    "tests_total": 0,
-                    "tests_ok": 0,
-                    "tests_error": 0,
-                    "tests_timeout": 0,
-                    "findings_total": 0,
-                    "ranking_entities": 0,
+                    "tests_total": len(test_runs),
+                    "tests_ok": tests_ok,
+                    "tests_error": tests_error,
+                    "tests_timeout": tests_timeout,
+                    "findings_total": findings_total,
+                    "ranking_entities": len(ranking_rows),
                 },
-                ranking=[],
-                top_k=0,
-                test_runs=[],
+                ranking=ranking_rows[:top_k],
+                top_k=top_k,
+                test_runs=test_runs,
                 artifact_paths=extra_artifacts,
                 errors=[],
                 metadata_extra={
@@ -1660,6 +1749,8 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
                     "o2c_raw_autoload": raw_autoload_summary,
                     "o2c_optional_placeholders_created": created_placeholders,
                     "o2c_validation_summary": validation_summary,
+                    "test_report_cards": test_report_cards,
+                    "red_flags_activated": red_flags_activated,
                 },
             )
             report_json_path = write_report_json(
@@ -1674,7 +1765,29 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
                 report_md_path=report_md_path,
                 report_html_path=run_paths["report_html"],
             )
+            write_or_update_report_markdown_with_data_validation(
+                report_md_path=report_md_path,
+                data_validation_report_path=data_validation_report_path,
+            )
+            write_or_update_report_markdown_with_drilldown_instructions(
+                report_md_path=report_md_path,
+                run_id=run_id,
+            )
             _write_run_structure_manifest(run_id=run_id, run_dir=run_dir, paths=run_paths)
+            missing_links = validate_report_artifact_paths_exist(
+                report_payload=report_payload,
+                base_path=".",
+            )
+            if missing_links:
+                logger.log_warning(
+                    "Reporte O2C con enlaces de artefactos faltantes",
+                    missing_artifacts=missing_links,
+                )
+                print(
+                    f"ERROR: report.json contiene {len(missing_links)} artifact_paths inexistentes",
+                    file=sys.stderr,
+                )
+                return 1
             try:
                 validate_required_run_outputs(run_dir=run_dir)
             except RunOutputValidationError as exc:
@@ -1697,14 +1810,14 @@ def _run_pipeline_local(args: argparse.Namespace, *, resolved_settings: dict[str
             logger.log_ingest_end(
                 status=overall_status,
                 tables_loaded=int(transform_payload.get("entities_ok", 0)),
-                tests_total=0,
-                findings_total=0,
+                tests_total=len(test_runs),
+                findings_total=findings_total,
                 run_dir=str(run_dir),
                 process_family=settings["process_family"],
             )
             print(
                 "OK: run completado "
-                f"(run_id={run_id}, process_family=o2c, status={overall_status}, out={run_dir})"
+                f"(run_id={run_id}, process_family=o2c, tests={len(test_runs)}, findings={findings_total}, status={overall_status}, out={run_dir})"
             )
             return 0 if overall_status == "OK" else 1
 

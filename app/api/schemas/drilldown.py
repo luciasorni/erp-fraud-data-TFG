@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Literal
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import Field
 
@@ -16,6 +16,7 @@ class DrilldownRequest(APIModel):
     action: DrilldownAction = "finding_rows"
     test_id: str
     keys: Dict[str, str]
+    query_id: Optional[str] = None
     extra_filters: Dict[str, str] = Field(default_factory=dict)
     limit_rows: int = Field(default=50, ge=1, le=200)
     order_direction: DrilldownOrder = "ASC"

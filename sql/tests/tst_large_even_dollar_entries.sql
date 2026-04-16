@@ -14,6 +14,8 @@ SELECT
     END AS is_even_amount
 FROM main.fraud_1
 WHERE TRY_CAST("Betrag" AS DOUBLE) IS NOT NULL
+  AND COALESCE(TRIM(CAST("Kreditor" AS VARCHAR)), '') <> ''
+  AND COALESCE(TRIM(CAST("Belegnummer" AS VARCHAR)), '') <> ''
   AND ABS(TRY_CAST("Betrag" AS DOUBLE)) >= 10000
   AND ABS(TRY_CAST("Betrag" AS DOUBLE) - ROUND(TRY_CAST("Betrag" AS DOUBLE), 0)) < 1e-9
   AND MOD(CAST(ROUND(TRY_CAST("Betrag" AS DOUBLE), 0) AS BIGINT), 2) = 0

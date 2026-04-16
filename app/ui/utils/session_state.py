@@ -23,6 +23,9 @@ def init_session_state() -> None:
         "last_run_response": None,
         "runs_filters": dict(DEFAULT_RUN_FILTERS),
         "drilldown_result": None,
+        "executions_runs_limit": 20,
+        "results_show_run_picker": False,
+        "detail_show_run_picker": False,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
