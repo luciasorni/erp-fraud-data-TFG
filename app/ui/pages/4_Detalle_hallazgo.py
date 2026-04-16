@@ -330,38 +330,42 @@ def main() -> None:
     elif drilldown_error:
         st.warning(str(drilldown_error))
 
-    if comparisons:
-        render_divider()
-        render_section_heading(
-            title="Por qué este caso destaca",
-            subtitle="Insights comparativos del second-level explainer para contextualizar el caso frente al patrón esperado o frente a otros runs.",
-        )
+    render_divider()
+    render_section_heading(
+        title="Por qué este hallazgo destaca",
+        subtitle="Comparativas, recomendaciones y pasos de revisión agrupados para leer el caso de forma más clara.",
+    )
+
+    tab_labels = ["Comparativas", "Recomendaciones", "Tests", "Procedimiento auditor"]
+    tab_comparisons, tab_recommendations, tab_tests, tab_audit = st.tabs(tab_labels)
+
+    with tab_comparisons:
         render_recommendations_panel(
             comparisons,
             title="Comparativas relevantes",
             empty_message="No hay comparativas relevantes disponibles.",
         )
 
-    render_divider()
-    render_section_heading(
-        title="Recomendaciones",
-        subtitle="Siguientes pasos sugeridos para investigación, contraste adicional y validación.",
-    )
-    render_recommendations_panel(
-        rec_sections["recommendations"],
-        title="Recomendaciones",
-        empty_message="No hay recomendaciones específicas para este hallazgo.",
-    )
-    render_recommendations_panel(
-        rec_sections["recommended_tests"],
-        title="Tests recomendados",
-        empty_message="No hay tests adicionales sugeridos para este hallazgo.",
-    )
-    render_recommendations_panel(
-        rec_sections["audit_procedures"],
-        title="Procedimiento auditor",
-        empty_message="No hay procedimiento auditor adicional sugerido.",
-    )
+    with tab_recommendations:
+        render_recommendations_panel(
+            rec_sections["recommendations"],
+            title="Recomendaciones",
+            empty_message="No hay recomendaciones específicas para este hallazgo.",
+        )
+
+    with tab_tests:
+        render_recommendations_panel(
+            rec_sections["recommended_tests"],
+            title="Tests recomendados",
+            empty_message="No hay tests adicionales sugeridos para este hallazgo.",
+        )
+
+    with tab_audit:
+        render_recommendations_panel(
+            rec_sections["audit_procedures"],
+            title="Procedimiento auditor",
+            empty_message="No hay procedimiento auditor adicional sugerido.",
+        )
 
     render_divider()
     render_section_heading(
