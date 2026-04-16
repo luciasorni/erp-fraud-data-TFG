@@ -5,6 +5,12 @@ from __future__ import annotations
 import os
 from typing import Any
 
+try:
+    from dotenv import find_dotenv, load_dotenv
+except Exception:  # pragma: no cover
+    find_dotenv = None  # type: ignore[assignment]
+    load_dotenv = None  # type: ignore[assignment]
+
 from .run_defaults import (
     DEFAULT_AWS_REGION,
     DEFAULT_LANGSMITH_PROJECT,
@@ -18,6 +24,17 @@ from .run_defaults import (
 
 VALID_RUN_MODES = {"local", "cloud"}
 VALID_PROCESS_SCOPES = {"p2p", "o2c", "both"}
+
+
+def _load_project_dotenv() -> None:
+    if load_dotenv is None or find_dotenv is None:
+        return
+    path = find_dotenv(filename=".env", usecwd=True)
+    if path:
+        load_dotenv(path, override=False)
+
+
+_load_project_dotenv()
 
 
 def parse_bool_env(raw_value: Any, default: bool = False) -> bool:
@@ -75,4 +92,3 @@ def get_cloud_env_settings() -> dict[str, Any]:
         "langsmith_tracing": langsmith_tracing,
         "langsmith_project": langsmith_project,
     }
-

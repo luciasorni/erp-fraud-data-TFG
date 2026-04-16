@@ -15,6 +15,7 @@ from app.ui.utils.constants import ALLOWED_DRILLDOWN_ACTIONS
 from app.ui.utils.mappers import (
     comparison_insights_for_case,
     explanation_for_test,
+    findings_table_rows,
     recommendations_for_finding,
     split_recommendation_sections,
 )
@@ -52,15 +53,73 @@ def main() -> None:
         subtitle="Investiga el caso con una lectura guiada: resumen ejecutivo, narrativa, comparativas, recomendaciones y drilldown.",
     )
 
+    client = APIClient()
     run_id = st.session_state.selected_run_id
     finding = st.session_state.selected_finding
     graph = st.session_state.selected_graph_payload
-    if not run_id:
-        st.info("Selecciona antes un run desde Resultados o Ejecuciones.")
+
+    runs = []
+    try:
+        runs = client.list_runs()
+    except APIClientError as exc:
+        st.error(f"No se pudo cargar el historial de runs: {exc}")
         return
-    if not graph:
-        st.info("No hay contexto de resultados cargado para este hallazgo.")
+    run_ids = [item["run_id"] for item in runs]
+    if not run_ids:
+        st.info("Todavía no hay runs disponibles.")
         return
+    current_run_id = run_id if run_id in run_ids else run_ids[0]
+    selected_run_id = st.selectbox(
+        "Run a inspeccionar",
+        run_ids,
+        index=run_ids.index(current_run_id) if current_run_id in run_ids else 0,
+    )
+    if selected_run_id != st.session_state.selected_run_id:
+        st.session_state.selected_run_id = selected_run_id
+        st.session_state.selected_finding = None
+        st.session_state.selected_finding_id = None
+        st.session_state.selected_finding_row_key = None
+        st.session_state.drilldown_result = None
+    run_id = selected_run_id
+    if not graph or str(graph.get("run_id") or "").strip() != selected_run_id:
+        try:
+            graph = client.get_run_graph(run_id)
+            st.session_state.selected_graph_payload = graph
+        except APIClientError as exc:
+            st.error(f"No se pudo cargar el contexto de resultados del run: {exc}")
+            return
+
+    findings_available = [
+        row for row in findings_table_rows(graph.get("findings", [])) if isinstance(row, dict)
+    ]
+    if not findings_available:
+        st.info("Este run no tiene hallazgos disponibles para inspección.")
+        return
+    finding_options = []
+    finding_by_label = {}
+    for item in findings_available:
+        label = (
+            f"{item.get('test_id') or item.get('finding_id')} · "
+            f"{item.get('fraud_type') or '-'} · "
+            f"{item.get('finding_count') or 0} hallazgos"
+        )
+        finding_options.append(label)
+        finding_by_label[label] = item
+    default_finding = finding if finding in findings_available else None
+    default_label = None
+    if default_finding:
+        for label, item in finding_by_label.items():
+            if item.get("test_id") == default_finding.get("test_id"):
+                default_label = label
+                break
+    chosen_label = st.selectbox(
+        "Test/hallazgo a inspeccionar",
+        finding_options,
+        index=finding_options.index(default_label) if default_label in finding_options else 0,
+    )
+    finding = finding_by_label[chosen_label]
+    st.session_state.selected_finding = finding
+    st.session_state.selected_finding_id = finding.get("finding_id")
 
     render_finding_detail(finding)
 
@@ -184,7 +243,6 @@ def main() -> None:
             st.info("Este hallazgo no dispone de claves mínimas para ejecutar drilldown.")
             return
 
-    client = APIClient()
     controls = st.columns([1.15, 0.95, 0.95, 1.25])
     action = controls[0].selectbox("Acción", ALLOWED_DRILLDOWN_ACTIONS)
     limit_rows = controls[1].slider("Límite", min_value=10, max_value=200, value=50, step=10)

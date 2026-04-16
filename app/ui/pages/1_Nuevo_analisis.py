@@ -9,7 +9,7 @@ from app.ui.components.header import configure_page, render_divider, render_page
 from app.ui.services.api_client import APIClient, APIClientError
 from app.ui.utils.constants import LLM_OPTIONS, SCOPE_LABELS, SCOPE_OPTIONS
 from app.ui.utils.formatters import format_bool, format_bytes, format_scope
-from app.ui.utils.session_state import init_session_state, remember_last_run_response
+from app.ui.utils.session_state import init_session_state, remember_last_run_response, reset_new_analysis_state
 
 
 STEP_DATASET = 1
@@ -67,6 +67,9 @@ def _poll_upload_job(client: APIClient, job_id: str) -> dict | None:
 def main() -> None:
     configure_page(page_title="Nuevo análisis")
     init_session_state()
+    if st.session_state.get("_active_page") != "new_analysis":
+        reset_new_analysis_state()
+    st.session_state["_active_page"] = "new_analysis"
     render_page_header(
         title="Nuevo análisis antifraude ERP",
         subtitle="Registra el ERP, define el alcance del análisis y lanza el run cloud con un flujo guiado.",

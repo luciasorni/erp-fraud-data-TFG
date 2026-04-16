@@ -16,6 +16,7 @@ from .drilldown_keys import get_minimum_keys_for_test_id
 from .result_schema import RESULT_SCHEMA_VERSION
 
 STANDARD_TEST_RESULT_SCHEMA_VERSION = RESULT_SCHEMA_VERSION
+APP_ROOT = Path("/app")
 
 
 def _utc_timestamp_iso() -> str:
@@ -26,6 +27,47 @@ def _quote_identifier(identifier: str) -> str:
     if not isinstance(identifier, str) or not identifier.strip():
         raise ValueError("identifier debe ser string no vacío")
     return '"' + identifier.strip().replace('"', '""') + '"'
+
+
+def _catalog_yaml_dir_from_test_spec(test_spec: dict[str, Any]) -> Path | None:
+    candidates = (
+        test_spec.get("_catalog_source_path"),
+        test_spec.get("_source_path"),
+        test_spec.get("catalog_source_path"),
+        test_spec.get("source_path"),
+    )
+    for candidate in candidates:
+        raw = str(candidate or "").strip()
+        if not raw:
+            continue
+        path = Path(raw)
+        if path.is_file():
+            return path.parent
+        if path.suffix.lower() in {".yaml", ".yml"}:
+            return path.parent
+    return None
+
+
+def _resolve_sql_ref_path(*, test_spec: dict[str, Any], sql_ref: str) -> Path:
+    sql_path = Path(sql_ref)
+    candidates: list[Path] = []
+    if sql_path.is_absolute():
+        candidates.append(sql_path)
+    else:
+        candidates.extend(
+            [
+                Path.cwd() / sql_path,
+                APP_ROOT / sql_path,
+            ]
+        )
+        catalog_dir = _catalog_yaml_dir_from_test_spec(test_spec)
+        if catalog_dir is not None:
+            candidates.append(catalog_dir / sql_path)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    searched = candidates or [sql_path]
+    raise FileNotFoundError(f"No existe SQL ref: {searched[0]}")
 
 
 def _build_finding_common_fields(
@@ -863,11 +905,7 @@ def run_test_sql_ref_generic(
     if not sql_ref:
         raise ValueError(f"{test_spec.get('id', '')}: falta logic.sql_ref para ejecución SQL genérica")
 
-    sql_path = Path(sql_ref)
-    if not sql_path.is_absolute():
-        sql_path = Path.cwd() / sql_path
-    if not sql_path.exists():
-        raise FileNotFoundError(f"No existe SQL ref: {sql_path}")
+    sql_path = _resolve_sql_ref_path(test_spec=test_spec, sql_ref=sql_ref)
     query = sql_path.read_text(encoding="utf-8")
 
     own_connection = conn is None

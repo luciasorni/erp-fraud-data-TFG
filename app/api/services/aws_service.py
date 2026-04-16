@@ -9,6 +9,7 @@ from typing import Any
 
 import boto3
 
+from src.erp_fraud.config import env as _erp_env  # noqa: F401
 from src.erp_fraud.storage import parse_s3_uri
 
 
@@ -332,4 +333,3 @@ def write_run_submission_record(
         ContentType="application/json",
     )
     return key
-

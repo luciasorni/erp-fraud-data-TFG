@@ -46,3 +46,11 @@ def remember_last_run_response(payload: dict) -> None:
     st.session_state.selected_run_ids = run_ids
     if payload.get("run_id"):
         st.session_state.selected_run_id = payload["run_id"]
+
+
+def reset_new_analysis_state() -> None:
+    st.session_state.selected_dataset_id = None
+    st.session_state.selected_scope = "p2p"
+    st.session_state.analysis_step = 1
+    st.session_state.llm_mode = "real"
+    st.session_state.kb_index_enabled = False

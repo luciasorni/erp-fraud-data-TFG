@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from src.erp_fraud.config import env as _erp_env  # noqa: F401
+
 from .routers.datasets import router as datasets_router
 from .routers.drilldown import router as drilldown_router
 from .routers.health import router as health_router
@@ -24,4 +26,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
