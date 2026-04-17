@@ -4,7 +4,6 @@ import pandas as pd
 import streamlit as st
 
 from app.ui.components.drilldown_table import render_drilldown_table
-from app.ui.components.explanations_panel import render_explanations_panel
 from app.ui.components.findings_detail import render_finding_detail
 from app.ui.components.header import (
     configure_page,
@@ -78,6 +77,139 @@ def _build_context_marker(
         entity_key = str(selected_row.get("entity_key") or "").strip()
     keys_repr = "|".join(f"{k}={v}" for k, v in sorted((evidence_keys or {}).items()))
     return f"{run_id}::{test_id}::{entity_key}::{keys_repr}"
+
+
+def _render_executive_summary_block(executive_summary: dict | str | None) -> None:
+    if not executive_summary:
+        st.info("No hay resumen ejecutivo disponible.")
+        return
+
+    with st.container(border=True):
+        st.markdown("#### Lectura ejecutiva")
+
+        if isinstance(executive_summary, str):
+            st.write(executive_summary)
+            return
+
+        overall_assessment = executive_summary.get("overall_assessment")
+        risk_posture = executive_summary.get("risk_posture")
+        key_observations = executive_summary.get("key_observations") or []
+
+        if overall_assessment:
+            st.markdown("**Valoración general**")
+            st.write(str(overall_assessment))
+
+        if risk_posture:
+            st.markdown("**Postura de riesgo**")
+            st.write(str(risk_posture))
+
+        if key_observations:
+            st.markdown("**Observaciones clave**")
+            for item in key_observations:
+                st.markdown(f"- {item}")
+
+        remaining = {
+            k: v
+            for k, v in executive_summary.items()
+            if k not in {"overall_assessment", "risk_posture", "key_observations"} and v not in (None, "", [], {})
+        }
+        if remaining:
+            st.markdown("**Contexto adicional**")
+            render_presentable_content(remaining)
+
+
+def _render_explanation_block(explanation: dict | None) -> None:
+    if not explanation:
+        st.info("No hay explicación disponible para este test.")
+        return
+
+    summary = explanation.get("summary")
+    test_id = explanation.get("test_id")
+    fraud_type = explanation.get("fraud_type")
+    finding_count = explanation.get("finding_count")
+    referenced_columns = explanation.get("referenced_columns") or []
+    cited_keys = explanation.get("cited_keys") or {}
+
+    with st.container(border=True):
+        st.markdown("#### Explicación del fraude detectado")
+
+        top_cols = st.columns([2.0, 1.2, 1.0], gap="small")
+        with top_cols[0]:
+            st.markdown(f"**Test:** {test_id or '-'}")
+        with top_cols[1]:
+            st.markdown(f"**Tipología:** {fraud_type or '-'}")
+        with top_cols[2]:
+            st.markdown(f"**Hallazgos:** {finding_count if finding_count is not None else '-'}")
+
+        if summary:
+            st.write(str(summary))
+
+        meta_parts = []
+        if referenced_columns:
+            meta_parts.append(f"**Columnas citadas:** {', '.join(map(str, referenced_columns))}")
+        if cited_keys:
+            meta_parts.append(
+                "**Claves:** " + ", ".join(f"{k}={v}" for k, v in cited_keys.items())
+            )
+
+        if meta_parts:
+            st.caption(" · ".join(meta_parts))
+
+
+def _render_evidence_block(
+    *,
+    evidence_keys: dict,
+    finding: dict | None,
+    selected_query_id: str | None,
+    required_keys: list | None,
+    missing_keys: list | None,
+    drilldown_error: str | None,
+) -> None:
+    with st.container(border=True):
+        st.markdown("#### Evidencia principal")
+        st.caption("Claves de negocio destacadas para orientar la investigación antes de ir al drilldown.")
+
+        if evidence_keys:
+            table_rows = [{"campo": key, "valor": value} for key, value in evidence_keys.items()]
+            st.table(pd.DataFrame(table_rows))
+        else:
+            st.info("No hay claves de evidencia disponibles para este hallazgo.")
+
+        st.markdown(
+            f"""
+            <div style="
+                margin-top:0.8rem;
+                padding:0.9rem 1rem;
+                border:1px solid #D9E5DE;
+                border-radius:14px;
+                background:#F8FBF9;
+            ">
+                <div style="
+                    font-size:0.78rem;
+                    font-weight:700;
+                    letter-spacing:0.04em;
+                    text-transform:uppercase;
+                    color:#5C766C;
+                    margin-bottom:0.45rem;
+                ">
+                    Contexto de drilldown
+                </div>
+                <div style="font-size:0.95rem; color:#12302B;">
+                    <strong>Test:</strong> {finding.get("test_id") if finding else "-"}
+                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                    <strong>Query:</strong> {selected_query_id or "-"}
+                    &nbsp;&nbsp;·&nbsp;&nbsp;
+                    <strong>Keys requeridas:</strong> {", ".join(required_keys or []) or "-"}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        if missing_keys:
+            st.warning(f"El hallazgo no es drilldownable todavía. Faltan keys mínimas: {missing_keys}")
+        elif drilldown_error:
+            st.warning(str(drilldown_error))
 
 
 def main() -> None:
@@ -248,7 +380,10 @@ def main() -> None:
         with st.expander("Ver todos los hallazgos detectados", expanded=True):
             st.dataframe(pd.DataFrame(overview_rows), use_container_width=True, hide_index=True)
 
-    explanation = explanation_for_test(graph.get("explanations", []), finding.get("test_id") if finding else None)
+    explanation = explanation_for_test(
+        graph.get("explanations", []),
+        finding.get("test_id") if finding else None,
+    )
     recommendations = recommendations_for_finding(graph.get("second_level_analysis", []))
     comparisons = comparison_insights_for_case(graph.get("comparison_insights", []))
     executive_summary = graph.get("executive_summary")
@@ -258,22 +393,13 @@ def main() -> None:
         title="Resumen ejecutivo del hallazgo",
         subtitle="Narrativa principal del caso: por qué se detectó, qué evidencia lo respalda y por qué merece revisión.",
     )
-    if executive_summary:
-        st.markdown(
-            '<div class="rf20-callout tight" style="background:#F7FBFA; margin-bottom:0.8rem;">',
-            unsafe_allow_html=True,
-        )
-        st.markdown("**Lectura ejecutiva**")
-        render_presentable_content(executive_summary)
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    render_explanations_panel([explanation] if explanation else [])
+    _render_executive_summary_block(executive_summary)
 
     render_divider()
-    render_section_heading(
-        title="Evidencia principal",
-        subtitle="Claves de negocio destacadas para orientar la investigación antes de ir al drilldown.",
-    )
+
+    _render_explanation_block(explanation)
+
+    render_divider()
 
     evidence_keys = {}
     selected_query_id = None
@@ -304,31 +430,14 @@ def main() -> None:
         st.session_state.drilldown_result = None
         st.session_state.drilldown_context_marker = context_marker
 
-    if evidence_keys:
-        st.table([{"campo": key, "valor": value} for key, value in evidence_keys.items()])
-    else:
-        st.info("No hay claves de evidencia disponibles para este hallazgo.")
-
-    st.markdown(
-        f"""
-        <div class="rf20-callout tight" style="margin-top:0.8rem;">
-            <div class="rf20-summary-label">Contexto de drilldown</div>
-            <div class="rf20-meta-line">
-                Test: <span class="rf20-meta-inline">{finding.get("test_id") or "-"}</span>
-                &nbsp;&nbsp;·&nbsp;&nbsp;
-                Query: <span class="rf20-meta-inline">{selected_query_id or "-"}</span>
-                &nbsp;&nbsp;·&nbsp;&nbsp;
-                Keys requeridas: <span class="rf20-meta-inline">{", ".join(required_keys) or "-"}</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    _render_evidence_block(
+        evidence_keys=evidence_keys,
+        finding=finding,
+        selected_query_id=selected_query_id,
+        required_keys=required_keys,
+        missing_keys=missing_keys,
+        drilldown_error=drilldown_error,
     )
-
-    if missing_keys:
-        st.warning(f"El hallazgo no es drilldownable todavía. Faltan keys mínimas: {missing_keys}")
-    elif drilldown_error:
-        st.warning(str(drilldown_error))
 
     render_divider()
     render_section_heading(
