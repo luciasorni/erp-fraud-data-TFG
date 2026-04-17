@@ -13,7 +13,7 @@ class GraphResultsResponse(APIModel):
     status: str
     graph_status: Optional[str] = None
     kb_index_status: Optional[str] = None
-    executive_summary: Optional[str] = None
+    executive_summary: Optional[Any] = None
     counts: CountsSummary
     hypotheses: List[UISectionItem] = Field(default_factory=list)
     selected_tests: List[UISectionItem] = Field(default_factory=list)

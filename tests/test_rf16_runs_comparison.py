@@ -128,6 +128,10 @@ def test_rf16_load_snapshot_and_compare_cross_process(tmp_path: Path) -> None:
     assert payload["runs_count"] == 2
     assert payload["process_families"] == {"o2c": 1, "p2p": 1}
     assert isinstance(payload["recommendations"], list) and payload["recommendations"]
+    sections = payload["comparison_sections"]
+    assert [item["section"] for item in sections] == ["intra_run", "historical", "cross_process"]
+    assert sections[2]["status"] == "comparison"
+    assert "otra familia de proceso" in sections[2]["summary"]
 
 
 def test_rf16_pick_latest_run_ids_by_family(tmp_path: Path) -> None:

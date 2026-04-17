@@ -63,10 +63,13 @@ def create_run(
 
     submitted_at = _utc_now()
     if payload.scope == "both":
+        composite_group_id = f"composite-{submitted_at.strftime('%Y%m%d-%H%M%S')}-{payload.dataset_id}"
+        planned_run_ids = {scope: _make_run_id(scope=scope) for scope in ("p2p", "o2c")}
         run_ids: dict[str, str] = {}
         task_arns: dict[str, str] = {}
         for scope in ("p2p", "o2c"):
-            run_id = _make_run_id(scope=scope)
+            run_id = planned_run_ids[scope]
+            peer_run_ids = [rid for fam, rid in planned_run_ids.items() if fam != scope]
             task_arn = submit_graph_run_task(
                 run_id=run_id,
                 process_scope=scope,
@@ -89,6 +92,8 @@ def create_run(
                     "task_arn": task_arn,
                     "submitted_at_utc": submitted_at.isoformat(),
                     "composite_run": True,
+                    "composite_group_id": composite_group_id,
+                    "peer_run_ids": peer_run_ids,
                 },
                 settings=settings,
                 s3_client=client_s3,

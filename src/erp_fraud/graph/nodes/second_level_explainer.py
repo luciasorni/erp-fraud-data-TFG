@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,184 @@ def _safe_list(value: Any) -> list[Any]:
 
 def _safe_dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
+
+
+def _parse_structured_value(value: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        return value
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text or text[:1] not in {"{", "["}:
+        return value
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            parsed = parser(text)
+            if isinstance(parsed, (dict, list)):
+                return parsed
+        except Exception:
+            continue
+    return value
+
+
+def _risk_posture_from_payload(*, deterministic_payload: dict[str, Any]) -> str:
+    runs = _safe_list(deterministic_payload.get("runs"))
+    current = _safe_dict(runs[0]) if runs else {}
+    try:
+        confidence = float(current.get("confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence >= 0.75:
+        return "Alto"
+    if confidence >= 0.45:
+        return "Medio"
+    return "Moderado"
+
+
+def _normalize_executive_summary(*, raw: Any, deterministic_payload: dict[str, Any]) -> dict[str, Any]:
+    parsed = _parse_structured_value(raw)
+    if isinstance(parsed, dict):
+        overall = str(
+            parsed.get("overall_assessment")
+            or parsed.get("summary")
+            or parsed.get("executive_summary")
+            or ""
+        ).strip()
+        risk_posture = str(parsed.get("risk_posture") or "").strip() or _risk_posture_from_payload(
+            deterministic_payload=deterministic_payload
+        )
+        observations = parsed.get("key_observations")
+        if not isinstance(observations, list):
+            observations = parsed.get("key_evidence")
+        key_observations = [str(item).strip() for item in _safe_list(observations) if str(item).strip()]
+        if not overall:
+            overall = (
+                "El second-level explainer consolida la lectura del run a partir de la señal actual, "
+                "la comparación disponible y el contexto documental recuperado."
+            )
+        return {
+            "overall_assessment": overall,
+            "risk_posture": risk_posture,
+            "key_observations": key_observations[:6],
+        }
+
+    text = str(parsed or "").strip()
+    if not text:
+        text = (
+            "El second-level explainer no recibió suficiente contexto narrativo y se usa una síntesis determinista "
+            "basada en el run actual y las comparativas disponibles."
+        )
+    return {
+        "overall_assessment": text,
+        "risk_posture": _risk_posture_from_payload(deterministic_payload=deterministic_payload),
+        "key_observations": [],
+    }
+
+
+def _normalize_action_items(*, raw_items: Any, kind: str) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for idx, raw in enumerate(_safe_list(raw_items), start=1):
+        parsed = _parse_structured_value(raw)
+        if isinstance(parsed, dict):
+            if kind == "recommended_tests":
+                normalized.append(
+                    {
+                        "title": str(parsed.get("test_id") or parsed.get("title") or f"Test recomendado {idx}").strip(),
+                        "summary": str(parsed.get("rationale") or parsed.get("summary") or "").strip(),
+                        "status": "recommended_test",
+                        "section": "recommended_tests",
+                        "priority": str(parsed.get("priority") or "").strip() or None,
+                        "expected_value": str(parsed.get("expected_value") or "").strip() or None,
+                        "attributes": parsed,
+                    }
+                )
+            elif kind == "audit_procedures":
+                normalized.append(
+                    {
+                        "title": str(parsed.get("procedure") or parsed.get("title") or f"Procedimiento {idx}").strip(),
+                        "summary": str(parsed.get("why") or parsed.get("summary") or "").strip(),
+                        "status": "audit_procedure",
+                        "section": "audit_procedures",
+                        "priority": str(parsed.get("priority") or "").strip() or None,
+                        "evidence": _safe_list(parsed.get("evidence")),
+                        "attributes": parsed,
+                    }
+                )
+            else:
+                normalized.append(
+                    {
+                        "title": str(parsed.get("action") or parsed.get("title") or f"Recomendación {idx}").strip(),
+                        "summary": str(parsed.get("why") or parsed.get("summary") or "").strip(),
+                        "status": "recommended_action",
+                        "section": "recommendations",
+                        "owner": str(parsed.get("owner") or "").strip() or None,
+                        "urgency": str(parsed.get("urgency") or "").strip() or None,
+                        "attributes": parsed,
+                    }
+                )
+            continue
+
+        text = str(parsed or "").strip()
+        if not text:
+            continue
+        base = {
+            "title": (
+                f"Test recomendado {idx}" if kind == "recommended_tests"
+                else f"Procedimiento {idx}" if kind == "audit_procedures"
+                else f"Recomendación {idx}"
+            ),
+            "summary": text,
+            "attributes": {},
+        }
+        if kind == "recommended_tests":
+            base.update({"status": "recommended_test", "section": "recommended_tests"})
+        elif kind == "audit_procedures":
+            base.update({"status": "audit_procedure", "section": "audit_procedures"})
+        else:
+            base.update({"status": "recommended_action", "section": "recommendations"})
+        normalized.append(base)
+    return normalized
+
+
+def _normalize_comparison_items(*, raw_items: Any, deterministic_payload: dict[str, Any]) -> list[dict[str, Any]]:
+    current_runs = _safe_list(deterministic_payload.get("runs"))
+    default_runs = [str(_safe_dict(row).get("run_id", "")).strip() for row in current_runs if str(_safe_dict(row).get("run_id", "")).strip()]
+    items: list[dict[str, Any]] = []
+    for idx, raw in enumerate(_safe_list(raw_items), start=1):
+        parsed = _parse_structured_value(raw)
+        if isinstance(parsed, dict):
+            title = str(parsed.get("title") or parsed.get("conclusion") or f"Comparativa {idx}").strip()
+            summary = str(parsed.get("summary") or parsed.get("implication") or parsed.get("conclusion") or "").strip()
+            items.append(
+                {
+                    "title": title,
+                    "subtitle": str(parsed.get("subtitle") or "Comparativa contextual del caso").strip(),
+                    "summary": summary,
+                    "status": str(parsed.get("status") or "comparison").strip(),
+                    "section": str(parsed.get("section") or "cross_process").strip(),
+                    "implication": str(parsed.get("implication") or "").strip() or None,
+                    "recommendation": str(parsed.get("recommendation") or "").strip() or None,
+                    "evidence": [str(item).strip() for item in _safe_list(parsed.get("evidence")) if str(item).strip()],
+                    "attributes": {
+                        **parsed,
+                        "runs_compared": _safe_list(parsed.get("runs_compared")) or default_runs,
+                    },
+                }
+            )
+            continue
+        text = str(parsed or "").strip()
+        if text:
+            items.append(
+                {
+                    "title": f"Comparativa {idx}",
+                    "subtitle": "Comparativa contextual del caso",
+                    "summary": text,
+                    "status": "comparison",
+                    "section": "cross_process",
+                    "attributes": {"runs_compared": default_runs},
+                }
+            )
+    return items
 
 
 def _resolve_rf16_run_ids(*, state: GraphState) -> list[str]:
@@ -63,10 +242,9 @@ def _resolve_rf16_run_ids(*, state: GraphState) -> list[str]:
 def _validate_second_level_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(output, dict):
         return {"passed": False, "errors": ["second_level output debe ser objeto"]}
-    required_text = ("executive_summary",)
-    for field in required_text:
-        if not str(output.get(field, "")).strip():
-            return {"passed": False, "errors": [f"campo requerido vacío: {field}"]}
+    executive_summary = output.get("executive_summary")
+    if executive_summary in (None, "", [], {}):
+        return {"passed": False, "errors": ["campo requerido vacío: executive_summary"]}
     required_lists = ("audit_procedures", "recommended_tests", "next_actions")
     for field in required_lists:
         if not isinstance(output.get(field, []), list):
@@ -102,17 +280,20 @@ def _fallback_llm_insights(*, deterministic_payload: dict[str, Any]) -> dict[str
     for row in actions:
         if "auditor" in row.lower() or "reconcili" in row.lower() or "revisi" in row.lower():
             procedures.append(row)
-    executive_summary = (
-        "Comparación RF16 completada con base determinista. "
-        f"Tipologías comunes detectadas: {', '.join(common_types) if common_types else 'ninguna'}."
-    )
+    comparison_sections = _safe_list(deterministic_payload.get("comparison_sections"))
+    current_section = _safe_dict(comparison_sections[0]) if comparison_sections else {}
+    executive_summary = {
+        "overall_assessment": str(current_section.get("summary") or "").strip()
+        or "El second-level explainer usa una síntesis determinista basada en el run actual y la comparación disponible.",
+        "risk_posture": _risk_posture_from_payload(deterministic_payload=deterministic_payload),
+        "key_observations": [
+            f"Tipologías comunes con hallazgos: {', '.join(common_types) if common_types else 'ninguna'}.",
+            f"Runs comparados: {int(deterministic_payload.get('runs_count', 0) or 0)}.",
+        ],
+    }
     return {
         "executive_summary": executive_summary,
-        "cross_process_conclusions": [
-            f"runs_count={int(deterministic_payload.get('runs_count', 0) or 0)}",
-            f"common_fraud_types={common_types}",
-            "fallback_mode=deterministic",
-        ],
+        "cross_process_conclusions": comparison_sections,
         "audit_procedures": procedures[:6],
         "recommended_tests": tests[:8],
         "next_actions": actions[:8],
@@ -148,19 +329,14 @@ def _build_doc_first_query(*, deterministic_payload: dict[str, Any]) -> str:
 def _build_second_level_markdown(*, deterministic_payload: dict[str, Any], llm_insights: dict[str, Any]) -> str:
     base = build_comparison_markdown(deterministic_payload).rstrip()
     lines = [base, "", "## Conclusiones LLM (Agente 2º nivel)", ""]
-    lines.append(f"- executive_summary: {str(llm_insights.get('executive_summary', '')).strip()}")
-    lines.append("- cross_process_conclusions:")
-    for row in _safe_list(llm_insights.get("cross_process_conclusions"))[:8]:
-        lines.append(f"  - {str(row).strip()}")
-    lines.append("- audit_procedures:")
-    for row in _safe_list(llm_insights.get("audit_procedures"))[:8]:
-        lines.append(f"  - {str(row).strip()}")
-    lines.append("- recommended_tests:")
-    for row in _safe_list(llm_insights.get("recommended_tests"))[:12]:
-        lines.append(f"  - {str(row).strip()}")
-    lines.append("- next_actions:")
-    for row in _safe_list(llm_insights.get("next_actions"))[:12]:
-        lines.append(f"  - {str(row).strip()}")
+    normalized = _safe_dict(llm_insights.get("normalized"))
+    lines.append(f"- executive_summary: {json.dumps(normalized.get('executive_summary', {}), ensure_ascii=False)}")
+    lines.append("- comparison_items:")
+    for row in _safe_list(normalized.get("comparison_items"))[:8]:
+        lines.append(f"  - {json.dumps(row, ensure_ascii=False)}")
+    lines.append("- recommendation_items:")
+    for row in _safe_list(normalized.get("recommendation_items"))[:12]:
+        lines.append(f"  - {json.dumps(row, ensure_ascii=False)}")
     lines.append("")
     return "\n".join(lines)
 
@@ -262,7 +438,11 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         node_id="second_level_explainer",
         fallback_text=(
             "Actúa como auditor senior. Analiza comparación de runs + KB documental y devuelve SOLO JSON con: "
-            "executive_summary, cross_process_conclusions[], audit_procedures[], recommended_tests[], next_actions[]. "
+            "executive_summary{overall_assessment,risk_posture,key_observations[]}, "
+            "cross_process_conclusions[{title,subtitle,summary,implication,recommendation,evidence[],section,status}], "
+            "audit_procedures[{procedure,why,evidence[],priority}], "
+            "recommended_tests[{test_id,rationale,priority,expected_value}], "
+            "next_actions[{action,why,owner,urgency}]. "
             "Prioriza primero la documentación del proyecto y después ACFE/externo. "
             "No uses defaults; justifica acciones con evidencia de runs y KB cuando exista."
         ),
@@ -359,6 +539,26 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
     if not isinstance(llm_insights, dict):
         llm_insights = dict(fallback_insights)
 
+    normalized_insights = {
+        "executive_summary": _normalize_executive_summary(
+            raw=llm_insights.get("executive_summary"),
+            deterministic_payload=deterministic_payload,
+        ),
+        "comparison_items": _normalize_comparison_items(
+            raw_items=llm_insights.get("cross_process_conclusions", []),
+            deterministic_payload=deterministic_payload,
+        ) or _safe_list(deterministic_payload.get("comparison_sections")),
+        "recommendation_items": [
+            *_normalize_action_items(raw_items=llm_insights.get("next_actions", []), kind="next_actions"),
+            *_normalize_action_items(raw_items=llm_insights.get("recommended_tests", []), kind="recommended_tests"),
+            *_normalize_action_items(raw_items=llm_insights.get("audit_procedures", []), kind="audit_procedures"),
+        ],
+    }
+    llm_insights = {
+        **llm_insights,
+        "normalized": normalized_insights,
+    }
+
     final_payload = {
         "rf_task": "RF16",
         "analysis_scope": {
@@ -390,8 +590,15 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
     state.export_paths["second_level_analysis_json"] = str(json_path)
     state.export_paths["second_level_analysis_md"] = str(md_path)
 
-    next_actions = [str(item).strip() for item in _safe_list(llm_insights.get("next_actions")) if str(item).strip()]
-    state.recomendaciones = [{"source": "rf16_second_level", "action": row} for row in next_actions]
+    state.recomendaciones = [
+        {
+            "source": "rf16_second_level",
+            "action": str(item.get("title") or "").strip(),
+            "summary": str(item.get("summary") or "").strip(),
+        }
+        for item in _safe_list(normalized_insights.get("recommendation_items"))
+        if isinstance(item, dict) and str(item.get("title") or "").strip()
+    ]
 
     manifest_path = Path(str(metadata.get("persist_manifest_path", "")).strip())
     if manifest_path.exists():

@@ -151,16 +151,28 @@ def _subtitle_for_item(item: dict[str, Any]) -> str:
     return ""
 
 
+def _body_text_for_item(item: dict[str, Any], *, title: str, subtitle: str) -> str:
+    for key in ("summary", "why", "rationale", "reason", "overall_assessment"):
+        value = _maybe_parse_structured_string(item.get(key))
+        if not isinstance(value, str):
+            continue
+        text = value.strip()
+        if not text:
+            continue
+        if text == title or text == subtitle:
+            continue
+        return text
+    return ""
+
+
 def _metadata_line(item: dict[str, Any]) -> str:
     parts: list[str] = []
     for label, key in (
         ("Prioridad", "priority"),
         ("Urgencia", "urgency"),
         ("Severidad", "severity"),
-        ("Owner", "owner"),
+        ("Responsable", "owner"),
         ("Test", "test_id"),
-        ("Status", "status"),
-        ("Id", "id"),
     ):
         value = _maybe_parse_structured_string(item.get(key))
         if not _is_empty(value):
@@ -176,6 +188,33 @@ def _evidence_list(item: dict[str, Any]) -> list[Any]:
     return []
 
 
+def _clean_attributes_for_display(value: Any) -> dict[str, Any]:
+    attributes = _maybe_parse_structured_string(value)
+    if not isinstance(attributes, dict):
+        return {}
+    hidden_keys = {"section", "id", "status", "title", "summary", "subtitle"}
+    cleaned: dict[str, Any] = {}
+    for key, item in attributes.items():
+        parsed = _maybe_parse_structured_string(item)
+        if key in hidden_keys or _is_empty(parsed):
+            continue
+        cleaned[key] = parsed
+    return cleaned
+
+
+def _fallback_detail_text(*, item: dict[str, Any], body_text: str, evidence: list[Any], attributes: dict[str, Any]) -> str:
+    if body_text or evidence or attributes:
+        return ""
+    section = str(item.get("section") or "").strip()
+    if section == "recommendations":
+        return "Acción sugerida para reforzar la investigación del caso."
+    if section == "recommended_tests":
+        return "Test sugerido para ampliar el contraste y la cobertura de la hipótesis."
+    if section == "audit_procedures":
+        return "Procedimiento sugerido para validación manual o revisión auditora."
+    return ""
+
+
 def _render_compact_item(
     item: dict[str, Any],
     *,
@@ -185,13 +224,25 @@ def _render_compact_item(
 ) -> None:
     title = _title_for_item(item, default_title, idx)
     subtitle = _subtitle_for_item(item)
+    body_text = _body_text_for_item(item, title=title, subtitle=subtitle)
     metadata = _metadata_line(item)
     evidence = _evidence_list(item)
-    attributes = _maybe_parse_structured_string(item.get("attributes"))
+    attributes = _clean_attributes_for_display(item.get("attributes"))
+    fallback_detail = _fallback_detail_text(
+        item=item,
+        body_text=body_text,
+        evidence=evidence,
+        attributes=attributes,
+    )
 
     with st.expander(title, expanded=expanded):
-        if subtitle:
+        if subtitle and subtitle != title and subtitle != body_text:
             st.caption(subtitle)
+
+        if body_text:
+            st.write(body_text)
+        elif fallback_detail:
+            st.write(fallback_detail)
 
         if metadata:
             st.markdown(metadata)
@@ -200,7 +251,7 @@ def _render_compact_item(
             st.markdown("**Evidencia**")
             render_presentable_content(evidence)
 
-        if isinstance(attributes, dict) and attributes:
+        if attributes:
             st.markdown("**Contexto adicional**")
             render_presentable_content(attributes)
 
@@ -226,6 +277,7 @@ def _render_compact_item(
             "id",
             "subtitle",
             "status",
+            "section",
             "attributes",
         }
 

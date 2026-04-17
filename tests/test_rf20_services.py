@@ -27,6 +27,7 @@ def _settings() -> AWSAPISettings:
 
 def test_rf20_runs_service_both_orchestrates_two_runs(monkeypatch) -> None:
     submitted = []
+    recorded_payloads = []
 
     monkeypatch.setattr(
         "app.api.services.runs_service.get_dataset",
@@ -54,7 +55,10 @@ def test_rf20_runs_service_both_orchestrates_two_runs(monkeypatch) -> None:
         return f"task::{kwargs['process_scope']}"
 
     monkeypatch.setattr("app.api.services.runs_service.submit_graph_run_task", _fake_submit_graph_run_task)
-    monkeypatch.setattr("app.api.services.runs_service.write_run_submission_record", lambda **kwargs: "ok")
+    monkeypatch.setattr(
+        "app.api.services.runs_service.write_run_submission_record",
+        lambda **kwargs: recorded_payloads.append(kwargs["payload"]) or "ok",
+    )
 
     out = create_run(
         payload=RunCreateRequest(
@@ -74,6 +78,10 @@ def test_rf20_runs_service_both_orchestrates_two_runs(monkeypatch) -> None:
     assert out.run_ids.o2c is not None
     assert {item["process_scope"] for item in submitted} == {"p2p", "o2c"}
     assert {item["process_family"] for item in submitted} == {"p2p", "o2c"}
+    assert len(recorded_payloads) == 2
+    assert all(payload["composite_run"] is True for payload in recorded_payloads)
+    assert all(payload["composite_group_id"] for payload in recorded_payloads)
+    assert all(isinstance(payload["peer_run_ids"], list) and len(payload["peer_run_ids"]) == 1 for payload in recorded_payloads)
 
 
 def test_rf20_runs_service_list_runs_is_lightweight_and_limited(monkeypatch) -> None:
@@ -257,27 +265,85 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
         ],
         "graph/second_level_analysis.json": {
             "deterministic_comparison": {
+                "comparison_sections": [
+                    {
+                        "title": "Comparación histórica intra-familia",
+                        "subtitle": "1 run previo de P2P",
+                        "summary": "El run actual se ha comparado con un run previo de la misma familia.",
+                        "section": "historical",
+                        "status": "comparison",
+                        "evidence": ["Runs históricos: run-prev-001."],
+                    }
+                ],
                 "summary": {
                     "common_selected_tests": ["TST-UNUSUAL-AMOUNT-BY-VENDOR"],
                     "common_fraud_types_with_findings": ["amount_anomaly"],
                 }
             },
             "llm_insights": {
-                "executive_summary": "The case deviates from the expected vendor pattern.",
+                "executive_summary": {
+                    "overall_assessment": "The case deviates from the expected vendor pattern.",
+                    "risk_posture": "High",
+                    "key_observations": ["The same anomaly appears consistently in the selected evidence."],
+                },
                 "cross_process_conclusions": [
-                    "The same anomaly appears consistently in the selected evidence."
+                    {
+                        "title": "Desviación relevante",
+                        "summary": "The same anomaly appears consistently in the selected evidence.",
+                        "section": "historical",
+                        "status": "comparison",
+                    }
                 ],
-                "audit_procedures": ["Validate invoice lineage for vendor V01."],
-                "recommended_tests": ["Compare V01 against peer vendors for amount dispersion."],
-                "next_actions": ["Open a targeted manual review for vendor V01."],
+                "audit_procedures": [{"procedure": "Validate invoice lineage for vendor V01.", "why": "Trace end-to-end lineage."}],
+                "recommended_tests": [{"test_id": "TST-PEER-AMOUNT-DISPERSION", "rationale": "Compare V01 against peer vendors."}],
+                "next_actions": [{"action": "Open a targeted manual review for vendor V01.", "why": "Prioritised signal."}],
+                "normalized": {
+                    "executive_summary": {
+                        "overall_assessment": "The case deviates from the expected vendor pattern.",
+                        "risk_posture": "High",
+                        "key_observations": ["The same anomaly appears consistently in the selected evidence."],
+                    },
+                    "comparison_items": [
+                        {
+                            "title": "Desviación relevante",
+                            "summary": "The same anomaly appears consistently in the selected evidence.",
+                            "section": "historical",
+                            "status": "comparison",
+                        }
+                    ],
+                    "recommendation_items": [
+                        {
+                            "title": "Open a targeted manual review for vendor V01.",
+                            "summary": "Prioritised signal.",
+                            "status": "recommended_action",
+                            "section": "recommendations",
+                        },
+                        {
+                            "title": "TST-PEER-AMOUNT-DISPERSION",
+                            "summary": "Compare V01 against peer vendors.",
+                            "status": "recommended_test",
+                            "section": "recommended_tests",
+                        },
+                        {
+                            "title": "Validate invoice lineage for vendor V01.",
+                            "summary": "Trace end-to-end lineage.",
+                            "status": "audit_procedure",
+                            "section": "audit_procedures",
+                        },
+                    ],
+                },
             },
         },
+        "api_request.json": {"dataset_id": "ds-001", "scope": "p2p", "peer_run_ids": []},
+        "run_metadata.json": {"dataset_hash": "hash-001"},
+        "report.json": {"summary": {"overall_status": "OK", "findings_total": 2}, "metadata": {"metadata_extra": {}}},
     }
 
     monkeypatch.setattr(
         "app.api.services.results_service._read_json_artifact",
         lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
     )
+    monkeypatch.setattr("app.api.services.results_service.list_s3_common_prefixes", lambda **kwargs: [])
     out = load_graph_results(run_id="run-001", status="COMPLETED", scope="p2p", settings=_settings(), s3_client=object())
     assert isinstance(out, GraphResultsResponse)
     assert out.counts.hypotheses == 1
@@ -286,12 +352,65 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
     assert out.counts.scores == 1
     assert out.counts.explanations == 1
     assert out.counts.second_level_analysis == 3
-    assert out.executive_summary == "The case deviates from the expected vendor pattern."
+    assert out.executive_summary["overall_assessment"] == "The case deviates from the expected vendor pattern."
     assert out.hypotheses[0].title == "Amount anomaly"
     assert out.findings[0].attributes["sample_entity_key"] == "betrag=100|kreditor=V01"
-    assert out.second_level_analysis[0].title == "Recomendación"
-    assert out.comparison_insights[0].title == "Desviación relevante"
+    assert out.second_level_analysis[0].title == "Open a targeted manual review for vendor V01."
+    assert out.comparison_insights[0].title == "Lectura del run actual"
+    assert any(item.attributes.get("section") == "historical" for item in out.comparison_insights)
+    assert any(item.attributes.get("section") == "cross_process" for item in out.comparison_insights)
     assert out.scores[0].attributes["confidence"] == 0.8
+
+
+def test_rf20_results_service_prefers_related_cross_process_comparison(monkeypatch) -> None:
+    artifacts = {
+        "graph/graph_state.json": {"run_metadata": {"graph_status": "OK", "kb_index_status": "OK", "process_scope": "p2p"}},
+        "graph/hypotheses.json": [],
+        "graph/selected_tests.json": [],
+        "graph/findings.json": [],
+        "graph/scores.json": [],
+        "graph/explanations.json": [],
+        "graph/second_level_analysis.json": {
+            "deterministic_comparison": {"comparison_sections": []},
+            "llm_insights": {
+                "normalized": {
+                    "comparison_items": [
+                        {
+                            "title": "Comparación cross-process",
+                            "summary": "No hay runs de otra familia de proceso con contexto suficiente para evaluar concurrencia o divergencia cross-process.",
+                            "section": "cross_process",
+                            "status": "insufficient_context",
+                        }
+                    ]
+                }
+            },
+        },
+        "api_request.json": {"dataset_id": "ds-001", "scope": "p2p", "peer_run_ids": ["run-o2c"]},
+        "run_metadata.json": {"dataset_hash": "hash-001"},
+        "report.json": {"summary": {"overall_status": "OK", "findings_total": 0}, "metadata": {"metadata_extra": {}}},
+    }
+    monkeypatch.setattr(
+        "app.api.services.results_service._read_json_artifact",
+        lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
+    )
+    monkeypatch.setattr(
+        "app.api.services.results_service._build_related_comparison_payload",
+        lambda **kwargs: {
+            "comparison_sections": [
+                {
+                    "title": "Comparación cross-process",
+                    "summary": "El run actual se ha contrastado con 1 run(s) de otra familia de proceso para identificar concurrencia o divergencia de señal.",
+                    "section": "cross_process",
+                    "status": "comparison",
+                    "evidence": ["Runs cross-process: run-o2c."],
+                }
+            ]
+        },
+    )
+    out = load_graph_results(run_id="run-p2p", status="COMPLETED", scope="p2p", settings=_settings(), s3_client=object())
+    cross_process = next(item for item in out.comparison_insights if item.attributes.get("section") == "cross_process")
+    assert cross_process.status == "comparison"
+    assert "run(s) de otra familia" in (cross_process.summary or "")
 
 
 def test_rf20_results_service_normalizes_drilldown_context_for_o2c_findings(monkeypatch) -> None:
@@ -389,6 +508,7 @@ def test_rf20_drilldown_service_o2c_build_cache_uses_raw_autoload(tmp_path, monk
     db_path = tmp_path / "cache" / "ds-001" / "o2c" / "erp.duckdb"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     calls = {"autoload": 0, "placeholders": 0, "ensure": 0}
+    captured = {"target_tables": None}
 
     monkeypatch.setattr(drilldown_service, "_cache_root", lambda: tmp_path / "cache")
     monkeypatch.setattr(drilldown_service, "_download_dataset_zip", lambda **kwargs: tmp_path / "erp_fraud_data.zip")
@@ -405,7 +525,11 @@ def test_rf20_drilldown_service_o2c_build_cache_uses_raw_autoload(tmp_path, monk
     monkeypatch.setattr(
         drilldown_service,
         "_load_o2c_raw_tables_from_zip_if_needed",
-        lambda **kwargs: calls.__setitem__("autoload", calls["autoload"] + 1) or {"status": "OK"},
+        lambda **kwargs: (
+            calls.__setitem__("autoload", calls["autoload"] + 1),
+            captured.__setitem__("target_tables", kwargs.get("target_tables")),
+            {"status": "OK"},
+        )[-1],
     )
     monkeypatch.setattr(
         drilldown_service,
@@ -428,6 +552,7 @@ def test_rf20_drilldown_service_o2c_build_cache_uses_raw_autoload(tmp_path, monk
         s3_client=object(),
     )
     assert calls == {"autoload": 1, "placeholders": 1, "ensure": 1}
+    assert captured["target_tables"] == ["LIPS"]
     assert out == (db_path, "o2c", "o2c_order")
 
 

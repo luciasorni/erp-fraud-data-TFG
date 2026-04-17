@@ -48,6 +48,7 @@ def _execute_drilldown_direct(
     with st.status("Recuperando evidencia detallada...", expanded=True) as status:
         try:
             status.write("Ejecutando drilldown directo contra el backend...")
+            status.write("Si es el primer drilldown de este dataset/scope, la cache analítica local puede tardar en prepararse.")
             result = client.post_drilldown(
                 run_id=run_id,
                 action=action,

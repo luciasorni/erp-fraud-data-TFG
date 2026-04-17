@@ -9,6 +9,11 @@ from app.ui.utils.formatters import (
     normalize_structured_content,
     summarize_structured_content,
 )
+from app.ui.components.recommendations_panel import (
+    _body_text_for_item,
+    _clean_attributes_for_display,
+    _fallback_detail_text,
+)
 from app.ui.utils.mappers import (
     build_execution_metrics,
     build_run_kpis,
@@ -101,3 +106,26 @@ def test_rf20_ui_normalize_structured_content_falls_back_to_text() -> None:
     text = "No parece JSON pero sí texto útil {sin cerrar"
     assert normalize_structured_content(text) == text
     assert summarize_structured_content(text) == text
+
+
+def test_rf20_ui_recommendations_panel_hides_technical_section_from_context() -> None:
+    cleaned = _clean_attributes_for_display(
+        {
+            "section": "recommendations",
+            "runs_compared": ["run-1"],
+            "status": "recommended_action",
+        }
+    )
+    assert cleaned == {"runs_compared": ["run-1"]}
+
+
+def test_rf20_ui_recommendations_panel_avoids_empty_body_and_uses_fallback_text() -> None:
+    item = {
+        "title": "TST-UNUSUAL-AMOUNT-BY-VENDOR",
+        "summary": "TST-UNUSUAL-AMOUNT-BY-VENDOR",
+        "section": "recommended_tests",
+    }
+    body = _body_text_for_item(item, title=item["title"], subtitle=item["summary"])
+    assert body == ""
+    fallback = _fallback_detail_text(item=item, body_text=body, evidence=[], attributes={})
+    assert "Test sugerido" in fallback

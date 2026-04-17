@@ -71,6 +71,24 @@ def _required_o2c_entities_for_query_id(query_id: str | None) -> list[str]:
     return sorted(_required_o2c_tables_for_query_id(query_id))
 
 
+def _required_o2c_raw_tables_for_query_id(
+    *,
+    query_id: str | None,
+    canonical_schema_config_path: str | Path = "config/canonical_schema_o2c.yaml",
+) -> list[str]:
+    required_entities = _required_o2c_entities_for_query_id(query_id)
+    if not required_entities:
+        return []
+    schema_cfg = _load_yaml(canonical_schema_config_path)
+    tables: set[str] = set()
+    for entity in required_entities:
+        for table_name in _entity_required_tables(schema_cfg, entity):
+            normalized = str(table_name).strip().upper()
+            if normalized:
+                tables.add(normalized)
+    return sorted(tables)
+
+
 def _duckdb_table_exists(*, db_path: Path, schema_name: str, table_name: str) -> bool:
     with get_duckdb_connection(db_path) as conn:
         row = conn.execute(
@@ -189,11 +207,13 @@ def _build_db_cache(
     zip_path = _download_dataset_zip(dataset_key=dataset_key, settings=settings, s3_client=s3_client)
     validar_ficheros_esperados_joint_datasets(zip_path)
     if scope == "o2c":
+        required_raw_tables = _required_o2c_raw_tables_for_query_id(query_id=query_id)
         with get_duckdb_connection(db_path) as conn:
             _load_o2c_raw_tables_from_zip_if_needed(
                 conn=conn,
                 zip_path=str(zip_path),
                 canonical_schema_config_path="config/canonical_schema_o2c.yaml",
+                target_tables=required_raw_tables,
             )
             _ensure_o2c_optional_placeholders(conn)
         _ensure_required_o2c_entities(db_path=db_path, target_schema="o2c", query_id=query_id)

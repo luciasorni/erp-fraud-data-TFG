@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import ast
 import json
+from datetime import datetime, timezone
+import re
 from typing import Any
 
 from ..schemas.common import CountsSummary, UISectionItem
 from ..schemas.results import GraphResultsResponse, ReportRanking, ReportResponse
-from .aws_service import AWSAPISettings, create_s3_client, get_json_from_s3, get_s3_text, run_output_key, runs_prefix
+from .aws_service import AWSAPISettings, create_s3_client, get_json_from_s3, get_s3_text, list_s3_common_prefixes, run_output_key, runs_prefix
 from src.erp_fraud.catalog.drilldown_keys import get_minimum_keys_for_test_id, get_missing_or_empty_minimum_keys_for_test_id, normalize_drilldown_keys
 from src.erp_fraud.catalog.drilldown_templates import get_drilldown_query_id_for_test_id
+from src.erp_fraud.storage.runs_comparison import RunSnapshot, compare_run_snapshots
+
+
+_RUN_ID_TIMESTAMP_RE = re.compile(r"(\d{8}-\d{6})$")
 
 
 def _bucket(settings: AWSAPISettings) -> str:
@@ -34,6 +41,8 @@ def _read_json_artifact(
 
 
 def _looks_like_deterministic_summary(text: str) -> bool:
+    if isinstance(text, dict):
+        return False
     lowered = str(text).strip().lower()
     if not lowered:
         return True
@@ -48,12 +57,43 @@ def _looks_like_deterministic_summary(text: str) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+def _parse_structured(value: Any) -> Any:
+    if isinstance(value, (dict, list)):
+        return value
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text or text[:1] not in {"{", "["}:
+        return value
+    for parser in (json.loads, ast.literal_eval):
+        try:
+            parsed = parser(text)
+            if isinstance(parsed, (dict, list)):
+                return parsed
+        except Exception:
+            continue
+    return value
+
+
+def _risk_posture_from_scores(scores: list[dict[str, Any]]) -> str:
+    top_score = scores[0] if scores and isinstance(scores[0], dict) else {}
+    try:
+        confidence = float(top_score.get("confidence", 0.0) or 0.0)
+    except (TypeError, ValueError):
+        confidence = 0.0
+    if confidence >= 0.75:
+        return "Alto"
+    if confidence >= 0.45:
+        return "Medio"
+    return "Moderado"
+
+
 def _synthesize_executive_summary(
     *,
     explanations: list[dict[str, Any]],
     findings: list[dict[str, Any]],
     scores: list[dict[str, Any]],
-) -> str | None:
+) -> dict[str, Any] | None:
     narrative = None
     for item in explanations:
         if not isinstance(item, dict):
@@ -83,17 +123,284 @@ def _synthesize_executive_summary(
         prefix = f"El análisis destaca {finding_count} hallazgos asociados al test {test_id}" if test_id else "El análisis destaca un conjunto de hallazgos relevantes"
         if fraud_type:
             prefix += f" para la tipología {fraud_type}"
-        return f"{prefix}. {summary}{confidence_text}"
+        return {
+            "overall_assessment": f"{prefix}. {summary}{confidence_text}",
+            "risk_posture": _risk_posture_from_scores(scores),
+            "key_observations": [
+                f"Hallazgos priorizados: {finding_count}.",
+                f"Tipología principal: {fraud_type or 'no especificada'}.",
+            ],
+        }
     if top_finding:
         test_id = str(top_finding.get("test_id", "")).strip()
         fraud_type = str(top_finding.get("fraud_type", "")).strip()
         finding_count = int(top_finding.get("finding_count", 0) or 0)
-        return (
-            f"El run prioriza {finding_count} hallazgos vinculados al test {test_id or 'principal'}"
-            f"{f' y a la tipología {fraud_type}' if fraud_type else ''}. "
-            "Conviene revisar la evidencia detallada y contrastarla con la documentación soporte."
-        )
+        return {
+            "overall_assessment": (
+                f"El run prioriza {finding_count} hallazgos vinculados al test {test_id or 'principal'}"
+                f"{f' y a la tipología {fraud_type}' if fraud_type else ''}. "
+                "Conviene revisar la evidencia detallada y contrastarla con la documentación soporte."
+            ),
+            "risk_posture": _risk_posture_from_scores(scores),
+            "key_observations": [
+                f"Test priorizado: {test_id or 'principal'}.",
+                f"Hallazgos detectados: {finding_count}.",
+            ],
+        }
     return None
+
+
+def _normalize_executive_summary(value: Any) -> Any:
+    parsed = _parse_structured(value)
+    if isinstance(parsed, dict):
+        overall = str(
+            parsed.get("overall_assessment")
+            or parsed.get("summary")
+            or parsed.get("executive_summary")
+            or ""
+        ).strip()
+        risk_posture = str(parsed.get("risk_posture") or "").strip()
+        observations = parsed.get("key_observations")
+        if not isinstance(observations, list):
+            observations = parsed.get("key_evidence")
+        key_observations = [str(item).strip() for item in (observations or []) if str(item).strip()]
+        out = {}
+        if overall:
+            out["overall_assessment"] = overall
+        if risk_posture:
+            out["risk_posture"] = risk_posture
+        if key_observations:
+            out["key_observations"] = key_observations[:6]
+        return out or None
+    text = str(parsed or "").strip()
+    return text or None
+
+
+def _ui_item_from_normalized_item(*, raw: dict[str, Any], prefix: str, idx: int) -> UISectionItem | None:
+    title = str(raw.get("title") or "").strip()
+    summary = str(raw.get("summary") or "").strip()
+    if not title and not summary:
+        return None
+    section = str(raw.get("section") or "").strip()
+    if re.fullmatch(r"(Recomendación|Test recomendado|Procedimiento auditor)\s+\d+", title, flags=re.IGNORECASE):
+        if section == "recommended_tests":
+            explicit_test = str(raw.get("test_id") or raw.get("expected_value") or summary).strip()
+            if explicit_test:
+                title = explicit_test
+        elif summary:
+            title = summary.split(".")[0].strip()[:110] or title
+    return UISectionItem(
+        id=f"{prefix}-{idx}",
+        title=title or prefix.title(),
+        subtitle=str(raw.get("subtitle") or "").strip() or None,
+        status=str(raw.get("status") or "").strip() or None,
+        summary=summary or None,
+        attributes={
+            "section": section or None,
+            "recommendation": raw.get("recommendation"),
+            "procedure": raw.get("procedure"),
+            "implication": raw.get("implication"),
+            "evidence": raw.get("evidence", []),
+            "owner": raw.get("owner"),
+            "urgency": raw.get("urgency"),
+            "priority": raw.get("priority"),
+            "expected_value": raw.get("expected_value"),
+            **(raw.get("attributes", {}) if isinstance(raw.get("attributes"), dict) else {}),
+        },
+    )
+
+
+def _run_id_sort_key(run_id: str) -> tuple[datetime, str]:
+    match = _RUN_ID_TIMESTAMP_RE.search(str(run_id).strip())
+    if match:
+        try:
+            return (
+                datetime.strptime(match.group(1), "%Y%m%d-%H%M%S").replace(tzinfo=timezone.utc),
+                run_id,
+            )
+        except ValueError:
+            pass
+    return (datetime.min.replace(tzinfo=timezone.utc), run_id)
+
+
+def _load_s3_snapshot(
+    *,
+    run_id: str,
+    settings: AWSAPISettings,
+    s3_client: Any,
+) -> RunSnapshot | None:
+    graph_state = _read_json_artifact(run_id=run_id, relative_path="graph/graph_state.json", settings=settings, s3_client=s3_client) or {}
+    if not graph_state:
+        return None
+    selected_tests = _read_json_artifact(run_id=run_id, relative_path="graph/selected_tests.json", settings=settings, s3_client=s3_client) or []
+    findings = _read_json_artifact(run_id=run_id, relative_path="graph/findings.json", settings=settings, s3_client=s3_client) or []
+    scores = _read_json_artifact(run_id=run_id, relative_path="graph/scores.json", settings=settings, s3_client=s3_client) or []
+    hypotheses = _read_json_artifact(run_id=run_id, relative_path="graph/hypotheses.json", settings=settings, s3_client=s3_client) or []
+    report_payload = _read_json_artifact(run_id=run_id, relative_path="report.json", settings=settings, s3_client=s3_client) or {}
+    run_metadata_payload = _read_json_artifact(run_id=run_id, relative_path="run_metadata.json", settings=settings, s3_client=s3_client) or {}
+    api_request = _read_json_artifact(run_id=run_id, relative_path="api_request.json", settings=settings, s3_client=s3_client) or {}
+    graph_meta = graph_state.get("run_metadata", {}) if isinstance(graph_state, dict) else {}
+    report_summary = report_payload.get("summary", {}) if isinstance(report_payload, dict) else {}
+    report_metadata_extra = ((report_payload.get("metadata") or {}).get("metadata_extra") or {}) if isinstance(report_payload, dict) else {}
+    score_item = scores[0] if isinstance(scores, list) and scores and isinstance(scores[0], dict) else {}
+
+    selected_test_ids: list[str] = []
+    for row in selected_tests if isinstance(selected_tests, list) else []:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("test_id", "")).strip()
+        if test_id and test_id not in selected_test_ids:
+            selected_test_ids.append(test_id)
+
+    tests_with_findings: list[str] = []
+    fraud_types_with_findings: dict[str, int] = {}
+    findings_total = 0
+    for row in findings if isinstance(findings, list) else []:
+        if not isinstance(row, dict):
+            continue
+        test_id = str(row.get("test_id", "")).strip()
+        fraud_type = str(row.get("fraud_type", "")).strip()
+        finding_count = int(row.get("finding_count", 0) or 0)
+        findings_total += finding_count
+        if finding_count > 0 and test_id and test_id not in tests_with_findings:
+            tests_with_findings.append(test_id)
+        if finding_count > 0 and fraud_type:
+            fraud_types_with_findings[fraud_type] = fraud_types_with_findings.get(fraud_type, 0) + finding_count
+
+    return RunSnapshot(
+        run_id=run_id,
+        run_dir=None,  # type: ignore[arg-type]
+        dataset_id=str(api_request.get("dataset_id", "")).strip(),
+        dataset_hash=str(graph_meta.get("dataset_hash", "")).strip() or str(run_metadata_payload.get("dataset_hash", "")).strip(),
+        process_family=str(graph_meta.get("process_family", "")).strip()
+        or str(run_metadata_payload.get("process_family", "")).strip()
+        or str(report_metadata_extra.get("process_family", "")).strip()
+        or "p2p",
+        llm_mode=str(graph_meta.get("llm_mode", "")).strip() or str(api_request.get("llm_mode", "")).strip(),
+        graph_status=str(graph_meta.get("graph_status", "")).strip(),
+        overall_status=str(report_summary.get("overall_status", "")).strip(),
+        selected_test_ids=selected_test_ids,
+        selected_tests_count=len(selected_test_ids),
+        findings_total=findings_total or int(report_summary.get("findings_total", 0) or 0),
+        tests_with_findings=sorted(tests_with_findings),
+        fraud_types_with_findings=dict(sorted(fraud_types_with_findings.items())),
+        hypotheses_count=len([row for row in hypotheses if isinstance(row, dict)]),
+        final_label=str(score_item.get("final_label", "")).strip(),
+        confidence=float(score_item.get("confidence", 0.0) or 0.0),
+        langsmith_trace_link=str(graph_meta.get("langsmith_trace_link", "")).strip(),
+        generated_at_utc=str(graph_meta.get("updated_at_utc", "")).strip() or str(report_payload.get("generated_at_utc", "")).strip(),
+    )
+
+
+def _build_related_comparison_payload(
+    *,
+    run_id: str,
+    scope: str | None,
+    settings: AWSAPISettings,
+    s3_client: Any,
+) -> dict[str, Any] | None:
+    current = _load_s3_snapshot(run_id=run_id, settings=settings, s3_client=s3_client)
+    if current is None:
+        return None
+    current_api_request = _read_json_artifact(run_id=run_id, relative_path="api_request.json", settings=settings, s3_client=s3_client) or {}
+    peers: list[RunSnapshot] = []
+    seen = {run_id}
+
+    peer_run_ids = [
+        str(item).strip()
+        for item in current_api_request.get("peer_run_ids", [])
+        if str(item).strip() and str(item).strip() not in seen
+    ] if isinstance(current_api_request.get("peer_run_ids"), list) else []
+    for peer_id in peer_run_ids:
+        snap = _load_s3_snapshot(run_id=peer_id, settings=settings, s3_client=s3_client)
+        if snap is not None:
+            peers.append(snap)
+            seen.add(peer_id)
+
+    bucket, prefix = runs_prefix(settings=settings)
+    try:
+        prefixes = list_s3_common_prefixes(bucket=bucket, prefix=prefix, settings=settings, s3_client=s3_client)
+    except Exception:
+        return compare_run_snapshots(snapshots=[current, *peers]) if peers else compare_run_snapshots(snapshots=[current])
+    candidate_run_ids = sorted(
+        [item.rstrip("/").split("/")[-1] for item in prefixes if item.rstrip("/").split("/")[-1]],
+        key=_run_id_sort_key,
+        reverse=True,
+    )[:25]
+
+    for candidate_run_id in candidate_run_ids:
+        if candidate_run_id in seen:
+            continue
+        snap = _load_s3_snapshot(run_id=candidate_run_id, settings=settings, s3_client=s3_client)
+        if snap is None:
+            continue
+        same_dataset = bool(current.dataset_id and snap.dataset_id == current.dataset_id)
+        same_hash = bool(current.dataset_hash and snap.dataset_hash == current.dataset_hash)
+        if not (same_dataset or same_hash):
+            continue
+        if snap.process_family == current.process_family:
+            peers.append(snap)
+            seen.add(candidate_run_id)
+            if len([row for row in peers if row.process_family == current.process_family]) >= 3:
+                continue
+        elif len([row for row in peers if row.process_family != current.process_family]) < 2:
+            peers.append(snap)
+            seen.add(candidate_run_id)
+
+    if not peers:
+        return compare_run_snapshots(snapshots=[current])
+    return compare_run_snapshots(snapshots=[current, *peers])
+
+
+def _merge_comparison_source_items(
+    *,
+    llm_items: list[dict[str, Any]],
+    deterministic_items: list[dict[str, Any]],
+    related_items: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    section_order = ("intra_run", "historical", "cross_process")
+
+    def _section_map(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+        out: dict[str, dict[str, Any]] = {}
+        for item in rows:
+            if not isinstance(item, dict):
+                continue
+            section = str(item.get("section") or "").strip()
+            if section:
+                out[section] = item
+        return out
+
+    llm_map = _section_map(llm_items)
+    deterministic_map = _section_map(deterministic_items)
+    related_map = _section_map(related_items)
+
+    merged: list[dict[str, Any]] = []
+    seen_ids: set[str] = set()
+
+    for section in section_order:
+        item = related_map.get(section) or llm_map.get(section) or deterministic_map.get(section)
+        if not item:
+            continue
+        merged.append(item)
+        item_id = str(item.get("id") or "").strip()
+        if item_id:
+            seen_ids.add(item_id)
+
+    for source in (llm_items, deterministic_items, related_items):
+        for item in source:
+            if not isinstance(item, dict):
+                continue
+            section = str(item.get("section") or "").strip()
+            if section in section_order:
+                continue
+            item_id = str(item.get("id") or "").strip()
+            if item_id and item_id in seen_ids:
+                continue
+            merged.append(item)
+            if item_id:
+                seen_ids.add(item_id)
+
+    return merged
 
 
 def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
@@ -259,105 +566,51 @@ def load_graph_results(
     second_level_items = []
     comparison_items = []
     executive_summary = None
+    related_comparison_payload = _build_related_comparison_payload(
+        run_id=run_id,
+        scope=scope,
+        settings=settings,
+        s3_client=client,
+    )
     if isinstance(second_level, dict):
         llm_insights = second_level.get("llm_insights", {}) if isinstance(second_level.get("llm_insights"), dict) else {}
         deterministic = second_level.get("deterministic_comparison", {}) if isinstance(second_level.get("deterministic_comparison"), dict) else {}
-        executive_summary = str(llm_insights.get("executive_summary", "")).strip() or None
-        next_actions = llm_insights.get("next_actions", [])
-        recommended_tests = llm_insights.get("recommended_tests", [])
-        audit_procedures = llm_insights.get("audit_procedures", [])
-        cross_process = llm_insights.get("cross_process_conclusions", [])
-        summary = deterministic.get("summary", {}) if isinstance(deterministic.get("summary"), dict) else {}
-        runs_compared = deterministic.get("run_ids", []) if isinstance(deterministic.get("run_ids"), list) else []
-        common_selected_tests = [str(item).strip() for item in summary.get("common_selected_tests", []) if str(item).strip()]
-        common_fraud_types = [
-            str(item).strip() for item in summary.get("common_fraud_types_with_findings", []) if str(item).strip()
-        ]
-        if isinstance(next_actions, list):
-            for idx, item in enumerate(next_actions, start=1):
-                text = str(item).strip()
-                if not text:
-                    continue
-                second_level_items.append(
-                    UISectionItem(
-                        id=f"next-action-{idx}",
-                        title="Recomendación",
-                        subtitle="Siguiente paso sugerido por el second-level explainer",
-                        status="recommended_action",
-                        summary=text,
-                        attributes={"source": "llm_insights.next_actions", "section": "recommendations"},
-                    )
-                )
-        if isinstance(recommended_tests, list):
-            for idx, item in enumerate(recommended_tests, start=1):
-                text = str(item).strip()
-                if not text:
-                    continue
-                second_level_items.append(
-                    UISectionItem(
-                        id=f"recommended-test-{idx}",
-                        title="Test recomendado",
-                        subtitle="Contraste adicional sugerido por el LLM",
-                        status="recommended_test",
-                        summary=text,
-                        attributes={"source": "llm_insights.recommended_tests", "section": "recommended_tests"},
-                    )
-                )
-        if isinstance(audit_procedures, list):
-            for idx, item in enumerate(audit_procedures, start=1):
-                text = str(item).strip()
-                if not text:
-                    continue
-                second_level_items.append(
-                    UISectionItem(
-                        id=f"audit-procedure-{idx}",
-                        title="Procedimiento auditor",
-                        subtitle="Acción de validación sugerida",
-                        status="audit_procedure",
-                        summary=text,
-                        attributes={"source": "llm_insights.audit_procedures", "section": "audit_procedures"},
-                    )
-                )
-        if isinstance(cross_process, list):
-            for idx, item in enumerate(cross_process, start=1):
-                text = str(item).strip()
-                if not text:
-                    continue
-                comparison_items.append(
-                    UISectionItem(
-                        id=f"cross-process-{idx}",
-                        title="Desviación relevante",
-                        subtitle="Comparativa contextual del caso",
-                        status="comparison",
-                        summary=text,
-                        attributes={
-                            "source": "llm_insights.cross_process_conclusions",
-                            "runs_compared": runs_compared,
-                            "common_selected_tests": common_selected_tests,
-                            "common_fraud_types_with_findings": common_fraud_types,
-                            "executive_summary": executive_summary,
-                        },
-                    )
-                )
-        if summary:
-            comparison_items.append(
-                UISectionItem(
-                    id="deterministic-summary",
-                    title="Base de comparación",
-                    subtitle="Contexto objetivo usado para contrastar el caso",
-                    status="comparison_summary",
-                    summary="El caso se ha comparado contra otros runs y contra las señales repetidas en los tests y tipologías compartidas.",
-                    attributes={
-                        "runs_compared": runs_compared,
-                        "common_selected_tests": common_selected_tests,
-                        "common_fraud_types_with_findings": common_fraud_types,
-                        "summary": summary,
-                        "executive_summary": executive_summary,
-                    },
-                )
-            )
+        normalized = llm_insights.get("normalized", {}) if isinstance(llm_insights.get("normalized"), dict) else {}
+        executive_summary = _normalize_executive_summary(
+            normalized.get("executive_summary") or llm_insights.get("executive_summary")
+        )
+
+        for idx, item in enumerate(normalized.get("recommendation_items", []), start=1):
+            if not isinstance(item, dict):
+                continue
+            ui_item = _ui_item_from_normalized_item(raw=item, prefix="second-level", idx=idx)
+            if ui_item is not None:
+                second_level_items.append(ui_item)
+
+        comparison_source_items = normalized.get("comparison_items") if isinstance(normalized.get("comparison_items"), list) else []
+        deterministic_items = deterministic.get("comparison_sections", []) if isinstance(deterministic, dict) else []
+        related_items = related_comparison_payload.get("comparison_sections", []) if isinstance(related_comparison_payload, dict) else []
+        comparison_source_items = _merge_comparison_source_items(
+            llm_items=[item for item in comparison_source_items if isinstance(item, dict)],
+            deterministic_items=[item for item in deterministic_items if isinstance(item, dict)],
+            related_items=[item for item in related_items if isinstance(item, dict)],
+        )
+
+        for idx, item in enumerate(comparison_source_items, start=1):
+            if not isinstance(item, dict):
+                continue
+            ui_item = _ui_item_from_normalized_item(raw=item, prefix="comparison", idx=idx)
+            if ui_item is not None:
+                comparison_items.append(ui_item)
 
     if _looks_like_deterministic_summary(executive_summary or ""):
+        executive_summary = _synthesize_executive_summary(
+            explanations=[item for item in explanations if isinstance(item, dict)],
+            findings=[item for item in findings if isinstance(item, dict)],
+            scores=[item for item in scores if isinstance(item, dict)],
+        )
+
+    if executive_summary is None:
         executive_summary = _synthesize_executive_summary(
             explanations=[item for item in explanations if isinstance(item, dict)],
             findings=[item for item in findings if isinstance(item, dict)],

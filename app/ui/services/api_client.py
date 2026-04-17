@@ -201,6 +201,7 @@ class APIClient:
                 "order_direction": order_direction,
                 "extra_filters": extra_filters or {},
             },
+            timeout=300,
         )
 
     def start_drilldown_job(
@@ -230,4 +231,4 @@ class APIClient:
         )
 
     def get_drilldown_job(self, *, run_id: str, job_id: str) -> Dict[str, Any]:
-        return self._get(f"runs/{run_id}/drilldown-jobs/{job_id}", timeout=10)
+        return self._get(f"runs/{run_id}/drilldown-jobs/{job_id}", timeout=30)

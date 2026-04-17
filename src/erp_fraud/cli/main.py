@@ -265,7 +265,10 @@ def _raw_data_nested_archives(zip_path: str | Path) -> list[str]:
             return sorted(
                 name
                 for name in zf.namelist()
-                if name.lower().endswith(".zip") and "/raw_data/" in name.lower()
+                if name.lower().endswith(".zip")
+                and "/raw_data/" in name.lower()
+                and not name.startswith("__MACOSX/")
+                and "/._" not in name
             )
     except BadZipFile as exc:
         raise RuntimeError(f"Zip corrupto o no válido: {zip_path}") from exc
@@ -380,10 +383,12 @@ def _load_o2c_raw_tables_from_zip_if_needed(
     conn: Any,
     zip_path: str,
     canonical_schema_config_path: str,
+    target_tables: list[str] | None = None,
 ) -> dict[str, Any]:
     source_tables = _resolve_o2c_source_tables_from_config(canonical_schema_config_path)
     fail_fast_required_tables = _resolve_o2c_fail_fast_required_tables(canonical_schema_config_path)
-    target_tables = fail_fast_required_tables or source_tables
+    requested_tables = [str(item).strip().upper() for item in (target_tables or []) if str(item).strip()]
+    effective_target_tables = requested_tables or fail_fast_required_tables or source_tables
     if not source_tables:
         return {
             "status": "SKIPPED",
@@ -396,15 +401,15 @@ def _load_o2c_raw_tables_from_zip_if_needed(
             "nested_archives_count": 0,
         }
 
-    missing_before = [table for table in target_tables if not _table_exists_in_main(conn, table)]
+    missing_before = [table for table in effective_target_tables if not _table_exists_in_main(conn, table)]
     if not missing_before:
         return {
             "status": "SKIPPED",
             "reason": "all_source_tables_already_present",
             "source_tables": source_tables,
-            "target_tables": target_tables,
+            "target_tables": effective_target_tables,
             "tables_loaded": [],
-            "tables_already_present": target_tables,
+            "tables_already_present": effective_target_tables,
             "tables_missing_after_load": [],
             "nested_archives_count": 0,
         }
@@ -415,9 +420,9 @@ def _load_o2c_raw_tables_from_zip_if_needed(
             "status": "SKIPPED",
             "reason": "raw_data_nested_archives_not_found",
             "source_tables": source_tables,
-            "target_tables": target_tables,
+            "target_tables": effective_target_tables,
             "tables_loaded": [],
-            "tables_already_present": [t for t in target_tables if t not in missing_before],
+            "tables_already_present": [t for t in effective_target_tables if t not in missing_before],
             "tables_missing_after_load": missing_before,
             "nested_archives_count": 0,
         }
@@ -486,9 +491,9 @@ def _load_o2c_raw_tables_from_zip_if_needed(
     return {
         "status": status,
         "source_tables": source_tables,
-        "target_tables": target_tables,
+        "target_tables": effective_target_tables,
         "tables_loaded": loaded_tables,
-        "tables_already_present": [t for t in target_tables if t not in missing_before],
+        "tables_already_present": [t for t in effective_target_tables if t not in missing_before],
         "tables_missing_after_load": still_missing,
         "nested_archives_count": len(nested_archives),
         "loaded_members_count": loaded_members_count,

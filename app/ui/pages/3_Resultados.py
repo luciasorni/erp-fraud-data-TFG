@@ -222,8 +222,10 @@ def _render_comparison_insights(items: List[Dict[str, Any]]) -> None:
     for item in items:
         attrs = item.get("attributes", {}) or {}
         runs_compared = attrs.get("runs_compared", []) or []
-        common_tests = attrs.get("common_selected_tests", []) or []
-        common_types = attrs.get("common_fraud_types_with_findings", []) or []
+        evidence = attrs.get("evidence", []) or []
+        implication = attrs.get("implication")
+        recommendation = attrs.get("recommendation")
+        section = attrs.get("section") or "-"
 
         with st.container(border=True):
             st.markdown(f"#### {item.get('title') or 'Insight comparativo'}")
@@ -232,11 +234,19 @@ def _render_comparison_insights(items: List[Dict[str, Any]]) -> None:
 
             render_presentable_content(item.get("summary") or "")
 
+            if implication:
+                st.markdown("**Por qué importa**")
+                render_presentable_content(implication)
+            if recommendation:
+                st.markdown("**Qué refuerza o sugiere**")
+                render_presentable_content(recommendation)
+            if evidence:
+                st.markdown("**Evidencia de comparación**")
+                render_presentable_content(evidence)
+
             st.caption(
-                f"Comparado contra: {', '.join(runs_compared) or 'otros runs del análisis secundario'}"
+                f"Sección: {section} · Runs comparados: {', '.join(runs_compared) or 'sin runs relacionados'}"
             )
-            st.caption(f"Tests compartidos: {', '.join(common_tests) or '-'}")
-            st.caption(f"Tipologías coincidentes: {', '.join(common_types) or '-'}")
 
 
 def main() -> None:

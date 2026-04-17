@@ -12,7 +12,9 @@ from typing import Any
 @dataclass(frozen=True)
 class RunSnapshot:
     run_id: str
-    run_dir: Path
+    run_dir: Path | None
+    dataset_id: str
+    dataset_hash: str
     process_family: str
     llm_mode: str
     graph_status: str
@@ -83,6 +85,7 @@ def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> R
     graph_state = _safe_dict(_load_json(graph_dir / "graph_state.json"))
     graph_meta = _safe_dict(graph_state.get("run_metadata", {}))
     run_metadata_payload = _safe_dict(_load_json(run_dir / "run_metadata.json"))
+    api_request_payload = _safe_dict(_load_json(run_dir / "api_request.json"))
 
     report_payload = _safe_dict(_load_json(run_dir / "report.json"))
     report_summary = _safe_dict(report_payload.get("summary", {}))
@@ -118,6 +121,16 @@ def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> R
         or str(report_metadata_extra.get("process_family", "")).strip()
         or "p2p"
     )
+    dataset_id = (
+        str(api_request_payload.get("dataset_id", "")).strip()
+        or str(run_metadata_payload.get("dataset_id", "")).strip()
+        or str(report_metadata_extra.get("dataset_id", "")).strip()
+    )
+    dataset_hash = (
+        str(graph_meta.get("dataset_hash", "")).strip()
+        or str(run_metadata_payload.get("dataset_hash", "")).strip()
+        or str(report_metadata_extra.get("dataset_hash", "")).strip()
+    )
     llm_mode = (
         str(graph_meta.get("llm_mode", "")).strip()
         or str(run_metadata_payload.get("llm_mode", "")).strip()
@@ -140,6 +153,8 @@ def load_run_snapshot(*, run_id: str, base_dir: str | Path = "run_results") -> R
     return RunSnapshot(
         run_id=rid,
         run_dir=run_dir,
+        dataset_id=dataset_id,
+        dataset_hash=dataset_hash,
         process_family=process_family,
         llm_mode=llm_mode,
         graph_status=graph_status,
@@ -253,6 +268,158 @@ def _build_recommendations(*, snapshots: list[RunSnapshot]) -> list[dict[str, An
     return recs
 
 
+def _build_comparison_sections(*, snapshots: list[RunSnapshot]) -> list[dict[str, Any]]:
+    if not snapshots:
+        return []
+
+    current = snapshots[0]
+    historical_peers = [row for row in snapshots[1:] if row.process_family == current.process_family]
+    cross_process_peers = [row for row in snapshots[1:] if row.process_family != current.process_family]
+
+    sections: list[dict[str, Any]] = []
+
+    sections.append(
+        {
+            "id": "intra-run-current",
+            "section": "intra_run",
+            "status": "comparison",
+            "title": "Lectura del run actual",
+            "subtitle": f"Run {current.run_id} · {current.process_family.upper()}",
+            "summary": (
+                f"El run actual seleccionó {current.selected_tests_count} tests, generó {current.findings_total} hallazgos "
+                f"y terminó con la etiqueta final {current.final_label or 'sin etiqueta final'} "
+                f"y confianza {current.confidence:.2f}."
+            ),
+            "evidence": [
+                f"Tests seleccionados: {', '.join(current.selected_test_ids) or 'ninguno'}.",
+                f"Tests con hallazgos: {', '.join(current.tests_with_findings) or 'ninguno'}.",
+                f"Tipologías con hallazgos: {', '.join(sorted(current.fraud_types_with_findings.keys())) or 'ninguna'}.",
+            ],
+            "implication": "Esta lectura resume la señal del run antes de contrastarla con histórico o con otras familias.",
+            "attributes": {
+                "runs_compared": [current.run_id],
+                "dataset_id": current.dataset_id or None,
+                "dataset_hash": current.dataset_hash or None,
+            },
+        }
+    )
+
+    if historical_peers:
+        common_tests = sorted(
+            set(current.selected_test_ids).intersection(*[set(row.selected_test_ids) for row in historical_peers])
+        ) if historical_peers else []
+        common_types = sorted(
+            set(current.fraud_types_with_findings.keys()).intersection(
+                *[set(row.fraud_types_with_findings.keys()) for row in historical_peers]
+            )
+        ) if historical_peers else []
+        avg_findings = sum(row.findings_total for row in historical_peers) / max(len(historical_peers), 1)
+        sections.append(
+            {
+                "id": "historical-comparison",
+                "section": "historical",
+                "status": "comparison",
+                "title": "Comparación histórica intra-familia",
+                "subtitle": f"{len(historical_peers)} run(s) previo(s) de {current.process_family.upper()}",
+                "summary": (
+                    f"El run actual se ha contrastado con {len(historical_peers)} runs previos equivalentes de la misma familia. "
+                    f"El histórico presenta una media de {avg_findings:.1f} hallazgos."
+                ),
+                "evidence": [
+                    f"Runs históricos: {', '.join(row.run_id for row in historical_peers)}.",
+                    f"Tests comunes: {', '.join(common_tests) or 'ninguno'}.",
+                    f"Tipologías comunes con hallazgos: {', '.join(common_types) or 'ninguna'}.",
+                ],
+                "implication": (
+                    "Sirve para decidir si la señal actual es estable respecto al histórico o si aparece como una desviación nueva."
+                ),
+                "recommendation": (
+                    "Comparar manualmente el run actual con el último run equivalente cuando haya diferencias relevantes en hallazgos o tipologías."
+                ),
+                "attributes": {
+                    "runs_compared": [current.run_id, *[row.run_id for row in historical_peers]],
+                    "same_family": current.process_family,
+                },
+            }
+        )
+    else:
+        sections.append(
+            {
+                "id": "historical-comparison-missing",
+                "section": "historical",
+                "status": "insufficient_context",
+                "title": "Comparación histórica intra-familia",
+                "subtitle": f"Sin histórico suficiente de {current.process_family.upper()}",
+                "summary": (
+                    "No hay runs previos equivalentes de la misma familia con contexto suficiente para una comparación histórica útil."
+                ),
+                "evidence": [
+                    f"Run actual: {current.run_id}.",
+                ],
+                "implication": "La lectura debe apoyarse en la señal del run actual y no en tendencia histórica.",
+                "attributes": {"runs_compared": [current.run_id]},
+            }
+        )
+
+    if cross_process_peers:
+        common_types = sorted(
+            set(current.fraud_types_with_findings.keys()).intersection(
+                *[set(row.fraud_types_with_findings.keys()) for row in cross_process_peers]
+            )
+        ) if cross_process_peers else []
+        common_tests = sorted(
+            set(current.selected_test_ids).intersection(*[set(row.selected_test_ids) for row in cross_process_peers])
+        ) if cross_process_peers else []
+        sections.append(
+            {
+                "id": "cross-process-comparison",
+                "section": "cross_process",
+                "status": "comparison",
+                "title": "Comparación cross-process",
+                "subtitle": "Contraste entre familias de proceso",
+                "summary": (
+                    f"El run actual se ha contrastado con {len(cross_process_peers)} run(s) de otra familia de proceso "
+                    "para identificar concurrencia o divergencia de señal."
+                ),
+                "evidence": [
+                    f"Runs cross-process: {', '.join(row.run_id for row in cross_process_peers)}.",
+                    f"Tests comunes: {', '.join(common_tests) or 'ninguno'}.",
+                    f"Tipologías comunes con hallazgos: {', '.join(common_types) or 'ninguna'}.",
+                ],
+                "implication": (
+                    "La comparación cross-process ayuda a decidir si la señal parece localizada en un proceso o sugiere patrón transversal."
+                ),
+                "recommendation": (
+                    "Si hay tipologías comunes, revisar entidades relacionadas entre procesos; si no las hay, interpretar la señal como específica del proceso actual."
+                ),
+                "attributes": {
+                    "runs_compared": [current.run_id, *[row.run_id for row in cross_process_peers]],
+                    "process_families": sorted({current.process_family, *[row.process_family for row in cross_process_peers]}),
+                },
+            }
+        )
+    else:
+        sections.append(
+            {
+                "id": "cross-process-comparison-missing",
+                "section": "cross_process",
+                "status": "insufficient_context",
+                "title": "Comparación cross-process",
+                "subtitle": "Sin contraste entre familias",
+                "summary": (
+                    "No hay runs de otra familia de proceso con contexto suficiente para evaluar concurrencia o divergencia cross-process."
+                ),
+                "evidence": [
+                    f"Run actual: {current.run_id}.",
+                ],
+                "implication": "No se puede inferir patrón transversal entre P2P y O2C con la información disponible.",
+                "attributes": {"runs_compared": [current.run_id]},
+            }
+        )
+
+    return sections
+
+
 def compare_run_snapshots(*, snapshots: list[RunSnapshot]) -> dict[str, Any]:
     normalized = [row for row in snapshots if isinstance(row, RunSnapshot)]
     if not normalized:
@@ -273,6 +440,8 @@ def compare_run_snapshots(*, snapshots: list[RunSnapshot]) -> dict[str, Any]:
         runs_payload.append(
             {
                 "run_id": snap.run_id,
+                "dataset_id": snap.dataset_id,
+                "dataset_hash": snap.dataset_hash,
                 "process_family": snap.process_family,
                 "llm_mode": snap.llm_mode,
                 "graph_status": snap.graph_status,
@@ -314,6 +483,7 @@ def compare_run_snapshots(*, snapshots: list[RunSnapshot]) -> dict[str, Any]:
             )
 
     recommendations = _build_recommendations(snapshots=normalized)
+    comparison_sections = _build_comparison_sections(snapshots=normalized)
 
     return {
         "rf_task": "RF16",
@@ -322,10 +492,14 @@ def compare_run_snapshots(*, snapshots: list[RunSnapshot]) -> dict[str, Any]:
         "process_families": dict(sorted(process_families.items(), key=lambda item: item[0])),
         "runs": runs_payload,
         "summary": {
+            "current_run_id": normalized[0].run_id,
+            "historical_run_ids": [row.run_id for row in normalized[1:] if row.process_family == normalized[0].process_family],
+            "cross_process_run_ids": [row.run_id for row in normalized[1:] if row.process_family != normalized[0].process_family],
             "common_selected_tests": common_selected_tests,
             "common_fraud_types_with_findings": common_fraud_types,
             "pairwise_similarity": pairwise,
         },
+        "comparison_sections": comparison_sections,
         "recommendations": recommendations,
     }
 
