@@ -122,6 +122,43 @@ def build_standard_test_result(
     }
 
 
+def _annotate_o2c_discount_applicability(
+    *,
+    test_spec: dict[str, Any],
+    result: dict[str, Any],
+    conn: duckdb.DuckDBPyConnection,
+    schema_name: str,
+) -> dict[str, Any]:
+    test_id = str(test_spec.get("id", "")).strip()
+    if test_id != "TST-O2C-DISCOUNT-POLICY-BREACH":
+        return result
+    if int(result.get("finding_count", 0) or 0) > 0:
+        return result
+    try:
+        row = conn.execute(
+            f'''
+            SELECT
+              COUNT(*) AS total_rows,
+              SUM(CASE WHEN condition_amount IS NOT NULL THEN 1 ELSE 0 END) AS nonnull_condition_amount_rows
+            FROM "{schema_name}"."o2c_order"
+            '''
+        ).fetchone()
+    except Exception:
+        return result
+    total_rows = int(row[0] or 0) if row else 0
+    nonnull_rows = int(row[1] or 0) if row else 0
+    metadata = result.setdefault("metadata", {})
+    if not isinstance(metadata, dict):
+        metadata = {}
+        result["metadata"] = metadata
+    if total_rows > 0 and nonnull_rows == 0:
+        result["status"] = "SKIPPED"
+        result["error_summary"] = "LOW_APPLICABILITY: condition_amount no disponible en o2c_order; revisar fuente KONV/datos de descuento."
+        metadata["applicability_status"] = "LOW"
+        metadata["applicability_reason"] = "condition_amount no disponible en o2c_order; el dataset no aporta señal real de descuentos."
+    return result
+
+
 def run_test_duplicate_postings(
     test_spec: dict[str, Any],
     *,
@@ -914,13 +951,9 @@ def run_test_sql_ref_generic(
     assert conn is not None
 
     started = perf_counter()
-    try:
-        cur = conn.execute(query)
-        raw_rows = cur.fetchall()
-        columns = [str(col[0]).strip() for col in (cur.description or [])]
-    finally:
-        if own_connection:
-            conn.close()
+    cur = conn.execute(query)
+    raw_rows = cur.fetchall()
+    columns = [str(col[0]).strip() for col in (cur.description or [])]
     duration_ms = int((perf_counter() - started) * 1000)
 
     expected_output = test_spec.get("expected_output", {})
@@ -963,7 +996,7 @@ def run_test_sql_ref_generic(
             }
         )
 
-    return build_standard_test_result(
+    result = build_standard_test_result(
         test_spec=test_spec,
         status="OK",
         rows=rows,
@@ -972,3 +1005,13 @@ def run_test_sql_ref_generic(
         implementation_type="sql_ref",
         executed_on=f"{schema_name}.{table_name}",
     )
+    try:
+        return _annotate_o2c_discount_applicability(
+            test_spec=test_spec,
+            result=result,
+            conn=conn,
+            schema_name=schema_name,
+        )
+    finally:
+        if own_connection:
+            conn.close()

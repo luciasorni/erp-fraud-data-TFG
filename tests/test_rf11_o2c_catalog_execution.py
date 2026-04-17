@@ -63,7 +63,13 @@ def _prepare_o2c_tables(conn: duckdb.DuckDBPyConnection) -> None:
             ("5000000001", "000010", "V01", 100.0, -5.0, 10.0),
             ("5000000002", "000010", "V01", 105.0, -5.0, 10.0),
             ("5000000003", "000010", "V01", 98.0, -5.0, 10.0),
-            ("5000000004", "000010", "V01", 500.0, -250.0, 10.0),
+            ("5000000004", "000010", "V01", 110.0, -5.0, 10.0),
+            ("5000000005", "000010", "V01", 102.0, -5.0, 10.0),
+            ("5000000006", "000010", "V01", 99.0, -5.0, 10.0),
+            ("5000000007", "000010", "V01", 101.0, -5.0, 10.0),
+            ("5000000008", "000010", "V01", 103.0, -5.0, 10.0),
+            ("5000000009", "000010", "V01", 104.0, -5.0, 10.0),
+            ("5000000010", "000010", "V01", 500.0, -250.0, 10.0),
         ],
     )
     conn.executemany(
@@ -130,3 +136,83 @@ def test_rf11_o2c_catalog_tests_execute_with_runner(tmp_path) -> None:
     assert findings_by_id["TST-O2C-CLEARING-ANOMALY"] >= 1
     assert findings_by_id["TST-O2C-INVOICE-AMOUNT-ANOMALY"] >= 1
     assert findings_by_id["TST-O2C-INVOICE-DATE-SEQUENCE"] >= 1
+
+
+def test_rf11_o2c_price_outlier_requires_stronger_signal(tmp_path) -> None:
+    db_path = tmp_path / "o2c_price_strict.duckdb"
+    conn = duckdb.connect(str(db_path))
+    try:
+        conn.execute('CREATE SCHEMA IF NOT EXISTS "o2c"')
+        conn.execute(
+            '''
+            CREATE TABLE "o2c"."o2c_order" (
+              sales_order_id VARCHAR,
+              sales_order_item_id VARCHAR,
+              customer_id VARCHAR,
+              net_amount DOUBLE,
+              condition_amount DOUBLE,
+              ordered_quantity DOUBLE
+            )
+            '''
+        )
+        conn.executemany(
+            'INSERT INTO "o2c"."o2c_order" VALUES (?, ?, ?, ?, ?, ?)',
+            [
+                ("5000000001", "000010", "V01", 100.0, None, 10.0),
+                ("5000000002", "000010", "V01", 105.0, None, 10.0),
+                ("5000000003", "000010", "V01", 98.0, None, 10.0),
+                ("5000000004", "000010", "V01", 115.0, None, 10.0),
+                ("5000000005", "000010", "V01", 120.0, None, 10.0),
+            ],
+        )
+    finally:
+        conn.close()
+
+    runner = TestRunner(db_path=db_path, schema_name="o2c", table_name="o2c_order")
+    results = runner.run_all(
+        selected_tests=["TST-O2C-PRICE-OUTLIER"],
+        catalog_path="tests/catalog_o2c",
+        validate_schema=True,
+    )
+    assert results[0]["status"] == "OK"
+    assert int(results[0].get("finding_count", 0) or 0) == 0
+
+
+def test_rf11_o2c_discount_policy_breach_degrades_when_discount_signal_missing(tmp_path) -> None:
+    db_path = tmp_path / "o2c_discount_low_applicability.duckdb"
+    conn = duckdb.connect(str(db_path))
+    try:
+        conn.execute('CREATE SCHEMA IF NOT EXISTS "o2c"')
+        conn.execute(
+            '''
+            CREATE TABLE "o2c"."o2c_order" (
+              sales_order_id VARCHAR,
+              sales_order_item_id VARCHAR,
+              customer_id VARCHAR,
+              net_amount DOUBLE,
+              condition_amount DOUBLE,
+              ordered_quantity DOUBLE
+            )
+            '''
+        )
+        conn.executemany(
+            'INSERT INTO "o2c"."o2c_order" VALUES (?, ?, ?, ?, ?, ?)',
+            [
+                ("5000000001", "000010", "V01", 100.0, None, 10.0),
+                ("5000000002", "000010", "V01", 105.0, None, 10.0),
+                ("5000000003", "000010", "V01", 98.0, None, 10.0),
+            ],
+        )
+    finally:
+        conn.close()
+
+    runner = TestRunner(db_path=db_path, schema_name="o2c", table_name="o2c_order")
+    results = runner.run_all(
+        selected_tests=["TST-O2C-DISCOUNT-POLICY-BREACH"],
+        catalog_path="tests/catalog_o2c",
+        validate_schema=True,
+    )
+    result = results[0]
+    assert result["status"] == "SKIPPED"
+    assert "LOW_APPLICABILITY" in str(result.get("error_summary", ""))
+    assert result.get("metadata", {}).get("applicability_status") == "LOW"

@@ -1,9 +1,12 @@
 # erp-fraud-data-TFG
 
-Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el dataset `ERP Fraud Data` y DuckDB.
+Sistema del TFG para detección de fraude en ERP sobre procesos `P2P` y `O2C`, con ejecución reproducible local/cloud, grafo multiagente, capa de aplicación `FastAPI` y UI `Streamlit`.
 
 ## Documentación
 
+- `docs/scope.md`
+- `docs/hypothesis_matrix.md`
+- `docs/project_governance.md`
 - `docs/architecture.md`
 - `docs/rf01.md`
 - `docs/rf02.md`
@@ -45,16 +48,34 @@ Base del TFG para detección de fraude en ERP (fase inicial P2P) usando el datas
 
 ## Alcance actual (estado del proyecto)
 
-- Ingesta orientada a `joint_datasets/` (P2P, dataset plano)
-- No se usa `raw_data/` en esta fase
-- Carga a DuckDB local (`erp.duckdb`)
-- Grafo multiagente operativo (RF14/RF15/RF15c/RF18) con nodos modulares
-- Ejecución en `llm_mode=stub|real`, trazabilidad local y publicación opcional en LangSmith
+- Ingesta reproducible de datasets ERP a DuckDB local y ejecución cloud sobre AWS.
+- Soporte funcional para las dos familias de proceso del TFG:
+  - `P2P`
+  - `O2C`
+- Catálogo antifraude operativo, con hipótesis, selección de tests, hallazgos, scoring y drilldown seguro.
+- Grafo multiagente operativo con `llm_mode=stub|real`, persistencia de artefactos y trazabilidad local/LangSmith.
+- Capa de aplicación `FastAPI` y UI `Streamlit` conectadas al backend analítico.
 - Generación de artefactos reproducibles por ejecución:
   - `dataset_hash`
   - `schema_summary.json`
   - `run_metadata.json`
-  - logs JSONL de ingesta
+  - `report.json`
+  - `graph/*`
+  - `test_runs.json`
+  - `tests_outputs/...`
+
+## Alcance y gobernanza
+
+Documentos canónicos para cierre de alcance y trazabilidad:
+
+- alcance y no-goals: `docs/scope.md`
+- matriz consolidada hipótesis -> tests -> evidencias: `docs/hypothesis_matrix.md`
+- gobernanza / DoR / DoD / gestión de backlog: `docs/project_governance.md`
+
+Backlog operativo del proyecto:
+
+- `project/backlog_tasks.txt`
+- `project/requisitos_backlog.xlsx`
 
 ## Cloud AWS (RF14c)
 
@@ -158,7 +179,11 @@ streamlit run app/ui/Home.py
 
 - `src/erp_fraud/ingest/`: lectura del zip, validación, carga tabular, normalización y limpieza
 - `src/erp_fraud/storage/`: DuckDB, rutas de salida, schema summary, run metadata y logging JSON
+- `src/erp_fraud/graph/`: orquestación multiagente, planning, persistencia, scoring y explicación
 - `src/erp_fraud/agents/`: guardrails de tools y políticas por agente (RF15b)
+- `src/erp_fraud/catalog/`: catálogo de tests, ejecución, drilldown y taxonomía de fraude
+- `app/api/`: capa de aplicación `FastAPI`
+- `app/ui/`: interfaz `Streamlit`
 - `tests/`: tests unitarios de la base de ingesta/storage
 - `project/`: planificación y backlog del TFG (`.txt` + `.xlsx`)
 - `run_results/<run_id>/`: salidas y evidencias de cada ejecución (local, no versionado)

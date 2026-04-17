@@ -1,20 +1,43 @@
 from __future__ import annotations
 
-import streamlit as st
 from typing import Dict
+
+import streamlit as st
+
+
+def _render_metric_card(label: str, value: str | int, *, help_text: str | None = None) -> None:
+    with st.container(border=True):
+        st.caption(label.upper())
+        st.markdown(f"## {value}")
+        if help_text:
+            st.caption(help_text)
 
 
 def render_run_metrics(metrics: Dict[str, int]) -> None:
-    cols = st.columns(4)
-    cols[0].metric("Total ejecuciones", metrics.get("total", 0))
-    cols[1].metric("Completadas", metrics.get("completed", 0))
-    cols[2].metric("En curso", metrics.get("running", 0))
-    cols[3].metric("Fallidas", metrics.get("failed", 0))
+    cols = st.columns(4, gap="small")
+
+    items = [
+        ("Total ejecuciones", metrics.get("total", 0), "Runs visibles en el historial."),
+        ("Completadas", metrics.get("completed", 0), "Runs finalizadas correctamente."),
+        ("En curso", metrics.get("running", 0), "Runs todavía activas o pendientes."),
+        ("Fallidas", metrics.get("failed", 0), "Runs terminadas con error."),
+    ]
+
+    for col, (label, value, help_text) in zip(cols, items):
+        with col:
+            _render_metric_card(label, value, help_text=help_text)
 
 
 def render_result_kpis(kpis: Dict[str, int], *, score_value: str) -> None:
-    cols = st.columns(4)
-    cols[0].metric("Hypotheses", kpis.get("hypotheses", 0))
-    cols[1].metric("Selected tests", kpis.get("selected_tests", 0))
-    cols[2].metric("Findings", kpis.get("findings", 0))
-    cols[3].metric("Score agregado", score_value)
+    cols = st.columns(4, gap="small")
+
+    items = [
+        ("Hypotheses", kpis.get("hypotheses", 0), "Hipótesis activas en el análisis."),
+        ("Selected tests", kpis.get("selected_tests", 0), "Tests priorizados por el planner."),
+        ("Findings", kpis.get("findings", 0), "Hallazgos disponibles en el run."),
+        ("Score agregado", score_value, "Señal consolidada del scoring."),
+    ]
+
+    for col, (label, value, help_text) in zip(cols, items):
+        with col:
+            _render_metric_card(label, value, help_text=help_text)

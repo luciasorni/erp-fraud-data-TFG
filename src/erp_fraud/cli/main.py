@@ -938,6 +938,23 @@ def _execute_local_pipeline_in_workspace(*, inner_args: argparse.Namespace, reso
     return _run_pipeline_local(inner_args, resolved_settings=resolved_settings)
 
 
+def _load_graph_selected_test_ids(*, run_dir: Path) -> list[str]:
+    selected_tests_path = run_dir / "graph" / "selected_tests.json"
+    if not selected_tests_path.exists():
+        raise FileNotFoundError(f"No existe selected_tests.json del grafo: {selected_tests_path}")
+    payload = json.loads(selected_tests_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, list):
+        raise ValueError("graph/selected_tests.json debe ser una lista")
+    selected_ids: list[str] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        test_id = str(item.get("test_id", "")).strip()
+        if test_id and test_id not in selected_ids:
+            selected_ids.append(test_id)
+    return selected_ids
+
+
 def _execute_graph_pipeline_in_workspace(
     *,
     settings: dict[str, Any],
@@ -1072,6 +1089,33 @@ def _execute_graph_pipeline_in_workspace(
     if missing:
         raise FileNotFoundError(f"Grafo ejecutado sin artefactos mínimos ({len(missing)}): {', '.join(missing)}")
     return 0
+
+
+def _replay_selected_tests_after_graph(
+    *,
+    settings: dict[str, Any],
+    run_id: str,
+    workspace_input_zip: Path,
+    artifact_hash: str,
+) -> int:
+    run_dir = Path("run_results") / run_id
+    selected_ids = _load_graph_selected_test_ids(run_dir=run_dir)
+    replay_settings = dict(settings)
+    replay_settings["select_tests"] = list(selected_ids)
+    replay_settings["select_fraud_types"] = None
+    replay_settings["select_tags"] = None
+    replay_settings["pipeline_mode"] = "deterministic"
+    replay_settings["artifact_hash_override"] = artifact_hash
+    replay_args = _build_pipeline_args_for_workspace(
+        settings=replay_settings,
+        run_id=run_id,
+        workspace_input_zip=workspace_input_zip,
+        pipeline_mode="deterministic",
+    )
+    return _execute_local_pipeline_in_workspace(
+        inner_args=replay_args,
+        resolved_settings=replay_settings,
+    )
 
 
 def _build_cloud_artifacts_mappings_uri(*, s3_input_uri: str, scope: str) -> str:
@@ -1435,8 +1479,14 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
             f"{artifact_hash[:12]}... | previous_state={'yes' if previous_state else 'no'}"
         )
 
+        bootstrap_settings = dict(settings)
+        if pipeline_mode == "graph":
+            bootstrap_settings["select_tests"] = []
+            bootstrap_settings["select_fraud_types"] = None
+            bootstrap_settings["select_tags"] = None
+
         inner_args = _build_pipeline_args_for_workspace(
-            settings=settings,
+            settings=bootstrap_settings,
             run_id=run_id,
             workspace_input_zip=workspace_input_zip,
             pipeline_mode="deterministic",
@@ -1476,6 +1526,15 @@ def _run_pipeline_cloud(args: argparse.Namespace, settings: dict[str, Any]) -> i
             if graph_code != 0:
                 print("[cloud] ejecución del grafo falló; no se actualiza state store", file=sys.stderr)
                 return int(graph_code)
+            replay_code = _replay_selected_tests_after_graph(
+                settings=inner_settings,
+                run_id=run_id,
+                workspace_input_zip=workspace_input_zip,
+                artifact_hash=artifact_hash,
+            )
+            if replay_code != 0:
+                print("[cloud] reejecución alineada con selected_tests falló; no se actualiza state store", file=sys.stderr)
+                return int(replay_code)
 
         local_run_dir = workspace_dir / "run_results" / run_id
         output_uri = _build_cloud_output_s3_uri(s3_output_uri=settings["s3_output_uri"], run_id=run_id)

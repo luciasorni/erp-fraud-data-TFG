@@ -312,8 +312,9 @@ def test_rf14c11_cloud_graph_mode_runs_graph_after_deterministic(monkeypatch, tm
         calls["graph"] += 1
         run_dir = Path.cwd() / "run_results" / "cloud-run-1" / "graph"
         run_dir.mkdir(parents=True, exist_ok=True)
-        for name in ("graph_state.json", "hypotheses.json", "selected_tests.json", "findings.json", "scores.json", "manifest.json"):
+        for name in ("graph_state.json", "hypotheses.json", "findings.json", "scores.json", "manifest.json"):
             (run_dir / name).write_text("{}", encoding="utf-8")
+        (run_dir / "selected_tests.json").write_text("[]", encoding="utf-8")
         assert kwargs["settings"]["process_family"] == "p2p"
         return 0
 
@@ -340,6 +341,83 @@ def test_rf14c11_cloud_graph_mode_runs_graph_after_deterministic(monkeypatch, tm
     assert calls["graph"] == 1
     assert calls["upload"] == 1
     assert calls["state"] == 1
+
+
+def test_rf14c11_cloud_graph_mode_replays_selected_tests_after_graph(monkeypatch, tmp_path: Path) -> None:
+    settings = _base_settings()
+    settings["pipeline_mode"] = "graph"
+    settings["process_scope"] = "o2c"
+    settings["process_family"] = "o2c"
+    settings["process_family_explicit"] = True
+    calls: list[dict[str, object]] = []
+
+    class _FakeTmpDir:
+        def __init__(self, path: Path) -> None:
+            self.name = str(path)
+
+        def cleanup(self) -> None:
+            return None
+
+    monkeypatch.setattr(cli_main.tempfile, "TemporaryDirectory", lambda prefix: _FakeTmpDir(tmp_path / "ws_graph_replay"))
+    monkeypatch.setattr(
+        cli_main,
+        "download_required_inputs",
+        lambda **kwargs: (Path(kwargs["local_input_dir"]).mkdir(parents=True, exist_ok=True)),
+    )
+    monkeypatch.setattr(
+        cli_main,
+        "_resolve_cloud_input_zip_path",
+        lambda **kwargs: (Path(kwargs["workspace_dir"]) / "erp_fraud_data.zip"),
+    )
+    monkeypatch.setattr(cli_main, "compute_artifact_hash", lambda **kwargs: {"artifact_hash": "hash-graph"})
+    monkeypatch.setattr(cli_main, "read_last_artifact_hash_state", lambda **kwargs: None)
+
+    def _fake_execute_local(*, inner_args, resolved_settings):
+        calls.append(
+            {
+                "pipeline_mode": resolved_settings.get("pipeline_mode"),
+                "select_tests": list(resolved_settings.get("select_tests") or []),
+            }
+        )
+        run_dir = Path.cwd() / "run_results" / "cloud-run-1"
+        (run_dir / "graph").mkdir(parents=True, exist_ok=True)
+        (run_dir / "schema_summary.json").write_text("{}", encoding="utf-8")
+        (run_dir / "run_metadata.json").write_text('{"dataset_hash":"d1"}', encoding="utf-8")
+        return 0
+
+    def _fake_execute_graph(**kwargs):
+        run_dir = Path.cwd() / "run_results" / "cloud-run-1" / "graph"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "selected_tests.json").write_text(
+            json.dumps(
+                [
+                    {"test_id": "TST-O2C-DELIVERY-QUANTITY-MISMATCH"},
+                    {"test_id": "TST-O2C-PRICE-OUTLIER"},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        for name in ("graph_state.json", "hypotheses.json", "findings.json", "scores.json", "manifest.json"):
+            (run_dir / name).write_text("{}", encoding="utf-8")
+        return 0
+
+    monkeypatch.setattr(cli_main, "_execute_local_pipeline_in_workspace", _fake_execute_local)
+    monkeypatch.setattr(cli_main, "_execute_graph_pipeline_in_workspace", _fake_execute_graph)
+    monkeypatch.setattr(cli_main, "upload_run_outputs", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "write_last_artifact_hash_state", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_restore_cloud_red_flags_mapping", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_restore_cloud_weights_config", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_restore_cloud_catalog_dir", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_materialize_workspace_file_from_source_root", lambda **kwargs: None)
+    monkeypatch.setattr(cli_main, "_materialize_workspace_dir_from_source_root", lambda **kwargs: None)
+
+    out = cli_main._run_pipeline_cloud(argparse.Namespace(process_family="o2c"), settings)
+    assert out == 0
+    assert calls[0]["select_tests"] == []
+    assert calls[1]["select_tests"] == [
+        "TST-O2C-DELIVERY-QUANTITY-MISMATCH",
+        "TST-O2C-PRICE-OUTLIER",
+    ]
 
 
 def test_rf14c11_cloud_graph_mode_rejects_both_scope(monkeypatch, tmp_path: Path) -> None:
