@@ -34,6 +34,13 @@ def _list_runs_safe(client: APIClient, *, limit: int) -> list[dict]:
         return client.list_runs()
 
 
+def _get_session_cached(cache_key: str, *, run_id: str, loader) -> dict:
+    cache = st.session_state.setdefault(cache_key, {})
+    if run_id not in cache:
+        cache[run_id] = loader()
+    return cache[run_id]
+
+
 def _execute_drilldown_direct(
     client: APIClient,
     *,
@@ -126,21 +133,24 @@ def _render_explanation_block(explanation: dict | None) -> None:
 
     summary = explanation.get("summary")
     test_id = explanation.get("test_id")
-    fraud_type = explanation.get("fraud_type")
-    finding_count = explanation.get("finding_count")
+    fraud_type = explanation.get("fraud_type") or "No disponible en este run"
+    process_step = explanation.get("process_step") or (explanation.get("attributes", {}) or {}).get("process_step") or "No disponible en este run"
+    finding_count = explanation.get("finding_count_text") or explanation.get("finding_count")
     referenced_columns = explanation.get("referenced_columns") or []
     cited_keys = explanation.get("cited_keys") or {}
 
     with st.container(border=True):
         st.markdown("#### Explicación del fraude detectado")
 
-        top_cols = st.columns([2.0, 1.2, 1.0], gap="small")
+        top_cols = st.columns([1.8, 1.1, 1.1, 1.0], gap="small")
         with top_cols[0]:
             st.markdown(f"**Test:** {test_id or '-'}")
         with top_cols[1]:
-            st.markdown(f"**Tipología:** {fraud_type or '-'}")
+            st.markdown(f"**Tipología:** {fraud_type}")
         with top_cols[2]:
-            st.markdown(f"**Hallazgos:** {finding_count if finding_count is not None else '-'}")
+            st.markdown(f"**Paso afectado:** {process_step}")
+        with top_cols[3]:
+            st.markdown(f"**Hallazgos:** {finding_count if finding_count is not None else 'No disponible en este run'}")
 
         if summary:
             st.write(str(summary))
@@ -155,6 +165,9 @@ def _render_explanation_block(explanation: dict | None) -> None:
 
         if meta_parts:
             st.caption(" · ".join(meta_parts))
+
+        if explanation.get("status_detail"):
+            st.caption(str(explanation.get("status_detail")))
 
 
 def _render_evidence_block(
@@ -283,14 +296,20 @@ def main() -> None:
 
     if not graph or str(graph.get("run_id") or "").strip() != selected_run_id:
         try:
-            graph = client.get_run_graph(run_id)
+            graph = _get_session_cached("run_graph_cache", run_id=run_id, loader=lambda: client.get_run_graph(run_id))
             st.session_state.selected_graph_payload = graph
         except APIClientError as exc:
             st.error(f"No se pudo cargar el contexto de resultados del run: {exc}")
             return
 
     findings_available = [
-        row for row in findings_table_rows(graph.get("findings", [])) if isinstance(row, dict)
+        row
+        for row in findings_table_rows(
+            graph.get("findings", []),
+            selected_tests=graph.get("selected_tests", []),
+            explanations=graph.get("explanations", []),
+        )
+        if isinstance(row, dict)
     ]
     if not findings_available:
         st.info("Este run no tiene hallazgos disponibles para inspección.")
@@ -384,8 +403,15 @@ def main() -> None:
     explanation = explanation_for_test(
         graph.get("explanations", []),
         finding.get("test_id") if finding else None,
+        findings=graph.get("findings", []),
+        selected_tests=graph.get("selected_tests", []),
     )
-    recommendations = recommendations_for_finding(graph.get("second_level_analysis", []))
+    recommendations = recommendations_for_finding(
+        graph.get("second_level_analysis", []),
+        finding=finding,
+        selected_tests=graph.get("selected_tests", []),
+        explanations=graph.get("explanations", []),
+    )
     comparisons = comparison_insights_for_case(graph.get("comparison_insights", []))
     executive_summary = graph.get("executive_summary")
     rec_sections = split_recommendation_sections(recommendations)
@@ -467,14 +493,14 @@ def main() -> None:
         render_recommendations_panel(
             rec_sections["recommended_tests"],
             title="Tests recomendados",
-            empty_message="No hay tests adicionales sugeridos para este hallazgo.",
+            empty_message="El second-level no generó detalle adicional para este tipo de test en este run.",
         )
 
     with tab_audit:
         render_recommendations_panel(
             rec_sections["audit_procedures"],
             title="Procedimiento auditor",
-            empty_message="No hay procedimiento auditor adicional sugerido.",
+            empty_message="No generado para este run.",
         )
 
     render_divider()

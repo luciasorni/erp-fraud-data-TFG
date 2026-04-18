@@ -45,6 +45,13 @@ def _list_runs_safe(client: APIClient, *, limit: int) -> list[dict]:
         return client.list_runs()
 
 
+def _get_session_cached(cache_key: str, *, run_id: str, loader) -> dict:
+    cache = st.session_state.setdefault(cache_key, {})
+    if run_id not in cache:
+        cache[run_id] = loader()
+    return cache[run_id]
+
+
 def _render_run_overview(detail: Dict[str, Any], graph: Dict[str, Any], findings_total: int, score_value: str, score_hint: Dict[str, str], score_label: str) -> None:
     left, right = st.columns([4.4, 1.3], gap="large")
 
@@ -142,17 +149,26 @@ def _render_hypotheses(items: List[Dict[str, Any]]) -> None:
                 st.caption(f"Tests candidatos: {', '.join(candidate_tests)}")
 
 
-def _render_selected_tests(items: List[Dict[str, Any]]) -> None:
+def _render_selected_tests(items: List[Dict[str, Any]], *, finding_rows: List[Dict[str, Any]]) -> None:
     if not items:
         st.info("No hay tests seleccionados.")
         return
 
+    findings_by_test = {row.get("test_id"): row for row in finding_rows if row.get("test_id")}
+
     for item in items:
         attrs = item.get("attributes") or {}
+        test_id = str(item.get("id") or "").strip()
+        finding_row = findings_by_test.get(test_id, {})
+        hypothesis_id = attrs.get("hypothesis_id") or item.get("subtitle")
+        fraud_type = attrs.get("fraud_type")
+        process_step = attrs.get("process_step") or finding_row.get("process_step")
+        execution_status = finding_row.get("status")
         with st.container(border=True):
-            st.markdown(f"#### {item.get('id') or '-'}")
-            if item.get("subtitle"):
-                st.caption(str(item.get("subtitle")))
+            st.markdown(f"#### {test_id or '-'}")
+            caption_bits = [bit for bit in [hypothesis_id, fraud_type] if bit]
+            if caption_bits:
+                st.caption(" · ".join(map(str, caption_bits)))
 
             render_presentable_content(item.get("summary") or "Sin motivo de selección detallado.")
 
@@ -161,11 +177,17 @@ def _render_selected_tests(items: List[Dict[str, Any]]) -> None:
                 st.caption("Origen")
                 st.markdown(f"**{item.get('status') or '-'}**")
             with meta_cols[1]:
-                st.caption("Score")
-                st.markdown(f"**{attrs.get('score', '-')}**")
+                st.caption("Estado en ejecución")
+                st.markdown(f"**{execution_status or 'Pendiente o no visible en este run'}**")
             with meta_cols[2]:
                 st.caption("Hypothesis")
-                st.markdown(f"**{attrs.get('hypothesis_id', '-') if attrs else '-'}**")
+                st.markdown(f"**{hypothesis_id or 'No disponible en este run'}**")
+
+            if process_step:
+                st.caption(f"Paso afectado: {process_step}")
+
+            if finding_row.get("error_summary"):
+                st.caption(str(finding_row.get("error_summary")))
 
 
 def _render_planner_trace(detail: Dict[str, Any], items: List[Dict[str, Any]], *, planner: str) -> None:
@@ -212,6 +234,49 @@ def _render_scores(items: List[Dict[str, Any]]) -> None:
         if item.get("summary"):
             with st.expander(f"Ver detalle de score: {item.get('title') or item.get('id')}", expanded=False):
                 render_presentable_content(item["summary"])
+
+
+def _build_result_kpi_help_texts(
+    *,
+    graph: Dict[str, Any],
+    finding_rows: List[Dict[str, Any]],
+    score_label: str,
+    score_hint: Dict[str, str],
+) -> Dict[str, str]:
+    hypothesis_types: list[str] = []
+    for item in graph.get("hypotheses", []):
+        attrs = item.get("attributes", {}) or {}
+        fraud_type = str(attrs.get("fraud_type") or item.get("subtitle") or "").strip()
+        if fraud_type and fraud_type not in hypothesis_types:
+            hypothesis_types.append(fraud_type)
+
+    skipped_count = sum(1 for row in finding_rows if str(row.get("status", "")).upper() == "SKIPPED")
+    tests_with_findings = sum(1 for row in finding_rows if int(row.get("finding_count", 0) or 0) > 0)
+    total_hallazgos = sum(int(row.get("finding_count", 0) or 0) for row in finding_rows)
+
+    help_texts = {
+        "hypotheses": (
+            f"Tipologías activas: {', '.join(hypothesis_types[:3])}."
+            if hypothesis_types
+            else "No hay tipologías explícitas en las hipótesis de este run."
+        ),
+        "selected_tests": (
+            f"{tests_with_findings} test(s) con hallazgos y {skipped_count} marcado(s) como skipped."
+            if finding_rows
+            else "No hay ejecución visible de tests para este run."
+        ),
+        "findings": (
+            f"{total_hallazgos} hallazgo(s) agregados en {tests_with_findings} test(s) con señal."
+            if finding_rows
+            else "No hay hallazgos visibles en este run."
+        ),
+        "score": (
+            f"{score_label or 'Sin etiqueta'} · {score_hint['label'].lower()}."
+            if score_label and score_label != "-"
+            else score_hint["summary"]
+        ),
+    }
+    return help_texts
 
 
 def _render_comparison_insights(items: List[Dict[str, Any]]) -> None:
@@ -307,16 +372,20 @@ def main() -> None:
                     st.rerun()
 
     try:
-        detail = client.get_run(selected_run_id)
-        graph = client.get_run_graph(selected_run_id)
-        report = client.get_run_report(selected_run_id)
+        detail = _get_session_cached("run_detail_cache", run_id=selected_run_id, loader=lambda: client.get_run(selected_run_id))
+        graph = _get_session_cached("run_graph_cache", run_id=selected_run_id, loader=lambda: client.get_run_graph(selected_run_id))
         remember_run_selection(run_id=selected_run_id, run_detail=detail)
         st.session_state.selected_graph_payload = graph
     except APIClientError as exc:
         st.error(f"No se pudieron cargar los resultados del run: {exc}")
         return
 
-    findings_total = report_findings_count(report) or graph.get("counts", {}).get("findings", 0)
+    finding_rows = findings_table_rows(
+        graph.get("findings", []),
+        selected_tests=graph.get("selected_tests", []),
+        explanations=graph.get("explanations", []),
+    )
+    findings_total = sum(int(row.get("finding_count", 0) or 0) for row in finding_rows) or graph.get("counts", {}).get("findings", 0)
     scores = graph.get("scores", [])
     executive_summary = graph.get("executive_summary")
 
@@ -346,7 +415,16 @@ def main() -> None:
     _render_executive_summary(executive_summary)
 
     render_divider()
-    render_result_kpis(build_run_kpis(graph), score_value=score_value)
+    render_result_kpis(
+        build_run_kpis(graph),
+        score_value=score_value,
+        help_texts=_build_result_kpi_help_texts(
+            graph=graph,
+            finding_rows=finding_rows,
+            score_label=score_label,
+            score_hint=score_hint,
+        ),
+    )
 
     render_divider()
     render_section_heading(
@@ -364,15 +442,13 @@ def main() -> None:
 
     with tab_tests:
         _render_planner_trace(detail, graph.get("selected_tests", []), planner="test")
-        _render_selected_tests(graph.get("selected_tests", []))
+        _render_selected_tests(graph.get("selected_tests", []), finding_rows=finding_rows)
 
     with tab_findings:
         render_section_heading(
             title="Hallazgos detectados",
             subtitle="Cada bloque corresponde a un test con sus hallazgos asociados. Abre el detalle para navegar entre todos los casos detectados por ese test.",
         )
-
-        finding_rows = findings_table_rows(graph.get("findings", []))
 
         def _open_detail(row: dict) -> None:
             remember_finding_selection(finding_id=row.get("finding_id") or "", finding=row)
@@ -388,7 +464,11 @@ def main() -> None:
         _render_scores(scores)
 
     with tab_expl:
-        render_explanations_panel(graph.get("explanations", []))
+        render_explanations_panel(
+            graph.get("explanations", []),
+            findings=graph.get("findings", []),
+            selected_tests=graph.get("selected_tests", []),
+        )
 
     with tab_compare:
         render_section_heading(
@@ -413,15 +493,20 @@ def main() -> None:
         render_recommendations_panel(
             sections["audit_procedures"],
             title="Procedimiento auditor",
-            empty_message="No hay procedimiento auditor adicional sugerido.",
+            empty_message="No generado para este run.",
         )
 
     with st.expander("Detalle técnico del run", expanded=False):
+        try:
+            report = _get_session_cached("run_report_cache", run_id=selected_run_id, loader=lambda: client.get_run_report(selected_run_id))
+        except APIClientError as exc:
+            st.warning(f"No se pudo cargar `report.json`: {exc}")
+            report = {}
         st.write(
             {
                 "graph_status": graph.get("graph_status"),
                 "kb_index_status": graph.get("kb_index_status"),
-                "report_overall_status": report.get("overall_status"),
+                "report_overall_status": report.get("overall_status") if isinstance(report, dict) else None,
                 "artifact_keys": detail.get("artifact_keys", {}),
             }
         )

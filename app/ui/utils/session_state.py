@@ -26,6 +26,9 @@ def init_session_state() -> None:
         "executions_runs_limit": 20,
         "results_show_run_picker": False,
         "detail_show_run_picker": False,
+        "run_detail_cache": {},
+        "run_graph_cache": {},
+        "run_report_cache": {},
     }
     for key, value in defaults.items():
         if key not in st.session_state:

@@ -5,13 +5,20 @@ from typing import Any, Dict, List
 import streamlit as st
 
 from app.ui.components.recommendations_panel import render_presentable_content
+from app.ui.utils.mappers import explanation_rows
 
 
-def render_explanations_panel(explanations: List[Dict[str, Any]]) -> None:
+def render_explanations_panel(
+    explanations: List[Dict[str, Any]],
+    *,
+    findings: List[Dict[str, Any]] | None = None,
+    selected_tests: List[Dict[str, Any]] | None = None,
+) -> None:
     if not explanations:
         st.info("No hay explicación narrativa disponible para este run.")
         return
 
+    explanations = explanation_rows(explanations, findings=findings, selected_tests=selected_tests)
     narrative_items = []
     technical_items = []
 
@@ -27,9 +34,9 @@ def render_explanations_panel(explanations: List[Dict[str, Any]]) -> None:
 
     for item in narrative_items:
         attrs = item.get("attributes", {}) or {}
-        process_step = attrs.get("process_step") or item.get("process_step") or "-"
-        fraud_type = item.get("fraud_type") or attrs.get("fraud_type") or "-"
-        finding_count = item.get("finding_count") or attrs.get("finding_count") or "-"
+        process_step = item.get("process_step") or attrs.get("process_step") or "No disponible en este run"
+        fraud_type = item.get("fraud_type") or attrs.get("fraud_type") or "No disponible en este run"
+        finding_count = item.get("finding_count_text") or attrs.get("finding_count") or "No disponible en este run"
 
         with st.container(border=True):
             st.markdown(f"#### {item.get('title') or item.get('id') or 'Explicación'}")
@@ -48,6 +55,9 @@ def render_explanations_panel(explanations: List[Dict[str, Any]]) -> None:
                 st.markdown(f"**{finding_count}**")
 
             render_presentable_content(item.get("summary") or "Sin resumen explicativo.")
+
+            if item.get("status_detail"):
+                st.caption(str(item.get("status_detail")))
 
     if technical_items:
         st.markdown("### Incidencias técnicas de ejecución")

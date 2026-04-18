@@ -20,9 +20,9 @@ def render_finding_detail(finding: Optional[Dict[str, Any]]) -> None:
         cols = st.columns(4, gap="small")
         summary_items = [
             ("Test asociado", finding.get("test_id") or "-"),
-            ("Fraud type", finding.get("fraud_type") or "-"),
-            ("Hallazgos detectados", finding.get("finding_count") or 0),
-            ("Paso afectado", finding.get("process_step") or "-"),
+            ("Fraud type", finding.get("fraud_type") or "No disponible en este run"),
+            ("Hallazgos detectados", finding.get("finding_count_text") or finding.get("finding_count") or 0),
+            ("Paso afectado", finding.get("process_step") or "No disponible en este run"),
         ]
         for col, (label, value) in zip(cols, summary_items):
             with col:
@@ -35,3 +35,6 @@ def render_finding_detail(finding: Optional[Dict[str, Any]]) -> None:
 
     if finding.get("drilldown_error"):
         st.warning(str(finding.get("drilldown_error")))
+
+    if finding.get("error_summary"):
+        st.caption(str(finding.get("error_summary")))

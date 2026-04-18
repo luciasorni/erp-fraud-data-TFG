@@ -355,6 +355,13 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
     assert out.executive_summary["overall_assessment"] == "The case deviates from the expected vendor pattern."
     assert out.hypotheses[0].title == "Amount anomaly"
     assert out.findings[0].attributes["sample_entity_key"] == "betrag=100|kreditor=V01"
+    assert out.findings[0].attributes["process_step"] == "invoice_posting"
+    assert out.selected_tests[0].attributes["hypothesis_id"] == "HYP-001"
+    assert out.selected_tests[0].attributes["process_step"] == "invoice_posting"
+    assert out.explanations[0].attributes["finding_count"] == 2
+    recommended_test = next(item for item in out.second_level_analysis if item.status == "recommended_test")
+    assert recommended_test.title == "TST-PEER-AMOUNT-DISPERSION"
+    assert recommended_test.summary == "Compare V01 against peer vendors."
     assert out.second_level_analysis[0].title == "Open a targeted manual review for vendor V01."
     assert out.comparison_insights[0].title == "Lectura del run actual"
     assert any(item.attributes.get("section") == "historical" for item in out.comparison_insights)

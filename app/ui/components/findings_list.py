@@ -38,10 +38,16 @@ def render_findings_list(
                 st.markdown(f"**{row.get('test_id') or '-'}**")
             with meta_cols[1]:
                 st.caption("Fraud type")
-                st.markdown(f"**{row.get('fraud_type') or '-'}**")
+                st.markdown(f"**{row.get('fraud_type') or 'No disponible en este run'}**")
             with meta_cols[2]:
                 st.caption("Registros afectados")
-                st.markdown(f"**{row.get('finding_count') or 0}**")
+                st.markdown(f"**{row.get('finding_count_text') or row.get('finding_count') or 0}**")
+
+            if row.get("process_step"):
+                st.caption(f"Paso afectado: {row.get('process_step')}")
+
+            if row.get("error_summary"):
+                st.caption(str(row.get("error_summary")))
 
             if st.button("Ver detalle", key=f"finding-detail-{row.get('finding_id')}"):
                 if on_select:

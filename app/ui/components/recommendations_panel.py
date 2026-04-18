@@ -136,24 +136,35 @@ def render_presentable_content(content: Any) -> None:
 
 
 def _title_for_item(item: dict[str, Any], default_title: str, idx: int) -> str:
+    attrs = _clean_attributes_for_display(item.get("attributes"))
     for key in ("action", "procedure", "test_id", "conclusion", "title", "name"):
         value = _maybe_parse_structured_string(item.get(key))
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        value = _maybe_parse_structured_string(attrs.get(key))
         if isinstance(value, str) and value.strip():
             return value.strip()
     return f"{default_title} {idx}"
 
 
 def _subtitle_for_item(item: dict[str, Any]) -> str:
+    attrs = _clean_attributes_for_display(item.get("attributes"))
     for key in ("why", "rationale", "reason", "overall_assessment", "summary"):
         value = _maybe_parse_structured_string(item.get(key))
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+        value = _maybe_parse_structured_string(attrs.get(key))
         if isinstance(value, str) and value.strip():
             return value.strip()
     return ""
 
 
 def _body_text_for_item(item: dict[str, Any], *, title: str, subtitle: str) -> str:
+    attrs = _clean_attributes_for_display(item.get("attributes"))
     for key in ("summary", "why", "rationale", "reason", "overall_assessment"):
         value = _maybe_parse_structured_string(item.get(key))
+        if not isinstance(value, str):
+            value = _maybe_parse_structured_string(attrs.get(key))
         if not isinstance(value, str):
             continue
         text = value.strip()
@@ -166,23 +177,37 @@ def _body_text_for_item(item: dict[str, Any], *, title: str, subtitle: str) -> s
 
 
 def _metadata_line(item: dict[str, Any]) -> str:
+    attrs = _clean_attributes_for_display(item.get("attributes"))
+    section = str(item.get("section") or attrs.get("section") or "").strip()
+    title = str(item.get("title") or "").strip()
     parts: list[str] = []
-    for label, key in (
+    metadata_pairs = [
         ("Prioridad", "priority"),
         ("Urgencia", "urgency"),
         ("Severidad", "severity"),
         ("Responsable", "owner"),
-        ("Test", "test_id"),
-    ):
+        ("Origen", "source"),
+    ]
+    if section != "recommended_tests":
+        metadata_pairs.append(("Test", "test_id"))
+
+    for label, key in metadata_pairs:
         value = _maybe_parse_structured_string(item.get(key))
+        if _is_empty(value):
+            value = _maybe_parse_structured_string(attrs.get(key))
+        if key == "test_id" and isinstance(value, str) and value.strip() == title:
+            continue
         if not _is_empty(value):
             parts.append(f"**{label}:** {_pretty(value)}")
     return " · ".join(parts)
 
 
 def _evidence_list(item: dict[str, Any]) -> list[Any]:
+    attrs = _clean_attributes_for_display(item.get("attributes"))
     for key in ("evidence", "expected_evidence", "key_evidence"):
         value = _maybe_parse_structured_string(item.get(key))
+        if _is_empty(value):
+            value = _maybe_parse_structured_string(attrs.get(key))
         if isinstance(value, list) and value:
             return value
     return []
@@ -192,7 +217,7 @@ def _clean_attributes_for_display(value: Any) -> dict[str, Any]:
     attributes = _maybe_parse_structured_string(value)
     if not isinstance(attributes, dict):
         return {}
-    hidden_keys = {"section", "id", "status", "title", "summary", "subtitle"}
+    hidden_keys = {"section", "id", "status", "title", "summary", "subtitle", "test_id"}
     cleaned: dict[str, Any] = {}
     for key, item in attributes.items():
         parsed = _maybe_parse_structured_string(item)
@@ -205,7 +230,7 @@ def _clean_attributes_for_display(value: Any) -> dict[str, Any]:
 def _fallback_detail_text(*, item: dict[str, Any], body_text: str, evidence: list[Any], attributes: dict[str, Any]) -> str:
     if body_text or evidence or attributes:
         return ""
-    section = str(item.get("section") or "").strip()
+    section = str(item.get("section") or attributes.get("section") or "").strip()
     if section == "recommendations":
         return "Acción sugerida para reforzar la investigación del caso."
     if section == "recommended_tests":

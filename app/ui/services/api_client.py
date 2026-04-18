@@ -71,7 +71,7 @@ class APIClient:
         *,
         base_url: Optional[str] = None,
         session: Optional[requests.Session] = None,
-        timeout_seconds: int = 30,
+        timeout_seconds: int = 60,
     ) -> None:
         env_url = str(os.getenv("ERP_FRAUD_API_BASE_URL", "")).strip()
         self.base_url = (base_url or env_url or API_BASE_URL).rstrip("/")

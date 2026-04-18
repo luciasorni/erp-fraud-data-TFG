@@ -28,14 +28,15 @@ def render_run_metrics(metrics: Dict[str, int]) -> None:
             _render_metric_card(label, value, help_text=help_text)
 
 
-def render_result_kpis(kpis: Dict[str, int], *, score_value: str) -> None:
+def render_result_kpis(kpis: Dict[str, int], *, score_value: str, help_texts: Dict[str, str] | None = None) -> None:
     cols = st.columns(4, gap="small")
+    help_texts = help_texts or {}
 
     items = [
-        ("Hypotheses", kpis.get("hypotheses", 0), "Hipótesis activas en el análisis."),
-        ("Selected tests", kpis.get("selected_tests", 0), "Tests priorizados por el planner."),
-        ("Findings", kpis.get("findings", 0), "Hallazgos disponibles en el run."),
-        ("Score agregado", score_value, "Señal consolidada del scoring."),
+        ("Hypotheses", kpis.get("hypotheses", 0), help_texts.get("hypotheses") or "Hipótesis activas en el análisis."),
+        ("Selected tests", kpis.get("selected_tests", 0), help_texts.get("selected_tests") or "Tests priorizados por el planner."),
+        ("Findings", kpis.get("findings", 0), help_texts.get("findings") or "Hallazgos disponibles en el run."),
+        ("Score agregado", score_value, help_texts.get("score") or "Señal consolidada del scoring."),
     ]
 
     for col, (label, value, help_text) in zip(cols, items):

@@ -3,6 +3,8 @@ from __future__ import annotations
 import ast
 import json
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 import re
 from typing import Any
 
@@ -11,10 +13,39 @@ from ..schemas.results import GraphResultsResponse, ReportRanking, ReportRespons
 from .aws_service import AWSAPISettings, create_s3_client, get_json_from_s3, get_s3_text, list_s3_common_prefixes, run_output_key, runs_prefix
 from src.erp_fraud.catalog.drilldown_keys import get_minimum_keys_for_test_id, get_missing_or_empty_minimum_keys_for_test_id, normalize_drilldown_keys
 from src.erp_fraud.catalog.drilldown_templates import get_drilldown_query_id_for_test_id
+from src.erp_fraud.catalog.test_spec_loader import load_test_specs_from_catalog
 from src.erp_fraud.storage.runs_comparison import RunSnapshot, compare_run_snapshots
 
 
 _RUN_ID_TIMESTAMP_RE = re.compile(r"(\d{8}-\d{6})$")
+
+
+@lru_cache(maxsize=1)
+def _catalog_metadata_by_test_id() -> dict[str, dict[str, Any]]:
+    repo_root = Path(__file__).resolve().parents[3]
+    out: dict[str, dict[str, Any]] = {}
+    for catalog_dir in (repo_root / "tests" / "catalog", repo_root / "tests" / "catalog_o2c"):
+        if not catalog_dir.exists():
+            continue
+        for spec in load_test_specs_from_catalog(catalog_dir, validate_schema=False):
+            if not isinstance(spec, dict):
+                continue
+            test_id = str(spec.get("test_id") or spec.get("id") or "").strip()
+            if not test_id:
+                continue
+            out[test_id] = {
+                "test_id": test_id,
+                "name": str(spec.get("name", "")).strip() or None,
+                "fraud_type": str(spec.get("fraud_type", "")).strip() or None,
+                "process_step": str(spec.get("process_step", "")).strip() or None,
+                "description": str(spec.get("description", "")).strip() or None,
+                "red_flag_id": str(spec.get("red_flag_id", "")).strip() or None,
+            }
+    return out
+
+
+def _catalog_metadata_for_test_id(test_id: str) -> dict[str, Any]:
+    return _catalog_metadata_by_test_id().get(str(test_id or "").strip(), {})
 
 
 def _bucket(settings: AWSAPISettings) -> str:
@@ -187,6 +218,12 @@ def _ui_item_from_normalized_item(*, raw: dict[str, Any], prefix: str, idx: int)
             explicit_test = str(raw.get("test_id") or raw.get("expected_value") or summary).strip()
             if explicit_test:
                 title = explicit_test
+        elif section == "recommendations" and summary:
+            title = summary.split(".")[0].strip()[:110] or title
+        elif section == "audit_procedures":
+            explicit_procedure = str(raw.get("procedure") or summary).strip()
+            if explicit_procedure:
+                title = explicit_procedure.split(".")[0].strip()[:110] or title
         elif summary:
             title = summary.split(".")[0].strip()[:110] or title
     return UISectionItem(
@@ -418,15 +455,22 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
             },
         )
     if kind == "selected_test":
+        test_id = str(raw.get("test_id", "")).strip()
+        catalog_meta = _catalog_metadata_for_test_id(test_id)
         return UISectionItem(
-            id=str(raw.get("test_id", "")).strip() or None,
-            title=str(raw.get("test_id", "")).strip() or None,
+            id=test_id or None,
+            title=test_id or None,
             subtitle=str(raw.get("hypothesis_id", "")).strip() or None,
             status=str(raw.get("source", "")).strip() or None,
-            summary=", ".join(str(x) for x in raw.get("match_reasons", []) if str(x).strip()) or None,
+            summary=", ".join(str(x) for x in raw.get("match_reasons", []) if str(x).strip()) or catalog_meta.get("description"),
             attributes={
+                "hypothesis_id": str(raw.get("hypothesis_id", "")).strip() or None,
                 "score": raw.get("score"),
                 "match_reasons": list(raw.get("match_reasons", [])),
+                "fraud_type": catalog_meta.get("fraud_type"),
+                "process_step": catalog_meta.get("process_step"),
+                "catalog_name": catalog_meta.get("name"),
+                "catalog_description": catalog_meta.get("description"),
             },
         )
     if kind == "finding":
@@ -435,6 +479,7 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
         first_row = first_row if isinstance(first_row, dict) else {}
         metadata = raw.get("metadata", {}) if isinstance(raw.get("metadata"), dict) else {}
         test_id = str(raw.get("test_id", "")).strip()
+        catalog_meta = _catalog_metadata_for_test_id(test_id)
         evidence_columns = list(raw.get("columns", []))
 
         def _normalize_finding_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -469,12 +514,18 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
 
         normalized_rows = [_normalize_finding_row(row) for row in rows if isinstance(row, dict)]
         sample_row = normalized_rows[0] if normalized_rows else {}
+        status = str(raw.get("status", "")).strip() or None
+        error_summary = str(raw.get("error_summary", "")).strip() or None
+        summary = f"{int(raw.get('finding_count', 0) or 0)} hallazgos detectados"
+        if status == "SKIPPED" and error_summary:
+            summary = error_summary
+
         return UISectionItem(
             id=test_id or None,
             title=test_id or None,
-            subtitle=str(raw.get("fraud_type", "")).strip() or None,
-            status=str(raw.get("status", "")).strip() or None,
-            summary=f"{int(raw.get('finding_count', 0) or 0)} hallazgos detectados",
+            subtitle=str(raw.get("fraud_type", "")).strip() or catalog_meta.get("fraud_type"),
+            status=status,
+            summary=summary,
             attributes={
                 "finding_count": int(raw.get("finding_count", 0) or 0),
                 "columns": evidence_columns,
@@ -487,8 +538,12 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
                 "missing_keys": sample_row.get("missing_keys", []),
                 "drilldown_ready": sample_row.get("drilldown_ready", False),
                 "drilldown_error": sample_row.get("drilldown_error"),
-                "error_summary": str(raw.get("error_summary", "")).strip() or None,
-                "process_step": metadata.get("process_step"),
+                "error_summary": error_summary,
+                "process_step": metadata.get("process_step") or catalog_meta.get("process_step"),
+                "catalog_name": catalog_meta.get("name"),
+                "catalog_description": catalog_meta.get("description"),
+                "applicability_status": metadata.get("applicability_status"),
+                "applicability_reason": metadata.get("applicability_reason"),
                 "rows": normalized_rows,
             },
         )
@@ -512,20 +567,26 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
             },
         )
     if kind == "explanation":
+        test_id = str(raw.get("test_id", "")).strip()
+        catalog_meta = _catalog_metadata_for_test_id(test_id)
         status = str(raw.get("status", "")).strip().upper()
         summary = str(raw.get("summary", "")).strip()
         is_technical_error = status in {"ERROR", "TIMEOUT"} or "error_summary" in summary.lower() or "logs del runner" in summary.lower()
         return UISectionItem(
-            id=str(raw.get("test_id", "")).strip() or None,
-            title=str(raw.get("test_id", "")).strip() or None,
-            subtitle=str(raw.get("fraud_type", "")).strip() or None,
+            id=test_id or None,
+            title=test_id or None,
+            subtitle=str(raw.get("fraud_type", "")).strip() or catalog_meta.get("fraud_type"),
             status=status or None,
             summary=summary or None,
             attributes={
                 "cited_test_id": raw.get("cited_test_id"),
                 "cited_keys": raw.get("cited_keys", {}),
                 "referenced_columns": list(raw.get("referenced_columns", [])),
-                "process_step": raw.get("process_step"),
+                "process_step": raw.get("process_step") or catalog_meta.get("process_step"),
+                "finding_count": raw.get("finding_count"),
+                "sample_entity_key": raw.get("sample_entity_key"),
+                "catalog_name": catalog_meta.get("name"),
+                "catalog_description": catalog_meta.get("description"),
                 "technical_error": is_technical_error,
                 "content_type": "technical_error" if is_technical_error else "narrative",
             },
@@ -617,6 +678,70 @@ def load_graph_results(
             scores=[item for item in scores if isinstance(item, dict)],
         )
 
+    ui_hypotheses = [_as_ui_item(raw=item, kind="hypothesis") for item in hypotheses if isinstance(item, dict)]
+    ui_selected_tests = [_as_ui_item(raw=item, kind="selected_test") for item in selected_tests if isinstance(item, dict)]
+    ui_findings = [_as_ui_item(raw=item, kind="finding") for item in findings if isinstance(item, dict)]
+    findings_by_test_id = {str(item.id or "").strip(): item for item in ui_findings if str(item.id or "").strip()}
+    selected_by_test_id = {str(item.id or "").strip(): item for item in ui_selected_tests if str(item.id or "").strip()}
+    ui_explanations = [_as_ui_item(raw=item, kind="explanation") for item in explanations if isinstance(item, dict)]
+    for item in ui_explanations:
+        test_id = str(item.id or "").strip()
+        if not test_id:
+            continue
+        related_finding = findings_by_test_id.get(test_id)
+        if related_finding is None:
+            continue
+        if item.attributes.get("finding_count") in (None, ""):
+            item.attributes["finding_count"] = related_finding.attributes.get("finding_count")
+        if not item.attributes.get("process_step"):
+            item.attributes["process_step"] = related_finding.attributes.get("process_step")
+        if not item.subtitle:
+            item.subtitle = related_finding.subtitle
+
+    explanations_by_test_id = {str(item.id or "").strip(): item for item in ui_explanations if str(item.id or "").strip()}
+    for item in second_level_items:
+        section = str(item.attributes.get("section") or "").strip()
+        if section != "recommended_tests":
+            continue
+        test_id = str(item.attributes.get("test_id") or "").strip()
+        if not test_id:
+            if str(item.title or "").strip().startswith("TST-"):
+                test_id = str(item.title or "").strip()
+            elif str(item.summary or "").strip().startswith("TST-"):
+                test_id = str(item.summary or "").strip()
+        if not test_id:
+            continue
+        selected_test = selected_by_test_id.get(test_id)
+        explanation = explanations_by_test_id.get(test_id)
+        related_finding = findings_by_test_id.get(test_id)
+        catalog_meta = _catalog_metadata_for_test_id(test_id)
+        item.title = test_id
+        if not str(item.summary or "").strip() or str(item.summary or "").strip() == test_id:
+            item.summary = (
+                (selected_test.summary if selected_test and selected_test.summary else None)
+                or (explanation.summary if explanation and explanation.summary else None)
+                or catalog_meta.get("description")
+                or "Test sugerido para ampliar el contraste del caso."
+            )
+        item.subtitle = (
+            item.subtitle
+            or (selected_test.attributes.get("hypothesis_id") if selected_test else None)
+            or (related_finding.subtitle if related_finding else None)
+            or catalog_meta.get("fraud_type")
+        )
+        item.attributes["test_id"] = test_id
+        if selected_test:
+            if selected_test.status:
+                item.attributes.setdefault("source", selected_test.status)
+            process_step = selected_test.attributes.get("process_step")
+            if process_step:
+                item.attributes.setdefault("process_step", process_step)
+            hypothesis_id = selected_test.attributes.get("hypothesis_id")
+            if hypothesis_id:
+                item.attributes.setdefault("hypothesis_id", hypothesis_id)
+        if related_finding and related_finding.attributes.get("process_step"):
+            item.attributes.setdefault("process_step", related_finding.attributes.get("process_step"))
+
     return GraphResultsResponse(
         run_id=run_id,
         scope=scope or str(run_metadata.get("process_scope", "")).strip() or None,
@@ -632,11 +757,11 @@ def load_graph_results(
             explanations=len(explanations) if isinstance(explanations, list) else 0,
             second_level_analysis=len(second_level_items),
         ),
-        hypotheses=[_as_ui_item(raw=item, kind="hypothesis") for item in hypotheses if isinstance(item, dict)],
-        selected_tests=[_as_ui_item(raw=item, kind="selected_test") for item in selected_tests if isinstance(item, dict)],
-        findings=[_as_ui_item(raw=item, kind="finding") for item in findings if isinstance(item, dict)],
+        hypotheses=ui_hypotheses,
+        selected_tests=ui_selected_tests,
+        findings=ui_findings,
         scores=[_as_ui_item(raw=item, kind="score") for item in scores if isinstance(item, dict)],
-        explanations=[_as_ui_item(raw=item, kind="explanation") for item in explanations if isinstance(item, dict)],
+        explanations=ui_explanations,
         second_level_analysis=second_level_items,
         comparison_insights=comparison_items,
     )
