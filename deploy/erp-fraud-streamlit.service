@@ -1,0 +1,19 @@
+[Unit]
+Description=ERP Fraud Streamlit UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__PROJECT_DIR__
+Environment=STREAMLIT_SERVER_ADDRESS=0.0.0.0
+Environment=STREAMLIT_SERVER_PORT=8501
+EnvironmentFile=-__PROJECT_DIR__/.env.streamlit.ec2
+Environment=PYTHONUNBUFFERED=1
+ExecStart=__PROJECT_DIR__/.venv/bin/python -m streamlit run app/ui/Home.py --server.address=${STREAMLIT_SERVER_ADDRESS} --server.port=${STREAMLIT_SERVER_PORT} --server.headless=true --browser.gatherUsageStats=false
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

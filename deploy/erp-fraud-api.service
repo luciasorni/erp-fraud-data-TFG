@@ -1,0 +1,19 @@
+[Unit]
+Description=ERP Fraud FastAPI backend
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__RUN_USER__
+WorkingDirectory=__PROJECT_DIR__
+Environment=ERP_FRAUD_API_HOST=127.0.0.1
+Environment=ERP_FRAUD_API_PORT=8000
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=-__PROJECT_DIR__/.env.api.ec2
+ExecStart=__PROJECT_DIR__/.venv/bin/python -m uvicorn app.api.main:app --host ${ERP_FRAUD_API_HOST} --port ${ERP_FRAUD_API_PORT}
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
