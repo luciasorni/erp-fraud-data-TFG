@@ -161,6 +161,46 @@ def test_run_test_unusual_amount_by_vendor_returns_standard_result() -> None:
     ]
     assert out["rows"][0]["kreditor"] == "V1"
     assert out["rows"][0]["z_score"] >= 1.7
+    assert out["rows"][0]["keys"]["transaktionsart"] == "N"
+
+
+def test_run_test_unusual_amount_by_vendor_entity_key_includes_transaction_type() -> None:
+    specs = load_test_specs_from_catalog("tests/catalog", validate_schema=True)
+    spec = _spec_by_id(specs, "TST-UNUSUAL-AMOUNT-BY-VENDOR")
+
+    conn = duckdb.connect(":memory:")
+    conn.execute(
+        "CREATE TABLE fraud_1 (Kreditor VARCHAR, Belegnummer VARCHAR, Position VARCHAR, Betrag DOUBLE, Transaktionsart VARCHAR)"
+    )
+    conn.executemany(
+        "INSERT INTO fraud_1 VALUES (?, ?, ?, ?, ?)",
+        [
+            ("V1", "D1", "10", 100.0, "A"),
+            ("V1", "D2", "10", 110.0, "A"),
+            ("V1", "D3", "10", 120.0, "A"),
+            ("V1", "D4", "10", 130.0, "B"),
+            ("V1", "D5", "10", 1000.0, "Materialzugang"),
+            ("V1", "D6", "10", 1000.0, "Sachkontenbuchung"),
+        ],
+    )
+
+    out = run_test_unusual_amount_by_vendor(
+        spec,
+        conn=conn,
+        table_name="fraud_1",
+        schema_name="main",
+        min_rows_per_vendor=5,
+        z_threshold=0.0,
+    )
+    conn.close()
+
+    amount_rows = [row for row in out["rows"] if row["kreditor"] == "V1" and row["betrag"] == 1000.0]
+    assert len(amount_rows) == 2
+    assert {row["keys"]["transaktionsart"] for row in amount_rows} == {
+        "Materialzugang",
+        "Sachkontenbuchung",
+    }
+    assert len({row["entity_key"] for row in amount_rows}) == 2
 
 
 def test_run_test_round_dollar_payments_returns_standard_result() -> None:

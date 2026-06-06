@@ -92,6 +92,7 @@ def _build_drilldown_query_and_params(
             raise ValueError(
                 "extra_filters no permitidos para unusual_amount_by_vendor; permitido: Transaktionsart"
             )
+        transaction_type_filter = filters.get("Transaktionsart") or normalized_keys.get("transaktionsart")
         query = f"""
             SELECT *
             FROM {table_ref}
@@ -104,8 +105,8 @@ def _build_drilldown_query_and_params(
         params = [
             normalized_keys["kreditor"],
             normalized_keys["betrag"],
-            filters.get("Transaktionsart"),
-            filters.get("Transaktionsart"),
+            transaction_type_filter,
+            transaction_type_filter,
             resolved_limit,
         ]
         return query, params

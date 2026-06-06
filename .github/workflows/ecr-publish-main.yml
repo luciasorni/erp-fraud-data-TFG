@@ -26,16 +26,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Validate OIDC configuration
+      - name: Check OIDC configuration
+        id: oidc
         run: |
           if [ -z "${AWS_ROLE_TO_ASSUME}" ]; then
-            echo "Missing AWS_ROLE_TO_ASSUME secret."
-            echo "This workflow is intentionally fail-fast."
-            echo "Configure GitHub OIDC in AWS and set AWS_ROLE_TO_ASSUME to the role ARN."
-            exit 1
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "AWS_ROLE_TO_ASSUME is not configured."
+            echo "The ECR publish workflow will be skipped for this run."
+            {
+              echo "## ECR publish skipped"
+              echo "- reason: \`AWS_ROLE_TO_ASSUME\` no está configurado"
+              echo "- action: configurar GitHub OIDC en AWS y definir el secret con el ARN del rol"
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Configure AWS credentials (OIDC)
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
@@ -43,6 +51,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Validate AWS identity
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           ARN="$(aws sts get-caller-identity --query Arn --output text)"
@@ -54,6 +63,7 @@ jobs:
           fi
 
       - name: Validate ECR repository
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           aws ecr describe-repositories \
             --repository-names "${ECR_REPOSITORY}" \
@@ -61,10 +71,12 @@ jobs:
             >/dev/null
 
       - name: Login to Amazon ECR
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set image tags
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         id: vars
         run: |
           SHORT_SHA="${GITHUB_SHA::12}"
@@ -72,23 +84,28 @@ jobs:
           echo "image_uri=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
 
       - name: Build Docker image
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           docker build -t "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" .
 
       - name: Tag Docker image
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           docker tag "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" "${{ steps.vars.outputs.image_uri }}:${{ steps.vars.outputs.short_sha }}"
           docker tag "${IMAGE_NAME}:${{ steps.vars.outputs.short_sha }}" "${{ steps.vars.outputs.image_uri }}:latest"
 
       - name: Push image (sha)
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           docker push "${{ steps.vars.outputs.image_uri }}:${{ steps.vars.outputs.short_sha }}"
 
       - name: Push image (latest)
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           docker push "${{ steps.vars.outputs.image_uri }}:latest"
 
       - name: Publish summary
+        if: ${{ steps.oidc.outputs.enabled == 'true' }}
         run: |
           {
             echo "## ECR publish result"

@@ -194,7 +194,14 @@ def findings_table_rows(
                 "hypothesis_id": _first_text(selected_attrs.get("hypothesis_id"), selected_test.get("subtitle")),
             }
         )
-    return rows
+    return sorted(
+        rows,
+        key=lambda row: (
+            not (bool(row.get("drilldown_ready")) or bool(row.get("rows"))),
+            -(int(row.get("finding_count", 0) or 0)),
+            str(row.get("test_id") or ""),
+        ),
+    )
 
 
 def score_interpretation(score: Optional[float]) -> Dict[str, str]:

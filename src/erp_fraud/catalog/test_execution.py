@@ -326,6 +326,7 @@ def run_test_unusual_amount_by_vendor(
                     keys={
                         "kreditor": str(base["kreditor"]),
                         "betrag": str(base["betrag"]),
+                        "transaktionsart": str(base["transaktionsart"]),
                     },
                     evidence_columns=[
                         "kreditor",

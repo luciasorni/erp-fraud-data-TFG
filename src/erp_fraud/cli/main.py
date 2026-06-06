@@ -725,6 +725,8 @@ def _resolve_run_settings(args: argparse.Namespace) -> dict[str, Any]:
         "s3_state_uri": cloud_env["s3_state_uri"],
         "process_scope": cloud_env["process_scope"],
     }
+    if resolved["process_family"] == "o2c" and not bool(resolved.get("catalog_explicit", False)):
+        resolved["catalog"] = "tests/catalog_o2c"
     if resolved["timeout_ms"] is not None:
         resolved["timeout_ms"] = int(resolved["timeout_ms"])
     if resolved["top_k"] is not None:

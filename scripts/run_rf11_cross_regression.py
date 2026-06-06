@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
+import sys
 import time
 
 
@@ -42,6 +43,7 @@ def _run_check(name: str, command: list[str]) -> dict[str, object]:
 
 def main() -> int:
     args = _build_parser().parse_args()
+    python_exec = sys.executable or "python3"
     run_id = str(args.run_id).strip() if args.run_id else _default_run_id()
     run_dir = Path(args.out_dir) / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -51,7 +53,7 @@ def main() -> int:
         _run_check(
             "p2p_smoke_subset",
             [
-                "python3",
+                python_exec,
                 "-m",
                 "pytest",
                 "-q",
@@ -63,7 +65,7 @@ def main() -> int:
         _run_check(
             "o2c_smoke_subset",
             [
-                "python3",
+                python_exec,
                 "-m",
                 "pytest",
                 "-q",

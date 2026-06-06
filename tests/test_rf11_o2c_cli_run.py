@@ -182,9 +182,12 @@ def test_rf11_08_cli_run_o2c_mode_generates_artifacts(tmp_path: Path) -> None:
 
     report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
     assert report["summary"]["overall_status"] == "OK"
-    assert int(report["summary"]["tests_total"]) == 0
+    assert int(report["summary"]["tests_total"]) == 7
+    assert int(report["summary"]["tests_ok"]) == 7
+    assert int(report["summary"]["tests_error"]) == 0
     assert int(report["summary"]["ranking_entities"]) == 0
-    assert report.get("test_runs") == []
+    assert len(report.get("test_runs") or []) == 7
+    assert all(str(row.get("status", "")).upper() == "OK" for row in report.get("test_runs") or [])
     ranking_obj = report.get("ranking", {})
     assert isinstance(ranking_obj, dict)
     assert ranking_obj.get("rows") == []
@@ -254,3 +257,10 @@ def test_rf11_08_cli_run_o2c_mode_autoloads_raw_data_from_zip(tmp_path: Path) ->
     assert autoload.get("status") in {"OK", "PARTIAL"}
     loaded = set(autoload.get("tables_loaded", []))
     assert {"VBAK", "VBAP", "LIPS"}.issubset(loaded)
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    assert report["summary"]["overall_status"] == "OK"
+    assert int(report["summary"]["tests_total"]) == 7
+    assert int(report["summary"]["tests_error"]) == 0
+    statuses = [str(row.get("status", "")).upper() for row in report.get("test_runs") or []]
+    assert "SKIPPED" in statuses
+    assert statuses.count("OK") >= 6

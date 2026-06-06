@@ -103,6 +103,44 @@ def test_rf20_ui_mappers_fill_missing_process_step_and_hypothesis_from_selected_
     assert findings[0]["process_step"] != "No disponible en este run"
 
 
+def test_rf20_ui_mappers_prioritize_drilldownable_findings() -> None:
+    findings = findings_table_rows(
+        [
+            {
+                "id": "TST-O2C-CLEARING-ANOMALY",
+                "title": "TST-O2C-CLEARING-ANOMALY",
+                "status": "OK",
+                "attributes": {
+                    "finding_count": 0,
+                    "rows": [],
+                    "drilldown_ready": False,
+                },
+            },
+            {
+                "id": "TST-O2C-DELIVERY-QUANTITY-MISMATCH",
+                "title": "TST-O2C-DELIVERY-QUANTITY-MISMATCH",
+                "status": "OK",
+                "attributes": {
+                    "finding_count": 3,
+                    "sample_keys": {"delivery_id": "80001736", "delivery_item_id": "30"},
+                    "sample_query_id": "drilldown_o2c_delivery_quantity_mismatch_v1",
+                    "rows": [
+                        {
+                            "keys": {"delivery_id": "80001736", "delivery_item_id": "30"},
+                            "query_id": "drilldown_o2c_delivery_quantity_mismatch_v1",
+                        }
+                    ],
+                    "drilldown_ready": True,
+                },
+            },
+        ]
+    )
+
+    assert findings[0]["test_id"] == "TST-O2C-DELIVERY-QUANTITY-MISMATCH"
+    assert findings[0]["drilldown_ready"] is True
+    assert findings[1]["test_id"] == "TST-O2C-CLEARING-ANOMALY"
+
+
 def test_rf20_ui_mappers_build_fallback_explanation_from_finding_and_catalog() -> None:
     explanation = explanation_for_test(
         [],
