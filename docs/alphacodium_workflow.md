@@ -8,7 +8,7 @@ Definir una forma estándar de trabajar con AlphaCodium con aprobación humana:
 2. Validadores automáticos comprueban seguridad y consistencia.
 3. Revisión humana decide integración.
 
-## Cómo se une AlphaCodium con LangGraph
+## Cómo se une AlphaCodium con el grafo multiagente propio
 
 Unión real en código:
 

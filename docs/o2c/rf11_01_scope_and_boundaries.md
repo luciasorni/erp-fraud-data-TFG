@@ -56,7 +56,7 @@ No incluido en esta fase:
 ## 5) Principios de implementación
 
 1. Reutilización máxima:
-- Reusar orquestación LangGraph, persistencia, reporting, guardrails, scoring y trazabilidad existentes.
+- Reusar orquestación del grafo multiagente propio, persistencia, reporting, guardrails, scoring y trazabilidad existentes.
 
 2. Compatibilidad hacia atrás:
 - P2P debe seguir funcionando con los mismos comandos/artefactos esperados.

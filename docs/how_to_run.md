@@ -320,7 +320,7 @@ python3 scripts/run_rf15c_e2e_manual.py \
   --llm-mode real
 ```
 
-Ejecutar RF11 O2C con LangGraph + agentes (stub/real):
+Ejecutar RF11 O2C con grafo multiagente + agentes (stub/real):
 
 ```bash
 # 1) construir tablas canónicas O2C en DuckDB
@@ -354,7 +354,7 @@ Nota de arquitectura:
 
 - `run --process-family o2c` ejecuta el pipeline determinista de preparación/validación O2C.
 - En modo O2C, la CLI intenta autoload de fuentes SAP desde `raw_data/*.zip` del `input-zip` (tablas requeridas para entidades `fail_fast`).
-- `run_rf15c_e2e_manual.py --process-family o2c` ejecuta el grafo multiagente (LangGraph + AlphaCodium + LLM + LangSmith).
+- `run_rf15c_e2e_manual.py --process-family o2c` ejecuta el grafo multiagente propio (AlphaCodium + LLM + LangSmith opcional).
 
 Ver resumen legible del run (hipótesis, tests, hallazgos, score y explicación):
 

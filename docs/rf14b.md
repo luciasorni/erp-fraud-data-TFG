@@ -19,7 +19,7 @@ No sustituye al pipeline: añade observabilidad y evaluación encima de lo que y
 En `smith.langchain.com`:
 
 1. Crea un proyecto con nombre recomendado: `erp-fraud-tfg`.
-2. Etiquetas recomendadas: `rf14b`, `langgraph`, `p2p`, `tfg`.
+2. Etiquetas recomendadas: `rf14b`, `multiagent-graph`, `p2p`, `tfg`.
 
 ### 2) Configurar variables de entorno
 
@@ -59,7 +59,7 @@ Si falla, falta alguna variable obligatoria.
 
 ## Qué haremos después de RF14b-01
 
-- `RF14b-02`: instrumentar trazas por nodo/agente en LangGraph.
+- `RF14b-02`: instrumentar trazas por nodo/agente en el grafo multiagente propio.
 - `RF14b-05...08`: evaluaciones automáticas + dataset de evaluación + comparativa de modelos.
 
 ## RF14b-02 (estado implementado en código)

@@ -5,7 +5,7 @@
 Dejar operativo O2C con comandos reproducibles para:
 
 1. run determinista de datos O2C,
-2. run de grafo (LangGraph + agentes) en `stub` y `real`,
+2. run de grafo multiagente propio en `stub` y `real`,
 3. trazabilidad en LangSmith cuando `llm_mode=real`.
 
 Prerequisito de entorno para autoload O2C desde `raw_data/*.zip`:
@@ -24,7 +24,7 @@ Hay **dos planos de ejecución** complementarios:
 2. `scripts/run_rf15c_e2e_manual.py --process-family o2c` (grafo/agentes):
    - ejecuta nodos/agentes (`hypothesis_planner`, `test_planner`, `executor`, `expert_explainer`, `scoring`, `persist`),
    - permite `llm_mode=stub|real`,
-   - integra AlphaCodium loop + LangGraph + LangSmith.
+   - integra AlphaCodium loop + grafo multiagente propio + LangSmith opcional.
 
 No son caminos contradictorios: el primero prepara/valida datos O2C; el segundo ejecuta detección multiagente y explicabilidad.
 

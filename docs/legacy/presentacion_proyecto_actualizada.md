@@ -14,7 +14,7 @@ Este documento resume el estado actual del proyecto para explicarlo con confianz
 
 El proyecto es una plataforma híbrida de analítica antifraude ERP:
 - base determinista y reproducible (ingesta, validación, tests, ranking, reporte),
-- más una capa multiagente con LLM orquestada por LangGraph.
+- más una capa multiagente con LLM orquestada por el runner propio del proyecto.
 
 Estado implementado relevante:
 - RF01-RF08, RF10, RF13
@@ -160,9 +160,9 @@ Esta es la secuencia real que sigue el proyecto en operación, en orden cronoló
    - si hay críticos -> se bloquea el run,
    - si hay solo warnings -> continúa.
 
-### D) Orquestación LangGraph (núcleo multiagente)
+### D) Orquestación del grafo multiagente propio
 
-LangGraph crea/actualiza `GraphState` y ejecuta nodos en cadena:
+El runner propio crea/actualiza `GraphState` y ejecuta nodos en cadena:
 
 1. **`hypothesis_planner` (LLM)**
    - construye hipótesis iniciales de fraude.
@@ -283,7 +283,7 @@ Modos:
 1. **DuckDB**
 - Motor analítico local para tests y drilldown.
 
-2. **LangGraph**
+2. **Grafo multiagente propio**
 - Orquesta el flujo de nodos y estado compartido.
 
 3. **OpenAI**
@@ -366,7 +366,7 @@ python3 scripts/show_run_summary.py --run-id demo-real
 
 - `README.md`
 - `docs/how_to_run.md`
-- `docs/langgraph_architecture.md`
+- `docs/multiagent_graph_architecture.md`
 - `docs/agents.md`
 - `docs/rf14.md`
 - `docs/rf14b.md`

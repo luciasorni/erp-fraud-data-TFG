@@ -1,4 +1,4 @@
-# Arquitectura LangGraph (RF14)
+# Arquitectura del grafo multiagente (RF14)
 
 ## Objetivo
 
@@ -161,7 +161,7 @@ Esto permite control y auditabilidad: decisión asistida donde aporta valor, eje
 
 ## Relación con RF16 (explicador de 2º nivel)
 
-RF16 **no es un nodo del grafo RF14**. Es una capa posterior que consume artefactos de runs ya ejecutados (`run_results/.../graph/*`) para comparar ejecuciones entre sí (P2P/O2C o single-run) y proponer recomendaciones de auditoría.
+RF16 se integra como nodo final/post-run en la secuencia full actual (`second_level_explainer`), pero conceptualmente consume artefactos ya persistidos (`run_results/.../graph/*`) para comparar ejecuciones entre sí (P2P/O2C o single-run) y proponer recomendaciones de auditoría. No forma parte del núcleo mínimo necesario para ejecutar pruebas antifraude.
 
 Comandos RF16 integrados:
 

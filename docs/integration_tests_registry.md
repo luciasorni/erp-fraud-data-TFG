@@ -39,7 +39,7 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 
 | Requisito | Test de integración | Tipo | Qué valida (resumen) | Documentación asociada |
 |---|---|---|---|---|
-| RF14 | `tests/test_rf14_graph_integration.py` | E2E grafo full | Flujo `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist`, estado por nodo `OK`, artefactos persistidos | `docs/rf14.md` (RF14-13, RF14-15), `docs/langgraph_architecture.md` |
+| RF14 | `tests/test_rf14_graph_integration.py` | E2E grafo full | Flujo `ingest -> kb_index -> hypothesis_planner -> test_planner -> executor -> explainer -> scoring -> persist`, estado por nodo `OK`, artefactos persistidos | `docs/rf14.md` (RF14-13, RF14-15), `docs/multiagent_graph_architecture.md` |
 | RF14 | `tests/test_rf14_graph_routing.py` | Integración de orquestación | Routing condicional, retries/timeouts, abort controlado + persist en abort | `docs/rf14.md` |
 | RF14b | `tests/test_rf14b_contracts.py` | Integración contratos + backward-compat | Compatibilidad de contratos/salidas entre piezas del pipeline | `docs/rf14b.md`, `docs/rf14b_verification.md` |
 | RF14b | `tests/test_rf14b_env_validation.py` | Integración runtime/env | Validación de variables de entorno y perfiles antes de tracing cloud | `docs/rf14b.md`, `docs/pre_langsmith_checklist.md` |
@@ -60,7 +60,7 @@ Se consideran aquí tests que validan interacción entre múltiples componentes 
 | RF11 | `tests/test_rf11_o2c_graph_integration.py` | E2E grafo O2C | `run_graph_full` con nodos/agents, `process_family=o2c`, catálogo O2C y persistencia en grafo | `docs/o2c/rf11_13_o2c_integration_tests.md`, `docs/o2c/rf11_15_operational_runbook.md` |
 | RF16 | `tests/test_rf16_runs_comparison.py` | Integración storage comparación de runs | Carga snapshots desde artefactos persistidos, comparación cross-process/single-run, selección de latest por familia | `docs/rf16.md` |
 | RF16 | `tests/test_rf16_cli_compare_runs.py` | Integración CLI RF16 | Comandos `list-runs` y `compare-runs`, con generación de `rf16_second_level_analysis.json/md` | `docs/rf16.md`, `docs/how_to_run.md` |
-| RF16 | `tests/test_rf16_second_level_agent_node.py` | Integración nodo/agente RF16 | Ejecución de `second_level_explainer` como último nodo del grafo, persistiendo `graph/second_level_analysis.json|md` | `docs/rf16.md`, `docs/langgraph_architecture.md` |
+| RF16 | `tests/test_rf16_second_level_agent_node.py` | Integración nodo/agente RF16 | Ejecución de `second_level_explainer` como último nodo del grafo, persistiendo `graph/second_level_analysis.json|md` | `docs/rf16.md`, `docs/multiagent_graph_architecture.md` |
 | RF20 | `tests/test_rf20_api.py` | Integración API | Contrato HTTP base `/api/v1`, validación de payloads, `scope=both`, shape UI de `/graph` y rechazo de acciones inseguras en drilldown | `docs/rf20.md`, `README.md` |
 | RF20 | `tests/test_rf20_services.py` | Integración services | Orquestación de dos runs para `both` y adaptación de artefactos `graph/*` a respuestas legibles para UI | `docs/rf20.md` |
 | RF20 | `tests/test_rf20_ui_api_client.py` | Integración cliente UI | Centralización de llamadas HTTP de Streamlit sobre `/api/v1` y manejo básico de errores | `docs/rf20.md`, `README.md` |
