@@ -369,6 +369,64 @@ def test_rf20_results_service_load_graph_results_shapes_ui_payload(monkeypatch) 
     assert out.scores[0].attributes["confidence"] == 0.8
 
 
+def test_rf20_results_service_loads_legacy_second_level_raw_lists(monkeypatch) -> None:
+    artifacts = {
+        "graph/graph_state.json": {"run_metadata": {"graph_status": "OK", "process_scope": "p2p"}},
+        "graph/hypotheses.json": [],
+        "graph/selected_tests.json": [],
+        "graph/findings.json": [],
+        "graph/scores.json": [],
+        "graph/explanations.json": [],
+        "graph/second_level_analysis.json": {
+            "llm_insights": {
+                "executive_summary": "Legacy second-level output.",
+                "audit_procedures": [
+                    {
+                        "procedure": "Reconciliar factura, pedido y pago para el proveedor V01.",
+                        "why": "Confirma la trazabilidad documental.",
+                        "priority": "high",
+                    }
+                ],
+                "recommended_tests": [
+                    {
+                        "test_id": "TST-PEER-AMOUNT-DISPERSION",
+                        "rationale": "Compara V01 con proveedores equivalentes.",
+                        "priority": "medium",
+                    }
+                ],
+                "next_actions": [
+                    {
+                        "action": "Abrir revisión manual para V01.",
+                        "why": "La señal queda priorizada.",
+                        "priority": "high",
+                    }
+                ],
+            }
+        },
+        "api_request.json": {"dataset_id": "ds-001", "scope": "p2p", "peer_run_ids": []},
+        "run_metadata.json": {"dataset_hash": "hash-001"},
+        "report.json": {"summary": {"overall_status": "OK", "findings_total": 0}, "metadata": {"metadata_extra": {}}},
+    }
+
+    monkeypatch.setattr(
+        "app.api.services.results_service._read_json_artifact",
+        lambda *, run_id, relative_path, settings, s3_client=None: artifacts.get(relative_path),
+    )
+    monkeypatch.setattr("app.api.services.results_service.list_s3_common_prefixes", lambda **kwargs: [])
+
+    out = load_graph_results(run_id="run-legacy", status="COMPLETED", scope="p2p", settings=_settings(), s3_client=object())
+
+    assert out.counts.second_level_analysis == 3
+    by_status = {item.status: item for item in out.second_level_analysis}
+    assert by_status["audit_procedure"].title == "Reconciliar factura, pedido y pago para el proveedor V01."
+    assert by_status["audit_procedure"].summary == "Confirma la trazabilidad documental."
+    assert by_status["audit_procedure"].attributes["priority"] == "high"
+    assert by_status["recommended_test"].title == "TST-PEER-AMOUNT-DISPERSION"
+    assert by_status["recommended_test"].summary == "Compara V01 con proveedores equivalentes."
+    assert by_status["recommended_action"].title == "Abrir revisión manual para V01."
+    assert by_status["recommended_action"].summary == "La señal queda priorizada."
+
+
 def test_rf20_results_service_prefers_related_cross_process_comparison(monkeypatch) -> None:
     artifacts = {
         "graph/graph_state.json": {"run_metadata": {"graph_status": "OK", "kb_index_status": "OK", "process_scope": "p2p"}},

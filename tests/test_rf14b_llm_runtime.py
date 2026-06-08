@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-from src.erp_fraud.graph.llm_runtime import resolve_node_runtime_target
+from src.erp_fraud.graph.llm_runtime import _extract_json, resolve_node_runtime_target
 from src.erp_fraud.graph.llm_runtime import call_openai_json
 
 
@@ -73,3 +73,18 @@ def test_rf14b_llm_runtime_openai_call_without_key_has_safe_fallback(monkeypatch
     assert meta["fallback_used"] is True
     assert int(meta["latency_ms"]) >= 0
     assert int(meta["retries_done"]) == 0
+
+
+def test_rf14b_llm_runtime_extracts_json_from_noisy_response() -> None:
+    payload = _extract_json(
+        """
+        Aquí va el resultado:
+        ```json
+        {"executive_summary": {"overall_assessment": "ok"}, "items": [{"x": 1}]}
+        ```
+        texto adicional
+        """
+    )
+
+    assert payload["executive_summary"]["overall_assessment"] == "ok"
+    assert payload["items"][0]["x"] == 1

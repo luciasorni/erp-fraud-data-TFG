@@ -508,6 +508,10 @@ def test_rf14c11_execute_graph_pipeline_invokes_run_graph_full(monkeypatch, tmp_
         os.chdir(cwd)
     assert out == 0
     assert calls["run_graph_full"] == 1
+    graph_state_payload = json.loads((run_dir / "graph" / "graph_state.json").read_text(encoding="utf-8"))
+    run_metadata_payload = json.loads((run_dir / "run_metadata.json").read_text(encoding="utf-8"))
+    assert graph_state_payload["run_metadata"]["incomplete_artifacts"] == ["second_level_analysis.json"]
+    assert run_metadata_payload["incomplete_artifacts"] == ["second_level_analysis.json"]
 
 
 def test_rf14c11_execute_graph_pipeline_propagates_llm_mode_real(monkeypatch, tmp_path: Path) -> None:

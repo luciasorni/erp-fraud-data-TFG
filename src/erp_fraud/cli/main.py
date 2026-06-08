@@ -74,7 +74,7 @@ from ..storage.runs_comparison import (
     pick_latest_run_ids_by_process_family,
     write_comparison_outputs,
 )
-from ..graph import run_graph_full
+from ..graph import DEFAULT_GRAPH_SEQUENCE_FULL, run_graph_full
 from ..config import (
     DEFAULT_CATALOG_PATH,
     DEFAULT_DB_PATH,
@@ -1052,6 +1052,34 @@ def _execute_graph_pipeline_in_workspace(
     graph_metadata = getattr(graph_state, "run_metadata", {})
     if not isinstance(graph_metadata, dict):
         graph_metadata = {}
+
+    def _persist_graph_metadata() -> None:
+        graph_state_path = run_dir / "graph" / "graph_state.json"
+        if graph_state_path.exists():
+            try:
+                payload = json.loads(graph_state_path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict):
+                    payload = {}
+                payload["run_metadata"] = graph_metadata
+                graph_state_path.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+            except Exception:
+                pass
+        if run_metadata_path.exists():
+            try:
+                payload = json.loads(run_metadata_path.read_text(encoding="utf-8"))
+                if not isinstance(payload, dict):
+                    payload = {}
+                payload.update(graph_metadata)
+                run_metadata_path.write_text(
+                    json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+            except Exception:
+                pass
+
     graph_status = str(graph_metadata.get("graph_status", "")).strip().upper()
     if graph_status == "ABORTED":
         reason = str(graph_metadata.get("graph_abort_reason", "")).strip() or "unknown"
@@ -1069,18 +1097,7 @@ def _execute_graph_pipeline_in_workspace(
                 "[cloud] graph warning: kb_index abort ignorado "
                 "(rebuild no solicitado explícitamente)"
             )
-            graph_state_path = run_dir / "graph" / "graph_state.json"
-            if graph_state_path.exists():
-                try:
-                    payload = json.loads(graph_state_path.read_text(encoding="utf-8"))
-                    if isinstance(payload, dict):
-                        payload["run_metadata"] = graph_metadata
-                        graph_state_path.write_text(
-                            json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-                            encoding="utf-8",
-                        )
-                except Exception:
-                    pass
+            _persist_graph_metadata()
         else:
             raise RuntimeError(f"Grafo ABORTED: {reason}")
 
@@ -1095,6 +1112,23 @@ def _execute_graph_pipeline_in_workspace(
     missing = [str(path) for path in required_graph_outputs if not path.exists()]
     if missing:
         raise FileNotFoundError(f"Grafo ejecutado sin artefactos mínimos ({len(missing)}): {', '.join(missing)}")
+
+    if "second_level_explainer" in DEFAULT_GRAPH_SEQUENCE_FULL:
+        second_level_output = run_dir / "graph" / "second_level_analysis.json"
+        if not second_level_output.exists():
+            incomplete = graph_metadata.get("incomplete_artifacts")
+            if not isinstance(incomplete, list):
+                incomplete = []
+            artifact_name = "second_level_analysis.json"
+            if artifact_name not in incomplete:
+                incomplete.append(artifact_name)
+            graph_metadata["incomplete_artifacts"] = incomplete
+            print(
+                "[cloud] graph warning: run_id="
+                f"{run_id} falta graph/second_level_analysis.json; "
+                "run marcado con incomplete_artifacts"
+            )
+            _persist_graph_metadata()
     return 0
 
 

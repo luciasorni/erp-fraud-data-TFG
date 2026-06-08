@@ -49,28 +49,112 @@ def resolve_node_runtime_target(
 
 
 def _extract_json(text: str) -> Any:
-    raw = str(text or "").strip()
+    raw = _strip_json_response_text(text)
     if not raw:
         raise ValueError("empty_response")
-    fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
-    if fenced:
-        raw = fenced.group(1).strip()
     try:
         return json.loads(raw)
     except Exception:
         pass
-    start_obj = raw.find("{")
-    end_obj = raw.rfind("}")
-    if start_obj >= 0 and end_obj > start_obj:
-        try:
-            return json.loads(raw[start_obj : end_obj + 1])
-        except Exception:
-            pass
-    start_arr = raw.find("[")
-    end_arr = raw.rfind("]")
-    if start_arr >= 0 and end_arr > start_arr:
-        return json.loads(raw[start_arr : end_arr + 1])
+    for opening, closing in (("{", "}"), ("[", "]")):
+        candidate = _extract_balanced_json_block(raw, opening=opening, closing=closing)
+        if candidate:
+            return json.loads(candidate)
     raise ValueError("json_not_found")
+
+
+def _strip_json_response_text(text: str) -> str:
+    raw = str(text or "").strip()
+    if not raw:
+        return ""
+    fenced = re.search(r"```(?:json)?\s*(.*?)\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        raw = fenced.group(1).strip()
+    return raw.strip()
+
+
+def _extract_balanced_json_block(raw: str, *, opening: str, closing: str) -> str:
+    start = raw.find(opening)
+    while start >= 0:
+        depth = 0
+        in_string = False
+        escape = False
+        for idx in range(start, len(raw)):
+            char = raw[idx]
+            if in_string:
+                if escape:
+                    escape = False
+                elif char == "\\":
+                    escape = True
+                elif char == '"':
+                    in_string = False
+                continue
+            if char == '"':
+                in_string = True
+            elif char == opening:
+                depth += 1
+            elif char == closing:
+                depth -= 1
+                if depth == 0:
+                    return raw[start : idx + 1].strip()
+        start = raw.find(opening, start + 1)
+    return ""
+
+
+def _compact_payload_for_retry(value: Any, *, depth: int = 0) -> Any:
+    if depth >= 5:
+        return str(value)[:300]
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for idx, (key, item) in enumerate(value.items()):
+            if idx >= 40:
+                out["_truncated_keys"] = len(value) - idx
+                break
+            out[str(key)] = _compact_payload_for_retry(item, depth=depth + 1)
+        return out
+    if isinstance(value, list):
+        out = [_compact_payload_for_retry(item, depth=depth + 1) for item in value[:5]]
+        if len(value) > 5:
+            out.append({"_truncated_items": len(value) - 5})
+        return out
+    if isinstance(value, str):
+        return value if len(value) <= 800 else value[:800] + "...[truncated]"
+    return value
+
+
+def _build_openai_user_payload(
+    *,
+    prompt_text: str,
+    input_payload: dict[str, Any],
+    repair_feedback: list[str],
+    attempt: int,
+) -> dict[str, Any]:
+    instruction = "Devuelve SOLO JSON válido, sin markdown ni texto extra."
+    resolved_payload: dict[str, Any] = input_payload
+    resolved_feedback = list(repair_feedback)
+    if attempt > 1:
+        instruction = (
+            "Responde ÚNICAMENTE con el JSON. Sin texto adicional, sin markdown, sin explicaciones. "
+            "La respuesta anterior no fue JSON válido o no pudo parsearse."
+        )
+        resolved_feedback.append("Reintento: devuelve exclusivamente un objeto JSON válido.")
+        resolved_payload = _compact_payload_for_retry(input_payload)
+    return {
+        "instruction": instruction,
+        "prompt_text": prompt_text,
+        "input_payload": resolved_payload,
+        "repair_feedback": resolved_feedback,
+    }
+
+
+def _log_raw_response_parse_failure(*, model_used: str, attempt: int, response_text: str) -> None:
+    payload = {
+        "event": "openai_json_parse_failure",
+        "model_used": model_used,
+        "attempt": attempt,
+        "response_text": str(response_text or ""),
+    }
+    print(json.dumps(payload, ensure_ascii=False, default=str), flush=True)
 
 
 def call_openai_json(
@@ -84,6 +168,8 @@ def call_openai_json(
     timeout_s: float = 30.0,
     max_retries: int = 1,
     retry_backoff_s: float = 0.6,
+    json_schema: dict[str, Any] | None = None,
+    json_schema_name: str = "structured_output",
 ) -> tuple[Any | None, dict[str, Any]]:
     started = time.perf_counter()
     retries_done = 0
@@ -123,25 +209,33 @@ def call_openai_json(
         return None, meta_base
 
     client = OpenAI(api_key=api_key)
-    user_payload = {
-        "instruction": "Devuelve SOLO JSON válido, sin markdown ni texto extra.",
-        "prompt_text": prompt_text,
-        "input_payload": input_payload,
-        "repair_feedback": repair_feedback,
-    }
-    request_kwargs: dict[str, Any] = {
-        "model": model_used,
-        "input": json.dumps(user_payload, ensure_ascii=False, sort_keys=True, default=str),
-    }
-    if max_tokens > 0:
-        request_kwargs["max_output_tokens"] = int(max_tokens)
-    if temperature > 0:
-        request_kwargs["temperature"] = float(temperature)
-
     last_status = "ERROR_OPENAI_CALL:Unknown"
     max_attempts = max(1, int(max_retries) + 1)
     for attempt in range(1, max_attempts + 1):
         try:
+            user_payload = _build_openai_user_payload(
+                prompt_text=prompt_text,
+                input_payload=input_payload,
+                repair_feedback=repair_feedback,
+                attempt=attempt,
+            )
+            request_kwargs: dict[str, Any] = {
+                "model": model_used,
+                "input": json.dumps(user_payload, ensure_ascii=False, sort_keys=True, default=str),
+            }
+            if json_schema:
+                request_kwargs["text"] = {
+                    "format": {
+                        "type": "json_schema",
+                        "name": str(json_schema_name or "structured_output").strip() or "structured_output",
+                        "schema": json_schema,
+                        "strict": True,
+                    }
+                }
+            if max_tokens > 0:
+                request_kwargs["max_output_tokens"] = int(max_tokens)
+            if temperature > 0:
+                request_kwargs["temperature"] = float(temperature)
             response = client.responses.create(
                 **request_kwargs,
                 timeout=max(1.0, float(timeout_s)),
@@ -149,7 +243,15 @@ def call_openai_json(
             response_text = str(getattr(response, "output_text", "") or "").strip()
             if not response_text and hasattr(response, "model_dump"):
                 response_text = json.dumps(response.model_dump(), ensure_ascii=False, default=str)
-            parsed = _extract_json(response_text)
+            try:
+                parsed = _extract_json(response_text)
+            except Exception:
+                _log_raw_response_parse_failure(
+                    model_used=model_used,
+                    attempt=attempt,
+                    response_text=response_text,
+                )
+                raise
             usage = getattr(response, "usage", None)
             input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
             output_tokens = int(getattr(usage, "output_tokens", 0) or 0)

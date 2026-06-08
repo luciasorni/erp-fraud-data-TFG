@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 from ...config import DEFAULT_BASE_DIR, DEFAULT_KB_CHROMA_CONFIG
 from ...storage.runs_comparison import (
     build_comparison_markdown,
@@ -21,6 +23,85 @@ from . import deps
 from .persist_utils import write_json
 
 _run_alpha_loop_for_node = run_alpha_loop_for_node
+
+
+SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["executive_summary", "cross_process_conclusions", "audit_procedures", "recommended_tests", "next_actions"],
+    "properties": {
+        "executive_summary": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["overall_assessment", "risk_posture", "key_observations"],
+            "properties": {
+                "overall_assessment": {"type": "string"},
+                "risk_posture": {"type": "string"},
+                "key_observations": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "cross_process_conclusions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["title", "subtitle", "summary", "implication", "recommendation", "evidence", "section", "status"],
+                "properties": {
+                    "title": {"type": "string"},
+                    "subtitle": {"type": "string"},
+                    "summary": {"type": "string"},
+                    "implication": {"type": "string"},
+                    "recommendation": {"type": "string"},
+                    "evidence": {"type": "array", "items": {"type": "string"}},
+                    "section": {"type": "string"},
+                    "status": {"type": "string"},
+                },
+            },
+        },
+        "audit_procedures": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["procedure", "why", "evidence", "priority"],
+                "properties": {
+                    "procedure": {"type": "string"},
+                    "why": {"type": "string"},
+                    "evidence": {"type": "array", "items": {"type": "string"}},
+                    "priority": {"type": "string"},
+                },
+            },
+        },
+        "recommended_tests": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["test_id", "rationale", "priority", "expected_value"],
+                "properties": {
+                    "test_id": {"type": "string"},
+                    "rationale": {"type": "string"},
+                    "priority": {"type": "string"},
+                    "expected_value": {"type": "string"},
+                },
+            },
+        },
+        "next_actions": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["action", "why", "owner", "urgency"],
+                "properties": {
+                    "action": {"type": "string"},
+                    "why": {"type": "string"},
+                    "owner": {"type": "string"},
+                    "urgency": {"type": "string"},
+                },
+            },
+        },
+    },
+}
 
 
 def _safe_list(value: Any) -> list[Any]:
@@ -47,6 +128,286 @@ def _parse_structured_value(value: Any) -> Any:
         except Exception:
             continue
     return value
+
+
+def _short_text(value: Any, *, max_chars: int = 260) -> str:
+    text = str(value or "").strip()
+    if len(text) <= max_chars:
+        return text
+    return text[: max(0, max_chars - 14)].rstrip() + "...[truncated]"
+
+
+def _artifact_payload_from_metadata(metadata: dict[str, Any], artifact_key: str) -> Any:
+    artifacts = metadata.get("persist_artifacts", {})
+    if not isinstance(artifacts, dict):
+        return None
+    path_value = str(artifacts.get(artifact_key, "")).strip()
+    if not path_value:
+        return None
+    path = Path(path_value)
+    if not path.exists():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _state_list_or_artifact(*, state_values: Any, metadata: dict[str, Any], artifact_key: str) -> list[dict[str, Any]]:
+    rows = [row for row in _safe_list(state_values) if isinstance(row, dict)]
+    if rows:
+        return rows
+    loaded = _artifact_payload_from_metadata(metadata, artifact_key)
+    return [row for row in _safe_list(loaded) if isinstance(row, dict)]
+
+
+def _score_ranking_rows(scores: list[dict[str, Any]], ranking: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = [row for row in ranking if isinstance(row, dict)]
+    for score_payload in scores:
+        score_rows = _safe_list(score_payload.get("ranking"))
+        rows.extend(row for row in score_rows if isinstance(row, dict))
+    dedup: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in rows:
+        key = str(row.get("entity_key", "")).strip()
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        dedup.append(row)
+    return sorted(dedup, key=lambda item: _as_float(item.get("score_total")), reverse=True)
+
+
+def _as_float(value: Any) -> float:
+    try:
+        return float(value or 0.0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _best_metric_value(row: dict[str, Any]) -> float:
+    metrics = _safe_dict(row.get("metrics"))
+    candidates = [
+        metrics.get("z_score"),
+        row.get("z_score"),
+        metrics.get("threshold_gap"),
+        row.get("threshold_gap"),
+        metrics.get("duplicate_count"),
+        row.get("duplicate_count"),
+    ]
+    return max((_as_float(value) for value in candidates), default=0.0)
+
+
+def _evidence_for_row(row: dict[str, Any]) -> list[dict[str, Any]]:
+    evidence: list[dict[str, Any]] = []
+    evidence_columns = [str(col).strip() for col in _safe_list(row.get("evidence_columns")) if str(col).strip()]
+    metrics = _safe_dict(row.get("metrics"))
+    for col in evidence_columns:
+        if col not in row and col not in metrics:
+            continue
+        observed = row.get(col, metrics.get(col))
+        expected = ""
+        if col in {"betrag", "amount", "invoice_amount", "net_value"}:
+            expected = row.get("mean_betrag") or row.get("expected_amount") or row.get("mean_amount") or ""
+        if col in {"threshold", "threshold_gap"}:
+            expected = row.get("threshold") or metrics.get("threshold") or ""
+        evidence.append(
+            {
+                "evidence_type": col,
+                "observed_value": _short_text(observed, max_chars=120),
+                "expected_value": _short_text(expected, max_chars=120),
+                "metric": _short_text(metrics.get(col, row.get("z_score", "")), max_chars=120),
+            }
+        )
+        if len(evidence) >= 3:
+            break
+    return evidence
+
+
+def _flatten_findings(*, findings: list[dict[str, Any]], score_by_entity: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    flattened: list[dict[str, Any]] = []
+    for finding in findings:
+        test_id = str(finding.get("test_id", "")).strip()
+        fraud_type = str(finding.get("fraud_type", "")).strip()
+        finding_count = int(finding.get("finding_count", 0) or 0)
+        rows = [row for row in _safe_list(finding.get("rows")) if isinstance(row, dict)]
+        if not rows and finding_count > 0:
+            rows = [{}]
+        for row in rows:
+            entity_key = str(row.get("entity_key", "")).strip() or test_id
+            score_row = score_by_entity.get(entity_key, {})
+            score = _as_float(score_row.get("score_total")) or _best_metric_value(row)
+            flattened.append(
+                {
+                    "test_id": test_id,
+                    "fraud_type": fraud_type,
+                    "entity_id": entity_key,
+                    "score": score,
+                    "finding_count": finding_count,
+                    "anomaly_description": _describe_finding_row(test_id=test_id, fraud_type=fraud_type, row=row),
+                    "evidence": _evidence_for_row(row),
+                }
+            )
+    return sorted(flattened, key=lambda item: _as_float(item.get("score")), reverse=True)
+
+
+def _describe_finding_row(*, test_id: str, fraud_type: str, row: dict[str, Any]) -> str:
+    keys = _safe_dict(row.get("keys"))
+    metrics = _safe_dict(row.get("metrics"))
+    parts = [f"test_id={test_id}", f"fraud_type={fraud_type}"]
+    for key, value in list(keys.items())[:4]:
+        parts.append(f"{key}={value}")
+    for key in ("betrag", "amount", "threshold", "threshold_gap", "z_score", "line_count", "total_betrag"):
+        if key in row:
+            parts.append(f"{key}={row.get(key)}")
+    for key, value in list(metrics.items())[:3]:
+        parts.append(f"{key}={value}")
+    return _short_text("; ".join(str(part) for part in parts if str(part).strip()), max_chars=360)
+
+
+def _compact_explanations(explanations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for row in explanations[:10]:
+        summary = _short_text(row.get("summary"), max_chars=360)
+        if not summary:
+            continue
+        out.append(
+            {
+                "test_id": str(row.get("test_id") or row.get("cited_test_id") or "").strip(),
+                "fraud_type": str(row.get("fraud_type") or "").strip(),
+                "entity_id": str(row.get("sample_entity_key") or "").strip(),
+                "summary": summary,
+            }
+        )
+    return out
+
+
+def _load_catalog_tests(*, metadata: dict[str, Any], executed_test_ids: set[str]) -> list[dict[str, Any]]:
+    catalog_path = resolve_project_path(str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog")
+    root = Path(catalog_path)
+    if not root.exists():
+        return []
+    tests: list[dict[str, Any]] = []
+    for path in sorted(root.glob("*.y*ml")):
+        try:
+            payload = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        test_id = str(payload.get("id") or payload.get("test_id") or "").strip()
+        if not test_id or test_id in executed_test_ids:
+            continue
+        tests.append(
+            {
+                "test_id": test_id,
+                "fraud_type": str(payload.get("fraud_type") or "").strip(),
+                "title": str(payload.get("title") or payload.get("name") or "").strip(),
+            }
+        )
+    return tests[:20]
+
+
+def _build_enriched_context(*, state: GraphState) -> dict[str, Any]:
+    metadata = state.run_metadata if isinstance(state.run_metadata, dict) else {}
+    findings = _state_list_or_artifact(state_values=state.findings, metadata=metadata, artifact_key="findings_json")
+    scores = _state_list_or_artifact(state_values=state.scores, metadata=metadata, artifact_key="scores_json")
+    explanations = _state_list_or_artifact(
+        state_values=state.explanations,
+        metadata=metadata,
+        artifact_key="explanations_json",
+    )
+    selected_tests = _state_list_or_artifact(
+        state_values=state.selected_tests,
+        metadata=metadata,
+        artifact_key="selected_tests_json",
+    )
+    ranking = [row for row in _safe_list(state.ranking) if isinstance(row, dict)]
+    ranking_rows = _score_ranking_rows(scores, ranking)
+    score_by_entity = {str(row.get("entity_key", "")).strip(): row for row in ranking_rows if str(row.get("entity_key", "")).strip()}
+    top_findings = _flatten_findings(findings=findings, score_by_entity=score_by_entity)[:10]
+    top_entities = [
+        {
+            "entity_id": str(row.get("entity_key", "")).strip(),
+            "score_total": _as_float(row.get("score_total")),
+            "fraud_types": [str(item).strip() for item in _safe_list(row.get("fraud_types")) if str(item).strip()],
+            "tests_triggered": [str(item).strip() for item in _safe_list(row.get("tests_triggered")) if str(item).strip()],
+        }
+        for row in ranking_rows[:10]
+    ]
+    executed_test_ids = {
+        str(row.get("test_id") or row.get("id") or "").strip()
+        for row in selected_tests
+        if str(row.get("test_id") or row.get("id") or "").strip()
+    }
+    context = {
+        "availability": {
+            "findings": len(findings),
+            "scores": len(scores),
+            "explanations": len(explanations),
+            "selected_tests": len(selected_tests),
+            "ranking_entities": len(ranking_rows),
+        },
+        "top_findings": top_findings,
+        "top_entities": top_entities,
+        "compact_explanations": _compact_explanations(explanations),
+        "tests": {
+            "executed_test_ids": sorted(executed_test_ids),
+            "available_not_executed": _load_catalog_tests(metadata=metadata, executed_test_ids=executed_test_ids),
+        },
+    }
+    return _truncate_enriched_context(context, max_chars=int(metadata.get("second_level_context_max_chars", 30000) or 30000))
+
+
+def _truncate_enriched_context(context: dict[str, Any], *, max_chars: int) -> dict[str, Any]:
+    if max_chars <= 0:
+        return context
+    out = json.loads(json.dumps(context, ensure_ascii=False, default=str))
+    while len(json.dumps(out, ensure_ascii=False, default=str)) > max_chars:
+        if len(_safe_list(out.get("compact_explanations"))) > 3:
+            out["compact_explanations"] = out["compact_explanations"][: max(3, len(out["compact_explanations"]) // 2)]
+            continue
+        top_findings = _safe_list(out.get("top_findings"))
+        reduced = False
+        for row in top_findings:
+            if isinstance(row, dict) and len(_safe_list(row.get("evidence"))) > 1:
+                row["evidence"] = row["evidence"][:1]
+                reduced = True
+        if reduced:
+            continue
+        if len(top_findings) > 5:
+            out["top_findings"] = top_findings[:5]
+            continue
+        if len(_safe_list(_safe_dict(out.get("tests")).get("available_not_executed"))) > 10:
+            out["tests"]["available_not_executed"] = out["tests"]["available_not_executed"][:10]
+            continue
+        break
+    return out
+
+
+def _synthesize_audit_procedures(enriched_context: dict[str, Any]) -> list[dict[str, Any]]:
+    procedures: list[dict[str, Any]] = []
+    for row in _safe_list(enriched_context.get("top_findings"))[:6]:
+        item = _safe_dict(row)
+        test_id = str(item.get("test_id", "")).strip()
+        entity_id = str(item.get("entity_id", "")).strip()
+        if not test_id and not entity_id:
+            continue
+        evidence = [
+            f"{_safe_dict(ev).get('evidence_type')}: {_safe_dict(ev).get('observed_value')}"
+            for ev in _safe_list(item.get("evidence"))[:3]
+            if isinstance(ev, dict)
+        ]
+        procedures.append(
+            {
+                "procedure": f"Revisar manualmente la entidad {entity_id or 'sin_clave'} disparada por {test_id or 'test_desconocido'}.",
+                "why": _short_text(item.get("anomaly_description"), max_chars=260)
+                or "El hallazgo aparece entre las señales priorizadas del run.",
+                "evidence": evidence or [entity_id or test_id],
+                "priority": "high" if _as_float(item.get("score")) >= 10 else "medium",
+            }
+        )
+    return procedures
 
 
 def _risk_posture_from_payload(*, deterministic_payload: dict[str, Any]) -> str:
@@ -239,6 +600,118 @@ def _resolve_rf16_run_ids(*, state: GraphState) -> list[str]:
     return dedup
 
 
+def _insufficient_context_comparison_payload(
+    *,
+    run_id: str,
+    base_dir: str,
+    metadata: dict[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    process_family = str(metadata.get("process_family", "")).strip()
+    return {
+        "rf_task": "RF16",
+        "generated_at_utc": "",
+        "runs_count": 1 if run_id else 0,
+        "process_families": {process_family: 1} if process_family else {},
+        "comparison_status": "INSUFFICIENT_CONTEXT",
+        "degraded_reason": reason,
+        "runs": [
+            {
+                "run_id": run_id,
+                "dataset_id": str(metadata.get("dataset_id", "")).strip(),
+                "dataset_hash": str(metadata.get("dataset_hash", "")).strip(),
+                "process_family": process_family,
+                "llm_mode": str(metadata.get("llm_mode", "")).strip(),
+                "graph_status": str(metadata.get("graph_status", "")).strip(),
+                "overall_status": str(metadata.get("overall_status", "")).strip(),
+                "hypotheses_count": 0,
+                "selected_tests_count": 0,
+                "selected_test_ids": [],
+                "findings_total": 0,
+                "tests_with_findings": [],
+                "fraud_types_with_findings": {},
+                "final_label": "",
+                "confidence": 0.0,
+                "langsmith_trace_link": "",
+                "generated_at_utc": "",
+            }
+        ]
+        if run_id
+        else [],
+        "summary": {
+            "current_run_id": run_id,
+            "historical_run_ids": [],
+            "cross_process_run_ids": [],
+            "common_selected_tests": [],
+            "common_fraud_types_with_findings": [],
+            "pairwise_similarity": [],
+        },
+        "comparison_sections": [
+            {
+                "title": "Contexto insuficiente para comparación de segundo nivel",
+                "subtitle": "Second-level explainer degradado",
+                "summary": (
+                    "No se dispone de artefactos comparables suficientes en el workspace local del run cloud; "
+                    "se genera una salida parcial para no invalidar el análisis principal."
+                ),
+                "status": "insufficient_context",
+                "section": "current_run",
+                "evidence": [reason],
+            }
+        ],
+        "recommendations": [
+            {
+                "id": "REC-INSUFFICIENT-CONTEXT",
+                "severity": "low",
+                "title": "Completar contexto comparable antes de interpretar convergencias",
+                "run_id": run_id,
+                "rationale": "La comparación RF16 no pudo usar histórico o familia cruzada en el filesystem local.",
+                "actions": [
+                    "Revisar los artefactos del run actual desde el reporte principal.",
+                    "Ejecutar o sincronizar runs comparables antes de usar conclusiones cross-run.",
+                ],
+            }
+        ],
+    }
+
+
+def _compare_runs_degrading_on_missing_context(
+    *,
+    run_ids: list[str],
+    base_dir: str,
+    state: GraphState,
+    metadata: dict[str, Any],
+) -> dict[str, Any]:
+    try:
+        return compare_runs(run_ids=run_ids, base_dir=base_dir)
+    except Exception as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        metadata["second_level_comparison_status"] = "INSUFFICIENT_CONTEXT"
+        metadata["second_level_comparison_error"] = reason
+        root = Path(base_dir)
+        existing_run_ids = [rid for rid in run_ids if rid and (root / rid).is_dir()]
+        if existing_run_ids and existing_run_ids != run_ids:
+            try:
+                payload = compare_runs(run_ids=existing_run_ids, base_dir=base_dir)
+                payload["comparison_status"] = "INSUFFICIENT_CONTEXT"
+                payload["degraded_reason"] = reason
+                metadata["second_level_explainer_degraded"] = True
+                metadata["second_level_explainer_degraded_reason"] = reason
+                metadata["second_level_explainer_available_run_ids"] = existing_run_ids
+                return payload
+            except Exception as fallback_exc:
+                reason = f"{reason}; fallback={type(fallback_exc).__name__}: {fallback_exc}"
+                metadata["second_level_comparison_error"] = reason
+        metadata["second_level_explainer_degraded"] = True
+        metadata["second_level_explainer_degraded_reason"] = reason
+        return _insufficient_context_comparison_payload(
+            run_id=str(state.run_id).strip(),
+            base_dir=base_dir,
+            metadata=metadata,
+            reason=reason,
+        )
+
+
 def _validate_second_level_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(output, dict):
         return {"passed": False, "errors": ["second_level output debe ser objeto"]}
@@ -364,7 +837,12 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
 
     run_ids = _resolve_rf16_run_ids(state=state)
     base_dir = str(metadata.get("rf16_base_dir", metadata.get("persist_base_dir", "run_results"))).strip() or "run_results"
-    deterministic_payload = compare_runs(run_ids=run_ids, base_dir=base_dir)
+    deterministic_payload = _compare_runs_degrading_on_missing_context(
+        run_ids=run_ids,
+        base_dir=base_dir,
+        state=state,
+        metadata=metadata,
+    )
     kb_enabled = bool(metadata.get("kb_search_enabled", False))
     kb_top_k = int(metadata.get("rf16_kb_top_k", 5) or 5)
     if kb_top_k <= 0:
@@ -443,6 +921,10 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "audit_procedures[{procedure,why,evidence[],priority}], "
             "recommended_tests[{test_id,rationale,priority,expected_value}], "
             "next_actions[{action,why,owner,urgency}]. "
+            "Para audit_procedures, genera al menos un procedimiento auditor por cada hallazgo de top_findings; "
+            "cada procedimiento debe referenciar el test_id y la entidad concreta. "
+            "Para recommended_tests, recomienda solo tests del catálogo disponible que NO se hayan ejecutado en este run. "
+            "Para next_actions, prioriza acciones sobre entidades concretas, no acciones genéricas de configuración. "
             "Prioriza primero la documentación del proyecto y después ACFE/externo. "
             "No uses defaults; justifica acciones con evidencia de runs y KB cuando exista."
         ),
@@ -477,6 +959,8 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
                 timeout_s=float(metadata.get("llm_timeout_s", 30.0) or 30.0),
                 max_retries=int(metadata.get("llm_max_retries", 1) or 1),
                 retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
+                json_schema=SECOND_LEVEL_OUTPUT_SCHEMA,
+                json_schema_name="second_level_explainer_output",
             )
             runtime_by_node["second_level_explainer"] = {
                 "model_used": str(llm_meta.get("model_used", "")).strip()
@@ -495,6 +979,12 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             if isinstance(llm_output, dict):
                 output = llm_output
         else:
+            model_config_by_node = metadata.get("agent_model_config", {})
+            second_model_config = (
+                _safe_dict(model_config_by_node.get("second_level_explainer"))
+                if isinstance(model_config_by_node, dict)
+                else {}
+            )
             runtime_by_node["second_level_explainer"] = {
                 "model_used": str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
                 "llm_mode": llm_mode,
@@ -506,11 +996,26 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
                 "retries_done": 0,
                 "fallback_used": True,
                 "status": "SKIPPED",
+                "skip_reason": str(runtime_target.get("reason") or "unknown").strip() or "unknown",
+                "provider": str(runtime_target.get("provider") or "unknown").strip() or "unknown",
+                "mode_effective": str(llm_mode or runtime_target.get("llm_mode") or "unknown").strip() or "unknown",
+                "models_config_source": str(
+                    second_model_config.get("source") or runtime_target.get("source") or "unknown"
+                ).strip()
+                or "unknown",
             }
         if not isinstance(output, dict):
             output = dict(fallback_insights)
         return output
 
+    enriched_context = _build_enriched_context(state=state)
+    metadata["second_level_context_availability"] = _safe_dict(enriched_context.get("availability"))
+    metadata["second_level_context_top_findings_count"] = len(_safe_list(enriched_context.get("top_findings")))
+    metadata["second_level_context_top_entities_count"] = len(_safe_list(enriched_context.get("top_entities")))
+    metadata["second_level_context_explanations_count"] = len(_safe_list(enriched_context.get("compact_explanations")))
+    metadata["second_level_context_available_tests_count"] = len(
+        _safe_list(_safe_dict(enriched_context.get("tests")).get("available_not_executed"))
+    )
     input_payload = {
         "deterministic_comparison": deterministic_payload,
         "kb_context": {
@@ -526,18 +1031,37 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "process_family": str(metadata.get("process_family", "")).strip(),
             "llm_mode": llm_mode,
         },
+        "current_run_context": enriched_context,
     }
-    llm_insights = _run_alpha_loop_for_node(
-        state=state,
-        node_id="second_level_explainer",
-        prompt_text=prompt_text,
-        input_payload=input_payload,
-        generate_fn=_generate,
-        validators={"second_level_schema": _validate_second_level_output},
-        max_iter=2,
-    )
+    try:
+        llm_insights = _run_alpha_loop_for_node(
+            state=state,
+            node_id="second_level_explainer",
+            prompt_text=prompt_text,
+            input_payload=input_payload,
+            generate_fn=_generate,
+            validators={"second_level_schema": _validate_second_level_output},
+            max_iter=2,
+        )
+    except RuntimeError as exc:
+        reason = f"{type(exc).__name__}: {exc}"
+        metadata["second_level_explainer_degraded"] = True
+        metadata["second_level_explainer_degraded_reason"] = reason
+        metadata["second_level_explainer_status"] = "OK_WITH_WARNINGS"
+        runtime_by_node["second_level_explainer"] = {
+            **_safe_dict(runtime_by_node.get("second_level_explainer")),
+            "fallback_used": True,
+            "status": "DEGRADED",
+            "degraded_reason": reason,
+        }
+        llm_insights = dict(fallback_insights)
     if not isinstance(llm_insights, dict):
         llm_insights = dict(fallback_insights)
+    if not _safe_list(llm_insights.get("audit_procedures")):
+        synthetic_procedures = _synthesize_audit_procedures(enriched_context)
+        if synthetic_procedures:
+            llm_insights["audit_procedures"] = synthetic_procedures
+            metadata["second_level_audit_procedures_synthesized"] = len(synthetic_procedures)
 
     normalized_insights = {
         "executive_summary": _normalize_executive_summary(
@@ -579,7 +1103,9 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         encoding="utf-8",
     )
 
-    metadata["second_level_explainer_status"] = "OK"
+    metadata["second_level_explainer_status"] = (
+        "OK_WITH_WARNINGS" if bool(metadata.get("second_level_explainer_degraded", False)) else "OK"
+    )
     metadata["second_level_explainer_runs_compared"] = run_ids
     metadata["second_level_analysis_json"] = str(json_path)
     metadata["second_level_analysis_md"] = str(md_path)

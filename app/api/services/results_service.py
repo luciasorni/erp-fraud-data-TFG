@@ -247,6 +247,96 @@ def _ui_item_from_normalized_item(*, raw: dict[str, Any], prefix: str, idx: int)
     )
 
 
+def _normalize_legacy_second_level_recommendations(source: dict[str, Any]) -> list[dict[str, Any]]:
+    """Map old raw second-level lists to the normalized item shape consumed by the API."""
+    if not isinstance(source, dict):
+        return []
+
+    def _item_text(raw: dict[str, Any], *keys: str) -> str:
+        for key in keys:
+            value = raw.get(key)
+            if value is not None:
+                text = str(value).strip()
+                if text:
+                    return text
+        return ""
+
+    def _raw_list(key: str) -> list[Any]:
+        value = source.get(key)
+        return value if isinstance(value, list) else []
+
+    normalized: list[dict[str, Any]] = []
+
+    for idx, raw in enumerate(_raw_list("next_actions"), start=1):
+        parsed = raw if isinstance(raw, dict) else {"action": str(raw or "").strip()}
+        title = _item_text(parsed, "action", "title", "content", "description") or f"Recomendación {idx}"
+        summary = _item_text(parsed, "why", "summary", "description", "content")
+        if not title and not summary:
+            continue
+        normalized.append(
+            {
+                "title": title,
+                "summary": summary,
+                "status": "recommended_action",
+                "section": "recommendations",
+                "owner": _item_text(parsed, "owner") or None,
+                "urgency": _item_text(parsed, "urgency") or None,
+                "priority": _item_text(parsed, "priority") or None,
+                "attributes": {
+                    **parsed,
+                    "content": _item_text(parsed, "content", "action", "title") or title,
+                    "description": _item_text(parsed, "description", "why", "summary") or summary,
+                },
+            }
+        )
+
+    for idx, raw in enumerate(_raw_list("recommended_tests"), start=1):
+        parsed = raw if isinstance(raw, dict) else {"test_id": str(raw or "").strip()}
+        title = _item_text(parsed, "test_id", "title", "content", "description") or f"Test recomendado {idx}"
+        summary = _item_text(parsed, "rationale", "summary", "description", "expected_value", "content")
+        if not title and not summary:
+            continue
+        normalized.append(
+            {
+                "title": title,
+                "summary": summary,
+                "status": "recommended_test",
+                "section": "recommended_tests",
+                "priority": _item_text(parsed, "priority") or None,
+                "expected_value": _item_text(parsed, "expected_value") or None,
+                "attributes": {
+                    **parsed,
+                    "content": _item_text(parsed, "content", "test_id", "title") or title,
+                    "description": _item_text(parsed, "description", "rationale", "summary") or summary,
+                },
+            }
+        )
+
+    for idx, raw in enumerate(_raw_list("audit_procedures"), start=1):
+        parsed = raw if isinstance(raw, dict) else {"procedure": str(raw or "").strip()}
+        title = _item_text(parsed, "procedure", "title", "content", "description") or f"Procedimiento {idx}"
+        summary = _item_text(parsed, "why", "summary", "description", "content")
+        if not title and not summary:
+            continue
+        normalized.append(
+            {
+                "title": title,
+                "summary": summary,
+                "status": "audit_procedure",
+                "section": "audit_procedures",
+                "priority": _item_text(parsed, "priority") or None,
+                "evidence": parsed.get("evidence", []) if isinstance(parsed.get("evidence"), list) else [],
+                "attributes": {
+                    **parsed,
+                    "content": _item_text(parsed, "content", "procedure", "title") or title,
+                    "description": _item_text(parsed, "description", "why", "summary") or summary,
+                },
+            }
+        )
+
+    return normalized
+
+
 def _run_id_sort_key(run_id: str) -> tuple[datetime, str]:
     match = _RUN_ID_TIMESTAMP_RE.search(str(run_id).strip())
     if match:
@@ -641,7 +731,14 @@ def load_graph_results(
             normalized.get("executive_summary") or llm_insights.get("executive_summary")
         )
 
-        for idx, item in enumerate(normalized.get("recommendation_items", []), start=1):
+        recommendation_items = normalized.get("recommendation_items")
+        if not isinstance(recommendation_items, list) or not recommendation_items:
+            legacy_source = llm_insights
+            if not any(isinstance(legacy_source.get(key), list) for key in ("audit_procedures", "recommended_tests", "next_actions")):
+                legacy_source = second_level
+            recommendation_items = _normalize_legacy_second_level_recommendations(legacy_source)
+
+        for idx, item in enumerate(recommendation_items, start=1):
             if not isinstance(item, dict):
                 continue
             ui_item = _ui_item_from_normalized_item(raw=item, prefix="second-level", idx=idx)
