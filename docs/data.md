@@ -1,82 +1,43 @@
-# Datos (Fase 1)
+# Datos
 
-## Fuente
+Este documento resume el estado vigente del tratamiento de datos. La versión histórica de fase 1 se conserva en `docs/legacy/data_phase1.md`.
 
-- Dataset: `erp_fraud_data.zip`
-- Origen funcional: `ERP Fraud Data`
-- Alcance operativo actual: `joint_datasets/` (P2P)
+## Dataset de entrada
 
-## Alcance de uso
+El proyecto trabaja con un ZIP ERP controlado, normalmente `erp_fraud_data.zip`, y lo procesa mediante el CLI o mediante la API/UI cuando el dataset se registra en S3.
 
-- En Fase 1 se usa solo `joint_datasets/` para acelerar prototipo y validación.
-- `raw_data/` queda fuera de alcance en esta etapa.
+## Familias de proceso
 
-## Tablas cargadas (P2P / joint)
+| Familia | Base de datos lógica | Configuración / rutas relevantes |
+|---|---|---|
+| P2P | Tabla analítica `fraud_1` y datasets agregados P2P. | `tests/catalog`, `sql/tests/tst_*`, `data_dictionary.json`. |
+| O2C | Modelo canónico O2C en DuckDB. | `config/canonical_schema_o2c.yaml`, `config/column_mapping_o2c.yaml`, `config/o2c_entity_identity.yaml`, `tests/catalog_o2c`. |
 
-Durante la verificación actual se cargan en DuckDB:
+## Artefactos de datos por run
 
-- `column_information`
-- `fraud_1`
-- `fraud_1_expls`
-- `fraud_2`
-- `fraud_2_expls`
-- `fraud_3`
-- `fraud_3_expls`
-- `normal_1`
-- `normal_2`
+Los artefactos principales se escriben en `run_results/<run_id>/` en ejecución local y en `runs/<run_id>/` en S3 para cloud.
 
-## Trazabilidad de datos
+- `run_metadata.json`
+- `schema_summary.json`
+- `data_validation_report.json`
+- `ingest_logs.jsonl`
+- `test_runner_logs.jsonl`
+- `test_runs.json`
+- `ranking.json`
+- `report.json`
 
-Artefactos principales por ejecución (`run_results/<run_id>/`):
+En modo graph se añaden artefactos bajo `graph/`.
 
-- `schema_summary.json`: esquema real cargado (tablas/columnas/tipos)
-- `run_metadata.json`: contexto del run (`run_id`, `dataset_hash`, timestamp, versiones)
-- `ingest_logs.jsonl`: eventos de ingesta por tabla
-- `data_validation_report.json`: validación técnica previa a tests (RF02b)
+## Validación técnica
 
-Hash reproducible del dataset:
+La validación previa comprueba columnas requeridas por catálogo, parseo de fechas/importes, nulos y rangos básicos. Los errores críticos bloquean el run; los warnings quedan registrados y permiten continuar.
 
-- `dataset_hash` calculado sobre contenido de ficheros en `joint_datasets/`
+## O2C
 
-## Diccionario de datos
+O2C no reutiliza sin más la tabla P2P. Añade transformación desde raw a tablas canónicas, mapping de columnas, validación específica y catálogo propio. La documentación detallada está en `docs/o2c/`.
 
-- `data_dictionary.json`: formato máquina, generado desde `schema_summary.json`
-- `data_dictionary.md`: formato humano para documentar campos y uso
+## Limitaciones
 
-Campos mínimos por entrada:
-
-- `table`, `column`, `type`, `description`, `examples`, `used_in_tests`
-
-## Reglas técnicas de preparación
-
-Antes de cargar a DuckDB:
-
-- limpieza técnica de strings (`trim`, normalización de nulls textuales)
-- normalización de tipos:
-  - fechas -> `datetime`
-  - importes -> numérico
-  - IDs -> `string`
-
-## Validación técnica previa a tests (RF02b)
-
-Checks:
-
-- columnas requeridas faltantes
-- parseo de fechas/importes
-- % de nulos por columna requerida
-- rangos básicos (fechas e importes; conteo de negativos)
-
-Severidad:
-
-- críticos: faltantes y parseos
-- warnings: nulos y rangos
-
-Decisión de bloqueo:
-
-- se bloquea el run solo si hay errores críticos
-
-## Estado de calidad de documentación
-
-- El diccionario está generado para todas las columnas del esquema actual.
-- Los campos críticos para tests iniciales tienen descripción mínima y ejemplos.
-- `used_in_tests` se completa desde catálogo cuando los TestSpec estén definidos.
+- La calidad y cobertura dependen de que las tablas y columnas requeridas existan.
+- El modelo O2C cubre el alcance definido del TFG; no pretende representar todo ERP posible.
+- La KB local puede usar fuentes documentales, pero no sustituye el contrato de datos ni el catálogo ejecutable.

@@ -1,4 +1,4 @@
-# ERP Fraud Analytics (P2P) - Dossier de Presentación
+# ERP Fraud Analytics (P2P) - Dossier de Presentación (histórico)
 
 Este documento resume todo lo relevante del proyecto para explicar con confianza:
 - qué problema resuelve,
@@ -239,5 +239,4 @@ Cobertura actual de tests (fase inicial), dependencia de calidad del dataset y f
 - `docs/rf10.md`
 
 ---
-
 

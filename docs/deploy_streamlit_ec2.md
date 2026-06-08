@@ -4,6 +4,16 @@
 
 Publicar la interfaz Streamlit del proyecto en una instancia EC2 publica para que el tribunal pueda abrirla desde un navegador. Esta via no sustituye la arquitectura cloud existente de backend/batch; solo despliega la capa de interfaz.
 
+## URL publica de defensa
+
+La instancia documentada para revisión externa expone Streamlit en:
+
+```text
+http://100.57.8.239:8501
+```
+
+Esta URL depende de que la instancia EC2 y los servicios systemd estén activos. Si la IP cambia, actualizar también `README.md` y `docs/deployment.md`.
+
 ## Entrada de Streamlit
 
 El archivo de entrada es:
@@ -54,8 +64,10 @@ Ruta recomendada para que el service file funcione sin cambios:
 sudo mkdir -p /opt/erp-fraud-data-TFG
 sudo chown ubuntu:ubuntu /opt/erp-fraud-data-TFG
 cd /opt/erp-fraud-data-TFG
-git clone <URL_DEL_REPO> .
+git clone https://github.com/luciasorni/erp-fraud-data-TFG.git .
 ```
+
+Si se usa un fork o repositorio privado de entrega, sustituir la URL anterior por la URL correspondiente.
 
 Instalar dependencias:
 
@@ -104,7 +116,13 @@ chmod +x scripts/run_streamlit_prod.sh
 URL esperada:
 
 ```text
-http://<PUBLIC_DNS_O_IP_EC2>:8501
+http://100.57.8.239:8501
+```
+
+En la instancia de defensa actual:
+
+```text
+http://100.57.8.239:8501
 ```
 
 ## Arranque persistente con systemd
@@ -151,7 +169,7 @@ Abrir TCP `8501` en el Security Group de la instancia.
 No hace falta Nginx para la defensa si se acepta acceder con:
 
 ```text
-http://<PUBLIC_DNS_O_IP_EC2>:8501
+http://100.57.8.239:8501
 ```
 
 Nginx solo seria necesario si se quiere usar dominio, HTTPS o puerto 80/443.

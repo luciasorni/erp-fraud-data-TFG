@@ -1,4 +1,4 @@
-PYTHON ?= /opt/anaconda3/bin/python
+PYTHON ?= python3
 CLI := $(PYTHON) -m src.erp_fraud.cli.main
 PYTEST := $(PYTHON) -m pytest -q
 

@@ -486,7 +486,7 @@ def main() -> None:
         render_recommendations_panel(
             rec_sections["recommendations"],
             title="Recomendaciones",
-            empty_message="No hay recomendaciones específicas para este hallazgo.",
+            empty_message="No hay recomendaciones vinculadas específicamente a este hallazgo.",
         )
 
     with tab_tests:
@@ -500,7 +500,7 @@ def main() -> None:
         render_recommendations_panel(
             rec_sections["audit_procedures"],
             title="Procedimiento auditor",
-            empty_message="No generado para este run.",
+            empty_message="No hay procedimiento auditor específico vinculado a este hallazgo.",
         )
 
     render_divider()

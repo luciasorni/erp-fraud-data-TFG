@@ -1,138 +1,176 @@
-# erp-fraud-data-TFG
+# ERP Fraud Analysis Workbench
 
-Sistema del TFG para detección de fraude en ERP sobre procesos `P2P` y `O2C`, con ejecución reproducible local/cloud, grafo multiagente, capa de aplicación `FastAPI` y UI `Streamlit`.
+Sistema de TFG para análisis antifraude sobre datos ERP en procesos `P2P`
+(procure-to-pay) y `O2C` (order-to-cash).
 
-## Documentación
+El proyecto implementa un pipeline reproducible que ingiere datasets ERP, ejecuta
+pruebas antifraude, genera hallazgos y persiste artefactos por ejecución. Encima
+del pipeline hay una API `FastAPI`, una interfaz `Streamlit` y una vía de
+despliegue público en EC2 para revisión externa.
 
-- `docs/scope.md`
-- `docs/hypothesis_matrix.md`
-- `docs/project_governance.md`
-- `docs/architecture.md`
-- `docs/rf01.md`
-- `docs/rf02.md`
-- `docs/rf03.md`
-- `docs/rf04.md`
-- `docs/rf05.md`
-- `docs/rf06.md`
-- `docs/rf07.md`
-- `docs/rf08.md`
-- `docs/rf10.md`
-- `docs/rf13.md`
-- `docs/rf14.md`
-- `docs/rf14b.md`
-- `docs/langsmith_experiments.md`
-- `docs/langsmith_tracing_runbook.md`
-- `docs/rf14b_verification.md`
-- `docs/cloud/cloud_aws.md`
-- `docs/cloud/troubleshooting.md`
-- `docs/cloud/rf14c_final_verification.md`
-- `docs/cloud/github_actions_ecr.md`
-- `docs/rf15.md`
-- `docs/rf15_verification.md`
-- `docs/rf15b.md`
-- `docs/rf15c.md`
-- `docs/rf15e.md`
-- `docs/rf20.md`
-- `docs/scoring.md`
-- `docs/rf18_verification.md`
-- `docs/agents.md`
-- `docs/langgraph_architecture.md`
-- `docs/alphacodium_workflow.md`
-- `docs/ag03_iteraciones_reales.md`
-- `docs/rag_kb.md`
-- `docs/pre_langsmith_checklist.md`
-- `docs/data.md`
-- `docs/how_to_run.md`
-- `docs/tools_and_policies.md`
-- `docs/integration_tests_registry.md`
+## Estado actual y alcance real
 
-## Alcance actual (estado del proyecto)
+Implementado en el repositorio:
 
-- Ingesta reproducible de datasets ERP a DuckDB local y ejecución cloud sobre AWS.
-- Soporte funcional para las dos familias de proceso del TFG:
-  - `P2P`
-  - `O2C`
-- Catálogo antifraude operativo, con hipótesis, selección de tests, hallazgos, scoring y drilldown seguro.
-- Grafo multiagente operativo con `llm_mode=stub|real`, persistencia de artefactos y trazabilidad local/LangSmith.
-- Capa de aplicación `FastAPI` y UI `Streamlit` conectadas al backend analítico.
-- Generación de artefactos reproducibles por ejecución:
-  - `dataset_hash`
-  - `schema_summary.json`
-  - `run_metadata.json`
-  - `report.json`
-  - `graph/*`
-  - `test_runs.json`
-  - `tests_outputs/...`
+- Catálogo antifraude P2P y O2C con pruebas SQL versionadas.
+- Pipeline determinista de ingesta, validación, ejecución de tests, ranking y
+  reporte.
+- Modo `graph` con hipótesis, selección de tests, hallazgos, scoring y
+  explicaciones cuando aplica.
+- Artefactos trazables por `run_id` en `run_results/<run_id>/` o S3.
+- API `FastAPI` para datasets, runs, resultados, grafo, reporte y drilldown.
+- UI `Streamlit` conectada a la API.
+- Despliegue público de defensa en EC2.
+- Arquitectura cloud batch documentada sobre S3, ECR, ECS Fargate, CloudWatch,
+  Secrets Manager, IAM y automatización AWS.
 
-## Alcance y gobernanza
+Limitaciones importantes:
 
-Documentos canónicos para cierre de alcance y trazabilidad:
+- El sistema prioriza análisis y priorización de señales; no determina por sí
+  solo que exista fraude real.
+- No expone SQL libre al usuario.
+- La KB/RAG local es una extensión acotada y configurable, no una base de
+  conocimiento corporativa completa.
+- LangSmith forma parte de la observabilidad/validación del flujo multiagente
+  cuando está configurado, pero no todos los runs tienen traza externa
+  consolidada.
+- La demo pública depende de que la instancia EC2 esté encendida.
 
-- alcance y no-goals: `docs/scope.md`
-- matriz consolidada hipótesis -> tests -> evidencias: `docs/hypothesis_matrix.md`
-- gobernanza / DoR / DoD / gestión de backlog: `docs/project_governance.md`
+## Demo pública
 
-Backlog operativo del proyecto:
+Demo temporal para revisión y defensa:
 
-- `project/backlog_tasks.txt`
-- `project/requisitos_backlog.xlsx`
+```text
+http://100.57.8.239:8501
+```
 
-## Cloud AWS (RF14c)
+En esta vía de despliegue, Streamlit escucha en `0.0.0.0:8501` y consume una API
+FastAPI local en la misma instancia:
 
-Documento consolidado:
+```text
+ERP_FRAUD_API_BASE_URL=http://127.0.0.1:8000/api/v1
+```
 
-- `docs/cloud/cloud_aws.md`
+El puerto `8000` de FastAPI no se expone públicamente.
 
-Evidencia de aceptación:
+## Funcionalidades principales
 
-- `docs/cloud/rf14c_final_verification.md`
+- Carga y registro de datasets.
+- Lanzamiento de análisis P2P u O2C.
+- Consulta de runs y estado de ejecución.
+- Visualización de ranking, hallazgos, evidencias y reporte.
+- Drilldown controlado sobre hallazgos.
+- Comparación de ejecuciones cuando hay artefactos compatibles.
+- Persistencia de artefactos técnicos para auditoría y trazabilidad.
 
-Modos de ejecución del comando `run`:
+## Componentes principales
 
-- `--pipeline-mode deterministic` (default): pipeline técnico/determinista clásico.
-- `--pipeline-mode graph`: ejecuta pipeline base + grafo multiagente (`graph/*`) en el mismo `run_id`.
+| Componente | Ruta principal | Función |
+|---|---|---|
+| Pipeline | `src/erp_fraud/` | Ingesta, validación, catálogo, ejecución, reporting y grafo |
+| Catálogo P2P | `tests/catalog/` | Especificaciones de pruebas P2P |
+| Catálogo O2C | `tests/catalog_o2c/` | Especificaciones de pruebas O2C |
+| SQL de pruebas | `sql/tests/` | Consultas ejecutables del catálogo |
+| API | `app/api/` | Servicio HTTP `FastAPI` |
+| UI | `app/ui/` | Interfaz `Streamlit` |
+| Configuración | `config/` | Pesos, modelos, O2C, KB, políticas y query templates |
+| Despliegue | `scripts/`, `deploy/`, `docs/deploy_*.md` | Scripts y servicios EC2 |
+| Tests | `tests/` | Suite `pytest` |
 
-## API de aplicación (RF20)
+## Quick start local
 
-Se añadió una capa backend `FastAPI` orientada a servir como base de la futura UI del TFG.
+Instalar dependencias:
 
-Capacidades base ya implementadas:
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
 
-- alta/listado/detalle de datasets ERP controlados
-- lanzamiento de runs cloud `graph`
-- soporte de `scope=p2p|o2c|both`
-- consulta de estado de runs
-- lectura de resultados del grafo con shape preparado para UI
-- drilldown seguro sin SQL libre
+Comprobar el CLI:
 
-Estructura:
+```bash
+python3 -m src.erp_fraud.cli.main run --help
+```
 
-- `app/api/main.py`
-- `app/api/routers/`
-- `app/api/schemas/`
-- `app/api/services/`
+Ejecutar un run determinista local:
 
-Contrato base:
+```bash
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --run-id demo-local
+```
 
-- `GET /api/v1/health`
-- `POST /api/v1/datasets/upload`
-- `GET /api/v1/datasets`
-- `GET /api/v1/datasets/{dataset_id}`
-- `POST /api/v1/runs`
-- `GET /api/v1/runs`
-- `GET /api/v1/runs/{run_id}`
-- `GET /api/v1/runs/{run_id}/graph`
-- `GET /api/v1/runs/{run_id}/report`
-- `POST /api/v1/runs/{run_id}/drilldown`
+Ejecutar un run `graph` con stubs:
 
-Reglas relevantes:
+```bash
+python3 -m src.erp_fraud.cli.main run \
+  --input-zip erp_fraud_data.zip \
+  --run-id demo-graph \
+  --pipeline-mode graph \
+  --llm-mode stub
+```
 
-- `scope=both` se implementa como dos runs separados (`p2p` y `o2c`)
-- no existe `process_family=both`
-- `pipeline_mode` expuesto por API queda fijado a `graph`
-- `kb_index` solo reconstruye cuando se solicita explícitamente
+## API y UI en local
 
-Suite base RF20:
+Arrancar FastAPI:
+
+```bash
+python -m uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+curl http://127.0.0.1:8000/api/v1/health
+```
+
+Arrancar Streamlit:
+
+```bash
+ERP_FRAUD_API_BASE_URL=http://127.0.0.1:8000/api/v1 \
+streamlit run app/ui/Home.py
+```
+
+Entrypoints reales:
+
+- API: `app.api.main:app`
+- UI: `app/ui/Home.py`
+
+## Despliegue
+
+### EC2 pública para defensa
+
+La vía recomendada para revisión externa despliega API y UI en la misma EC2:
+
+- FastAPI en `127.0.0.1:8000`.
+- Streamlit en `0.0.0.0:8501`.
+- Security Group con `8501` abierto para navegador.
+- Servicios `systemd` definidos en `deploy/`.
+
+Documentación:
+
+- `docs/deploy_api_ec2.md`
+- `docs/deploy_streamlit_ec2.md`
+- `docs/deployment.md`
+
+### AWS batch
+
+La arquitectura batch cloud está documentada en `docs/cloud/cloud_aws.md`.
+Incluye S3, ECR, ECS Fargate, CloudWatch Logs, Secrets Manager e IAM. Esta vía
+no sustituye la demo pública EC2; se mantiene como despliegue batch del pipeline.
+
+## Configuración y secretos
+
+Plantillas relevantes:
+
+- `.env.example`: configuración local/general.
+- `.env.api.ec2.example`: variables para la API en EC2.
+- `.env.streamlit.ec2.example`: variables para Streamlit en EC2.
+
+Los secretos reales no deben versionarse. En despliegue cloud se delegan en AWS
+Secrets Manager cuando aplica. La UI no necesita claves LLM; consume la API
+mediante `ERP_FRAUD_API_BASE_URL`.
+
+## Testing y validación
+
+Suite rápida de API/UI:
 
 ```bash
 python3 -m pytest -q \
@@ -142,551 +180,47 @@ python3 -m pytest -q \
   tests/test_rf20_ui_utils.py
 ```
 
-## UI Streamlit (RF20-07 a RF20-11)
-
-Se añadió una interfaz Streamlit multipágina conectada a la API `/api/v1`.
-
-Pantallas base:
-
-- `Home`
-- `Nuevo análisis`
-- `Ejecuciones`
-- `Resultados`
-- `Detalle del hallazgo`
-
-Estructura:
-
-- `app/ui/Home.py`
-- `app/ui/pages/`
-- `app/ui/components/`
-- `app/ui/services/api_client.py`
-- `app/ui/utils/`
-
-Arranque local:
-
-```bash
-streamlit run app/ui/Home.py
-```
-
-Si la API no está en la URL por defecto:
-
-```bash
-export ERP_FRAUD_API_BASE_URL="http://localhost:8000/api/v1"
-streamlit run app/ui/Home.py
-```
-
-## Estructura relevante
-
-- `src/erp_fraud/ingest/`: lectura del zip, validación, carga tabular, normalización y limpieza
-- `src/erp_fraud/storage/`: DuckDB, rutas de salida, schema summary, run metadata y logging JSON
-- `src/erp_fraud/graph/`: orquestación multiagente, planning, persistencia, scoring y explicación
-- `src/erp_fraud/agents/`: guardrails de tools y políticas por agente (RF15b)
-- `src/erp_fraud/catalog/`: catálogo de tests, ejecución, drilldown y taxonomía de fraude
-- `app/api/`: capa de aplicación `FastAPI`
-- `app/ui/`: interfaz `Streamlit`
-- `tests/`: tests unitarios de la base de ingesta/storage
-- `project/`: planificación y backlog del TFG (`.txt` + `.xlsx`)
-- `run_results/<run_id>/`: salidas y evidencias de cada ejecución (local, no versionado)
-
-## Qué está implementado (resumen)
-
-- Lectura de `erp_fraud_data.zip` y localización de `joint_datasets/`
-- Validación de ficheros esperados del dataset
-- Carga robusta de CSV/Parquet desde zip a `pandas`
-- Normalización de tipos (fechas, importes, IDs) y limpieza técnica mínima
-- Conexión DuckDB + carga de tablas (`overwrite` / `append`)
-- Métricas por tabla (`rows_loaded`, `duration_ms`)
-- Cálculo de `dataset_hash` reproducible
-- Generación de `schema_summary.json` y `run_metadata.json`
-- Logging estructurado JSONL para ingesta
-- Manejo de errores típicos (zip corrupto, CSV mal formado, parseos)
-
-## Data Dictionary (RF02)
-
-Se añadió una base de diccionario de datos para alinear tests y campos del dataset.
-
-Artefactos:
-
-- `data_dictionary.json`: formato máquina
-- `data_dictionary.md`: formato humano
-
-Capacidades actuales:
-
-- Generar borrador desde `schema_summary.json` (tablas/columnas/tipos)
-- Garantizar campos mínimos por entrada:
-  - `table`, `column`, `type`, `description`, `examples`, `used_in_tests`
-- Anotar `used_in_tests` desde catálogo de tests (`tests/catalog`)
-- Validar completitud: falla si un test usa un campo no documentado
-
-CLI disponible:
-
-```bash
-python3 -m src.erp_fraud.cli.main validate-dictionary \
-  --dictionary data_dictionary.json \
-  --catalog tests/catalog
-```
-
-Opcional:
-
-- `--output-json` para resumen en JSON
-
-Código de salida:
-
-- `0`: diccionario completo
-- `1`: faltan campos documentados usados por tests
-- `2`: error de entrada/parseo
-
-## Data Validation (RF02b)
-
-Se añadió validación técnica previa a ejecución de tests, basada en columnas requeridas por `TestSpec`.
-
-Checks implementados:
-
-- `missing_required_columns` (critical)
-- `type_parse_errors_dates` (critical)
-- `type_parse_errors_amounts` (critical)
-- `null_percentage_required_columns` (warning)
-- `basic_ranges_dates` (warning)
-- `basic_ranges_amounts` (warning)
-
-Artefacto principal:
-
-- `data_validation_report.json` (estructura estable, ordenada y con severidades)
-
-Regla de bloqueo:
-
-- el run se bloquea **solo** si hay errores `critical`
-- si hay solo `warning`, el run continúa
-
-## Fraud Test Catalog (RF03)
-
-Se añadió un catálogo inicial versionado de tests antifraude (alineado con ACFE/COSO) con 2 controles P2P implementados.
-
-Catálogo:
-
-- `tests/catalog/tst_duplicate_postings.yaml`
-- `tests/catalog/tst_unusual_amount_by_vendor.yaml`
-
-Componentes:
-
-- Esquema `TestSpec`: `src/erp_fraud/catalog/test_spec_schema.py`
-- Loader y validación de `TestSpec`: `src/erp_fraud/catalog/test_spec_loader.py`
-- Ejecución de tests y resultado estándar: `src/erp_fraud/catalog/test_execution.py`
-- SQL de referencia: `sql/tests/`
-- Changelog de catálogo: `tests/CHANGELOG.md`
-
-Nota:
-
-- `data_requirements.required_columns_exact` define columnas exactas por test para soporte de validación técnica previa (RF02b).
-
-## Secure Test Runner (RF04)
-
-Se añadió el motor de ejecución seguro base para catálogo:
-
-- Allowlist de `test_id` (solo IDs existentes en `tests/catalog`)
-- Continuidad ante fallo por test (`status=ERROR` + `error_summary`)
-- Timeout por test best-effort (`status=TIMEOUT`)
-- Métricas de tiempo:
-  - por test
-  - por fase (`selection`, `execution`, `total`)
-- Persistencia de resultados de ejecución:
-  - `test_runs.json` por run
-- Logs por test:
-  - `test_start` / `test_end` en JSONL con `run_id` y `test_id`
-
-Componente principal:
-
-- `src/erp_fraud/catalog/test_runner.py`
-
-## Result Schema & Outputs (RF05)
-
-Se añadió estandarización de salida por test y serialización reproducible.
-
-Componentes:
-
-- Contrato `ResultSchema`: `src/erp_fraud/catalog/result_schema.py`
-- Validador: `src/erp_fraud/catalog/result_schema_validator.py`
-- Convención de `entity_key`: `src/erp_fraud/catalog/entity_key.py`
-- Writer por test: `src/erp_fraud/catalog/result_writer.py`
-
-Salidas por test:
-
-- `run_results/<run_id>/tests_outputs/<test_id>/findings.jsonl`
-- `run_results/<run_id>/tests_outputs/<test_id>/findings.parquet` (opcional)
-- `run_results/<run_id>/tests_outputs/<test_id>/sample_top20.json`
-
-Reglas:
-
-- validación de columnas obligatorias del resultado
-- orden estable antes de escribir (reproducibilidad)
-- sample top-N por test para reporte
-
-## Drilldown Bidireccional (RF06)
-
-Se añadió trazabilidad de hallazgos para reconstruir filas origen en DuckDB de forma segura.
-
-Componentes:
-
-- Keys mínimas por test (`drilldown_keys.py`)
-- Plantillas seguras por `query_id` (`drilldown_templates.py`)
-- Ejecutor de drilldown parametrizado (`drilldown.py`)
-- CLI `drilldown` (`src/erp_fraud/cli/main.py`)
-
-Ejemplo:
-
-```bash
-python3 -m src.erp_fraud.cli.main drilldown \
-  --run-id <run_id> \
-  --test-id TST-UNUSUAL-AMOUNT-BY-VENDOR \
-  --entity-key "betrag=10296.0|kreditor=V1024"
-```
-
-## Agregador y Ranking (RF07)
-
-Se añadió scoring y ranking reproducible de hallazgos multi-test:
-
-- Config de pesos: `config/weights.yaml`
-  - `defaults.severity_weights`
-  - `overrides.by_test_id`
-  - `ranking.top_k`
-- Scoring: `src/erp_fraud/catalog/scoring.py`
-  - `score_test = weight * metric_value`
-- Agregación por entidad: `src/erp_fraud/catalog/ranking.py`
-- Persistencia de ranking: `src/erp_fraud/catalog/ranking_writer.py`
-  - `ranking.json`
-  - `ranking.parquet` (opcional)
-
-Reglas de reproducibilidad:
-
-- orden estable por `score_total` desc + `entity_key` asc
-- empate resuelto de forma determinista
-- recorte opcional por `top_k`
-
-## Reporte MVP (RF08)
-
-Se añadió generación de reporte estructurado y legible:
-
-- `report.json`:
-  - contrato estable con `metadata`, `summary`, `ranking`, `test_runs`, `artifact_paths`, `errors`
-  - rutas automáticas a evidencias (outputs por test + `data_dictionary` + `schema_summary`)
-- `report.md`:
-  - generado desde `report.json` con secciones fijas
-- `report.html`:
-  - render opcional desde Markdown (con fallback seguro)
-
-## LangSmith Trazabilidad y Experimentos (RF14b)
-
-Estado actual RF14b:
-
-- trazabilidad por nodo en `run_metadata["node_trace_events"]`
-- snapshot de configuración LangSmith en `run_metadata["langsmith"]`
-- evaluadores automáticos RF14b en `run_metadata["rf14b_evaluation"]`
-- dataset de evaluación local en `run_results/<run_id>/graph/langsmith_eval_dataset.jsonl`
-- comparativa de modelos (RF14b-08) con script reproducible:
-  - `scripts/run_rf14b_experiments.py`
-
-Comando rápido de experimentos:
-
-```bash
-python3 scripts/run_rf14b_experiments.py \
-  --run-id-prefix rf14b-08 \
-  --models-config config/models.yaml \
-  --planner-baseline-model gpt-5.4-mini \
-  --planner-candidate-model gpt-5.4 \
-  --scoring-baseline-profile default \
-  --scoring-candidate-profile conservative
-```
-
-Referencia:
-
-- `docs/rf14b.md`
-- `docs/langsmith_experiments.md`
-- `docs/langsmith_tracing_runbook.md`
-
-Componentes:
-
-- `src/erp_fraud/storage/report_json.py`
-- `src/erp_fraud/storage/reporting.py`
-
-Validación de links:
-
-- `validate_report_json_file_artifact_links(...)` detecta artefactos no existentes en `artifact_paths`.
-
-## Orquestación por Grafo (RF14)
-
-Se implementó un grafo multiagente con ejecución por nodos y trazabilidad por estado:
-
-- estado: `src/erp_fraud/graph/state.py`
-- nodos: `src/erp_fraud/graph/nodes/` (paquete modular)
-- orquestador/routing: `src/erp_fraud/graph/graph.py`
-- documentación técnica:
-  - `docs/rf14.md`
-  - `docs/langgraph_architecture.md`
-
-Verificación rápida RF14:
+Suite base de pipeline:
 
 ```bash
 python3 -m pytest -q \
-  tests/test_rf14_graph_state.py \
-  tests/test_rf14_graph_structure.py \
-  tests/test_rf14_ingest_node.py \
-  tests/test_rf14_kb_index_node.py \
-  tests/test_rf14_hypothesis_planner_node.py \
-  tests/test_rf14_test_planner_node.py \
-  tests/test_rf14_executor_node.py \
-  tests/test_rf14_explainer_node.py \
-  tests/test_rf14_scoring_node.py \
-  tests/test_rf14_persist_node.py \
-  tests/test_rf14_graph_routing.py \
-  tests/test_rf14_graph_integration.py
+  tests/test_rf01_ingest_storage.py \
+  tests/test_rf02_data_dictionary.py \
+  tests/test_rf02b_data_validation.py \
+  tests/test_rf03_catalog.py \
+  tests/test_rf04_runner.py \
+  tests/test_rf05_result_schema_and_writer.py \
+  tests/test_rf06_drilldown.py \
+  tests/test_rf06_drilldown_components.py \
+  tests/test_rf07_ranking.py \
+  tests/test_rf08_reporting.py
 ```
 
-## Workflow AlphaCodium (AG03)
+Registro ampliado de pruebas y evidencias: `docs/testing.md`.
 
-Se implementó el loop `Plan -> Draft -> Validate -> Repair` para nodos LLM del grafo:
+## Documentación adicional
 
-- `hypothesis_planner`
-- `test_planner`
-- `expert_explainer`
-- `scoring`
+- `docs/architecture.md`: arquitectura lógica del sistema.
+- `docs/data.md`: datasets, familias de proceso y modelo de datos.
+- `docs/catalog.md`: catálogo antifraude implementado.
+- `docs/artifacts.md`: contrato de artefactos por run.
+- `docs/deployment.md`: despliegues disponibles.
+- `docs/cloud/cloud_aws.md`: arquitectura cloud batch.
+- `docs/o2c/README.md`: documentación específica O2C.
+- `docs/rag_kb.md`: alcance de la KB/RAG local.
+- `docs/project_governance.md`: criterios de gobierno del proyecto.
 
-## Multiagente RF15c
+## Estructura resumida del repositorio
 
-Se añadió el flujo multiagente completo de planificación/ejecución/explicación/scoring:
-
-- planner de hipótesis con `sources` trazables,
-- selección de tests por allowlist y compatibilidad de schema,
-- ejecución determinista de tests en catálogo (sin SQL libre),
-- explicador con guardrails anti-alucinación + reparación,
-- scoring con `fraud_type_probs` y validación de evidencia real,
-- persistencia de artefactos RF15c:
-  - `hypotheses.json`
-  - `selected_tests.json`
-  - `explanations.json`
-  - `explanations.md`
-  - `scores.json`
-
-Documentación principal:
-
-- `docs/rf15c.md`
-- `docs/agents.md`
-
-Nota:
-
-- LangSmith es opcional; el flujo funciona sin LangSmith configurado.
-
-## LLM Experto y Explicaciones RF15
-
-Se añadió la capa de explicación auditable sobre resultados reales del run:
-
-- contrato de salida de explicación (`ExplanationSchema`),
-- prompt con reglas anti-invención (columnas/test_id/keys/evidence_columns),
-- validación cruzada contra catálogo + schema + findings,
-- loop de reparación cuando la validación falla,
-- persistencia y enlace en reporte.
-
-Artefactos por run:
-
-- `run_results/<run_id>/graph/explanations.json`
-- `run_results/<run_id>/graph/explanations.md`
-
-Reporte:
-
-- `report.md` incluye sección `Explicaciones del agente` con enlaces a artefactos.
-
-Referencia:
-
-- `docs/rf15.md`
-- `docs/rf15_verification.md`
-
-## Scoring RF18
-
-Se reforzó el módulo de scoring como contrato explícito (`ScoreSchema`) con validación y trazabilidad.
-
-Piezas clave:
-
-- contrato: `src/erp_fraud/catalog/score_schema.py`
-- agente: `src/erp_fraud/catalog/scoring_agent.py`
-- nodo grafo: `src/erp_fraud/graph/nodes/scoring.py` (`scoring_node`)
-- perfiles de modelo: `config/models.yaml`
-- documentación técnica: `docs/scoring.md`
-
-Capacidades actuales:
-
-- salida estructurada con `score_schema_version`, `fraud_type_probs`, `final_label`, `confidence`, `model_used`
-- autocorrección por validación fallida (retry)
-- selección de perfil/modelo por config sin tocar código
-- comparación de dos perfiles:
-  - `score_compare.json`
-- integración opcional LangSmith no bloqueante:
-  - `score_experiment.json` (`READY` o `SKIPPED`)
-
-Componentes:
-
-- loop reusable: `src/erp_fraud/agents/alpha_loop.py`
-- integración en nodos: `src/erp_fraud/graph/nodes/` (`planning.py`, `explainer.py`, `scoring.py`)
-- evidencias reales documentadas: `docs/ag03_iteraciones_reales.md`
-
-Verificación AG03:
-
-```bash
-python3 -m pytest -q \
-  tests/test_ag03_alpha_loop_integration.py \
-  tests/test_ag03_alpha_artifacts.py \
-  tests/test_ag03_prompt_snapshots.py
+```text
+src/erp_fraud/       pipeline, catálogo, storage, graph y agentes
+app/api/             API FastAPI
+app/ui/              UI Streamlit
+tests/               tests pytest y catálogos de pruebas
+sql/tests/           SQL antifraude
+config/              configuración funcional y técnica
+scripts/             scripts de ejecución, verificación y despliegue
+deploy/              servicios systemd
+docs/                documentación técnica y memoria
+run_results/         artefactos locales de ejecución
 ```
-
-## Comando Único (RF10)
-
-Flujo completo en un solo comando:
-
-```bash
-python3 -m src.erp_fraud.cli.main run --input-zip erp_fraud_data.zip
-```
-
-Atajo equivalente con Make:
-
-```bash
-make run INPUT_ZIP=erp_fraud_data.zip
-```
-
-Pipeline ejecutado:
-
-1. Ingesta de zip y carga a DuckDB
-2. Validación técnica de datos
-3. Ejecución de tests de catálogo
-4. Ranking agregado
-5. Generación de reporte (`json`, `md`, `html`)
-
-## RAG / KB Local (RF15e)
-
-Se añadió un índice local en Chroma para fuentes ACFE + documentación del proyecto, con rebuild incremental por hash.
-
-- Guía: `docs/rag_kb.md`
-- Estado de implementación: `docs/rf15e.md`
-- Módulos:
-  - `src/erp_fraud/agents/kb_sources.py`
-  - `src/erp_fraud/agents/kb_text_extractor.py`
-  - `src/erp_fraud/agents/kb_chunking.py`
-  - `src/erp_fraud/agents/kb_chroma.py`
-  - `src/erp_fraud/agents/kb_index.py`
-  - `src/erp_fraud/agents/kb_search.py`
-
-## Catálogo ampliado RF13
-
-Estado actual:
-
-- selección priorizada ACFE documentada en `docs/rf13.md`,
-- catálogo con TestSpecs activos en `tests/catalog/`,
-- soporte de ejecución por subconjunto:
-  - `--select-tests`
-  - `--select-fraud-types`
-  - `--select-tags`
-- validación automatizada de catálogo contra `schema_summary` antes del run.
-
-Opciones útiles:
-
-- `--out-dir <ruta>`: carpeta raíz de runs (default: `run_results`)
-- `--run-id <id>`: ID de run explícito
-- `--select-tests TST-A,TST-B`: ejecutar subset
-- `--top-k <n>`: override de top-k
-
-## Tools y Políticas (RF15b)
-
-Se añadió capa de guardrails para flujo multiagente:
-
-- Registro de tools: `config/tools_registry.yaml`
-- Políticas por agente/nodo: `config/agent_policies.yaml`
-- Allowlist de queries parametrizadas: `config/query_templates.yaml`
-- Enforcer runtime: `src/erp_fraud/agents/policy_enforcer.py`
-- Validador anti-alucinación de referencias: `src/erp_fraud/agents/schema_guard.py`
-- Logging de llamadas de tools: `src/erp_fraud/agents/tool_call_logging.py`
-
-Comportamiento esperado:
-
-- Si una tool no está permitida para el agente, se bloquea (`ToolPolicyDeniedError`).
-- Si una referencia de tabla/columna/test no existe, se bloquea (`SchemaGuardValidationError`).
-- Si una query template no está allowlist o los params son inválidos, se bloquea.
-- `enforce_and_call(...)` puede registrar `tool_calls.jsonl` con:
-  `tool_id`, `agent_id`, `params_hash`, `duration_ms`, `status`.
-
-Verificación rápida RF15b:
-
-```bash
-python3 -m pytest -q \
-  tests/test_rf15b_tools.py \
-  tests/test_rf15b_policy_and_schema_guard.py \
-  tests/test_rf15b_tool_call_logging.py
-```
-- `--config <file.json|file.yaml>`: parámetros de run
-
-Dónde ver resultados:
-
-- `run_results/<run_id>/report.json`
-- `run_results/<run_id>/report.md`
-- `run_results/<run_id>/report.html`
-- `run_results/<run_id>/ranking.json`
-- `run_results/<run_id>/test_runs.json`
-
-Drilldown desde un hallazgo:
-
-```bash
-python3 -m src.erp_fraud.cli.main drilldown \
-  --run-id <run_id> \
-  --test-id <TEST_ID> \
-  --entity-key "<ENTITY_KEY>" \
-  --save-default
-```
-
-Atajos de calidad:
-
-```bash
-make test
-make test-rf08
-```
-
-Verificación mínima de RF10:
-
-```bash
-python3 -m src.erp_fraud.cli.main run --help
-make test-rf08
-```
-
-Dependencias mínimas (si preparas un venv con red):
-
-```bash
-./.venv/bin/pip install -r requirements.txt
-```
-
-## Cómo verificarlo (actual)
-
-Ejecutar tests unitarios de la base de ingesta/storage:
-
-```bash
-python3 -m pytest -q tests/test_rf01_ingest_storage.py
-python3 -m pytest -q tests/test_rf02_data_dictionary.py
-python3 -m pytest -q tests/test_rf02b_data_validation.py
-python3 -m pytest -q tests/test_rf03_catalog.py
-python3 -m pytest -q tests/test_rf04_runner.py
-python3 -m pytest -q tests/test_rf05_result_schema_and_writer.py
-python3 -m pytest -q tests/test_rf06_drilldown.py tests/test_rf06_drilldown_components.py
-python3 -m pytest -q tests/test_rf07_ranking.py
-python3 -m pytest -q tests/test_rf08_reporting.py
-```
-
-Resultado esperado:
-
-- RF01: `9 passed` (puede variar si se amplían tests)
-- RF02: `6 passed` (puede variar si se amplían tests)
-- RF02b: `4 passed` (puede variar si se amplían tests)
-- RF03: `4 passed` (puede variar si se amplían tests)
-- RF04: `6 passed` (puede variar si se amplían tests)
-- RF05: `6 passed` (puede variar si se amplían tests)
-- RF06: `6 passed` (puede variar si se amplían tests)
-- RF07: `6 passed` (puede variar si se amplían tests)
-- RF08: `6 passed` (puede variar si se amplían tests)
-
-## Notas
-
-- El dataset grande `erp_fraud_data.zip` está trackeado con Git LFS.
-- La ejecución inicial de tests de catálogo está implementada en RF03; el motor de ejecución completo y endurecido se extiende en `RF04`.

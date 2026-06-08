@@ -482,8 +482,8 @@ def main() -> None:
 
         render_recommendations_panel(
             sections["recommendations"],
-            title="Recomendaciones",
-            empty_message="No hay recomendaciones específicas para este caso.",
+            title="Recomendaciones globales del run",
+            empty_message="No hay recomendaciones globales generadas para este run.",
         )
         render_recommendations_panel(
             sections["recommended_tests"],
@@ -493,7 +493,7 @@ def main() -> None:
         render_recommendations_panel(
             sections["audit_procedures"],
             title="Procedimiento auditor",
-            empty_message="No generado para este run.",
+            empty_message="El second-level no generó procedimientos auditores para este run.",
         )
 
     with st.expander("Detalle técnico del run", expanded=False):

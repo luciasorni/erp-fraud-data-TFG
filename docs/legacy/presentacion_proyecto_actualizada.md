@@ -1,4 +1,4 @@
-# ERP Fraud Analytics (P2P) - Dossier de Presentación (Actualizado)
+# ERP Fraud Analytics (P2P) - Dossier de Presentación (histórico)
 
 Este documento resume el estado actual del proyecto para explicarlo con confianza:
 - qué problema resuelve,

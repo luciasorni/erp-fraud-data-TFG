@@ -274,3 +274,30 @@ def test_rf20_ui_mappers_enrich_recommended_tests_with_context() -> None:
     assert items[0]["title"] == "TST-UNUSUAL-AMOUNT-BY-VENDOR"
     assert "Coincide con la hipótesis principal." in items[0]["summary"]
     assert items[0]["attributes"]["relation_to_current_finding"] == "Corresponde al test del hallazgo actual."
+
+
+def test_rf20_ui_mappers_filter_global_actions_from_finding_recommendations() -> None:
+    items = recommendations_for_finding(
+        [
+            {
+                "title": "Ejecutar al menos un run de la otra familia de proceso",
+                "summary": "Ejecutar al menos un run de la otra familia de proceso y repetir compare-runs.",
+                "status": "recommended_action",
+                "section": "recommendations",
+                "attributes": {},
+            },
+            {
+                "title": "Revisar evidencia del test actual",
+                "summary": "Revisar manualmente la evidencia de TST-UNUSUAL-AMOUNT-BY-VENDOR.",
+                "status": "recommended_action",
+                "section": "recommendations",
+                "attributes": {},
+            },
+        ],
+        finding={"test_id": "TST-UNUSUAL-AMOUNT-BY-VENDOR"},
+        selected_tests=[],
+        explanations=[],
+    )
+
+    assert len(items) == 1
+    assert items[0]["title"] == "Revisar evidencia del test actual"

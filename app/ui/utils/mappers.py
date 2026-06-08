@@ -338,6 +338,23 @@ def recommendations_for_finding(
     current_test_id = _test_id_from_item(finding or {})
     out: list[dict[str, Any]] = []
 
+    def _mentions_current_test(item: dict[str, Any], attrs: dict[str, Any]) -> bool:
+        if not current_test_id:
+            return False
+        values = [
+            item.get("title"),
+            item.get("summary"),
+            item.get("subtitle"),
+            item.get("test_id"),
+            attrs.get("test_id"),
+            attrs.get("why"),
+            attrs.get("rationale"),
+            attrs.get("procedure"),
+            attrs.get("action"),
+            attrs.get("evidence"),
+        ]
+        return any(current_test_id in str(value) for value in values if value is not None)
+
     for item in recommendations or []:
         if not isinstance(item, dict):
             continue
@@ -378,9 +395,13 @@ def recommendations_for_finding(
                 ),
             }
         elif section == "recommendations" or str(item.get("status", "")).strip() == "recommended_action":
+            if current_test_id and not _mentions_current_test(item, attrs):
+                continue
             summary = _first_text(attrs.get("why"), item.get("summary"))
             copy["summary"] = summary or "Acción sugerida para reforzar la investigación del run."
         elif section == "audit_procedures" or str(item.get("status", "")).strip() == "audit_procedure":
+            if current_test_id and not _mentions_current_test(item, attrs):
+                continue
             summary = _first_text(attrs.get("why"), attrs.get("procedure"), item.get("summary"))
             copy["summary"] = summary or "No generado para este run."
         out.append(copy)

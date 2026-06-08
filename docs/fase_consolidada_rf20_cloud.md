@@ -142,6 +142,7 @@ Se construyó una UI multipágina sobre la API `/api/v1`, con separación de res
 - `Ejecuciones`
 - `Resultados`
 - `Detalle hallazgo`
+- `Cómo funciona`
 
 ### Semántica respetada
 

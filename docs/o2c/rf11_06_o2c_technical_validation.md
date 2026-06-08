@@ -3,6 +3,8 @@
 Fecha: 2026-04-10  
 Estado: Cerrado (implementación base)
 
+> Nota de estado: este documento corresponde a la subfase RF11-06. La integración posterior de O2C en el comando `run`, grafo y pruebas de integración está documentada en `docs/o2c/rf11_08_orchestration_process_family.md`, `docs/o2c/rf11_13_o2c_integration_tests.md` y `docs/o2c/rf11_16_final_verification.md`.
+
 ## 1) Implementación
 
 Archivos:
@@ -59,5 +61,5 @@ Casos cubiertos:
 
 ## 6) Límites de fase
 
-1. La validación O2C es actualmente independiente del comando `erp-fraud run`.
-2. Integración completa en orquestación general se hará en RF11-07 y RF11-08.
+1. En esta subfase, la validación O2C se implementó inicialmente de forma independiente del comando `erp-fraud run`.
+2. La integración posterior en la orquestación general se cerró en RF11-07/RF11-08 y se valida en la documentación final RF11.
