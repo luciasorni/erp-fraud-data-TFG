@@ -41,6 +41,29 @@ def _get_session_cached(cache_key: str, *, run_id: str, loader) -> dict:
     return cache[run_id]
 
 
+def _render_finding_recommendation_section(items: list[dict], *, title: str, empty_message: str) -> None:
+    has_global_fallback = any(
+        isinstance(item, dict)
+        and isinstance(item.get("attributes"), dict)
+        and item["attributes"].get("recommendation_scope") == "global_run"
+        for item in items
+    )
+    if has_global_fallback:
+        st.caption("Recomendaciones globales del run — no específicas de este hallazgo")
+
+    cleaned_items: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            cleaned_items.append(item)
+            continue
+        attrs = dict(item.get("attributes") or {}) if isinstance(item.get("attributes"), dict) else {}
+        attrs.pop("recommendation_scope", None)
+        attrs.pop("scope_note", None)
+        cleaned_items.append({**item, "attributes": attrs})
+
+    render_recommendations_panel(cleaned_items, title=title, empty_message=empty_message)
+
+
 def _execute_drilldown_direct(
     client: APIClient,
     *,
@@ -483,21 +506,21 @@ def main() -> None:
         )
 
     with tab_recommendations:
-        render_recommendations_panel(
+        _render_finding_recommendation_section(
             rec_sections["recommendations"],
             title="Recomendaciones",
             empty_message="No hay acciones recomendadas para este hallazgo.",
         )
 
     with tab_tests:
-        render_recommendations_panel(
+        _render_finding_recommendation_section(
             rec_sections["recommended_tests"],
             title="Tests recomendados",
             empty_message="No hay tests sugeridos para este hallazgo.",
         )
 
     with tab_audit:
-        render_recommendations_panel(
+        _render_finding_recommendation_section(
             rec_sections["audit_procedures"],
             title="Procedimiento auditor",
             empty_message="No hay procedimiento auditor para este hallazgo.",

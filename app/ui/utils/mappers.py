@@ -336,7 +336,6 @@ def recommendations_for_finding(
     selected_by_test = _index_by_test_id(selected_tests or [])
     explanations_by_test = {item.get("test_id"): item for item in explanation_rows(explanations or [], findings=[], selected_tests=selected_tests)}
     current_test_id = _test_id_from_item(finding or {})
-    out: list[dict[str, Any]] = []
 
     def _mentions_current_test(item: dict[str, Any], attrs: dict[str, Any]) -> bool:
         if not current_test_id:
@@ -355,14 +354,39 @@ def recommendations_for_finding(
         ]
         return any(current_test_id in str(value) for value in values if value is not None)
 
+    def _section_for_item(item: dict[str, Any], attrs: dict[str, Any]) -> str:
+        section = _first_text(attrs.get("section"), item.get("section"))
+        status = str(item.get("status", "")).strip()
+        if section == "recommended_tests" or status == "recommended_test":
+            return "recommended_tests"
+        if section == "recommendations" or status == "recommended_action":
+            return "recommendations"
+        if section == "audit_procedures" or status == "audit_procedure":
+            return "audit_procedures"
+        return ""
+
+    def _mark_global_fallback(item: dict[str, Any]) -> dict[str, Any]:
+        attrs = dict(_attrs(item))
+        attrs["recommendation_scope"] = "global_run"
+        attrs["scope_note"] = "Recomendaciones globales del run — no específicas de este hallazgo"
+        return {**item, "attributes": attrs}
+
+    by_section: dict[str, dict[str, list[dict[str, Any]]]] = {
+        "recommendations": {"specific": [], "global": []},
+        "recommended_tests": {"specific": [], "global": []},
+        "audit_procedures": {"specific": [], "global": []},
+    }
+
     for item in recommendations or []:
         if not isinstance(item, dict):
             continue
         attrs = _attrs(item)
-        section = _first_text(attrs.get("section"), item.get("section"))
+        section = _section_for_item(item, attrs)
+        if section not in by_section:
+            continue
         copy = {**item, "attributes": dict(attrs)}
 
-        if section == "recommended_tests" or str(item.get("status", "")).strip() == "recommended_test":
+        if section == "recommended_tests":
             test_id = _first_text(attrs.get("test_id"), item.get("title") if str(item.get("title", "")).startswith("TST-") else None, item.get("summary") if str(item.get("summary", "")).startswith("TST-") else None)
             selected = selected_by_test.get(test_id, {})
             selected_attrs = _attrs(selected)
@@ -394,17 +418,25 @@ def recommendations_for_finding(
                     else "También forma parte de los tests seleccionados o sugeridos para ampliar contraste."
                 ),
             }
-        elif section == "recommendations" or str(item.get("status", "")).strip() == "recommended_action":
-            if current_test_id and not _mentions_current_test(item, attrs):
-                continue
+        elif section == "recommendations":
             summary = _first_text(attrs.get("why"), item.get("summary"))
             copy["summary"] = summary or "Acción sugerida para reforzar la investigación del run."
-        elif section == "audit_procedures" or str(item.get("status", "")).strip() == "audit_procedure":
-            if current_test_id and not _mentions_current_test(item, attrs):
-                continue
+        elif section == "audit_procedures":
             summary = _first_text(attrs.get("why"), attrs.get("procedure"), item.get("summary"))
             copy["summary"] = summary or "No generado para este run."
-        out.append(copy)
+
+        bucket = "specific" if current_test_id and _mentions_current_test(copy, _attrs(copy)) else "global"
+        if not current_test_id:
+            bucket = "specific"
+        by_section[section][bucket].append(copy)
+
+    out: list[dict[str, Any]] = []
+    for section in ("recommendations", "recommended_tests", "audit_procedures"):
+        specific_items = by_section[section]["specific"]
+        if specific_items:
+            out.extend(specific_items)
+            continue
+        out.extend(_mark_global_fallback(item) for item in by_section[section]["global"])
 
     return out
 
