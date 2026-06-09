@@ -282,6 +282,119 @@ def _compact_explanations(explanations: list[dict[str, Any]]) -> list[dict[str, 
     return out
 
 
+def _build_candidate_next_actions(
+    *,
+    enriched_context: dict[str, Any],
+    deterministic_comparison: dict[str, Any],
+    audit_procedures: Any = None,
+    max_items: int = 8,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    seen_actions: set[str] = set()
+
+    def _add(
+        *,
+        source: str,
+        priority: str,
+        action: str,
+        related_test_id: str = "",
+        related_entity: str = "",
+    ) -> None:
+        text = str(action or "").strip()
+        if not text or text in seen_actions or len(candidates) >= max_items:
+            return
+        seen_actions.add(text)
+        candidates.append(
+            {
+                "action_id": f"CAND-ACT-{len(candidates) + 1:03d}",
+                "source": source,
+                "priority": priority,
+                "related_test_id": str(related_test_id or "").strip(),
+                "related_entity": str(related_entity or "").strip(),
+                "action": text,
+            }
+        )
+
+    for row in _safe_list(enriched_context.get("top_findings"))[:4]:
+        item = _safe_dict(row)
+        test_id = str(item.get("test_id") or "").strip()
+        entity_id = str(item.get("entity_id") or "").strip()
+        score = _as_float(item.get("score"))
+        evidence = str(item.get("anomaly_description") or "").strip()
+        if not test_id and not entity_id:
+            continue
+        target = f"la entidad {entity_id}" if entity_id else f"el test {test_id}"
+        reason = f" porque concentra una señal relevante del run (score={score:.2f})" if score else " por su señal de riesgo"
+        if evidence:
+            reason += f": {_short_text(evidence, max_chars=180)}"
+        _add(
+            source="top_findings",
+            priority="high",
+            related_test_id=test_id,
+            related_entity=entity_id,
+            action=f"Priorizar la revisión manual de {target} asociada a {test_id}{reason}.",
+        )
+
+    for row in _safe_list(enriched_context.get("top_entities"))[:3]:
+        item = _safe_dict(row)
+        entity_id = str(item.get("entity_id") or "").strip()
+        tests_triggered = [str(test).strip() for test in _safe_list(item.get("tests_triggered")) if str(test).strip()]
+        if not entity_id:
+            continue
+        _add(
+            source="top_entities",
+            priority="high",
+            related_test_id=tests_triggered[0] if tests_triggered else "",
+            related_entity=entity_id,
+            action=(
+                f"Agrupar la revisión de la entidad {entity_id} y contrastar los tests activados "
+                f"({', '.join(tests_triggered[:3]) if tests_triggered else 'sin tests explícitos'}) antes de cerrar el caso."
+            ),
+        )
+
+    for row in _safe_list(audit_procedures)[:3]:
+        item = _safe_dict(_parse_structured_value(row))
+        procedure = str(item.get("procedure") or item.get("title") or item.get("action") or row).strip()
+        if not procedure:
+            continue
+        priority = str(item.get("priority") or "medium").strip() or "medium"
+        _add(
+            source="audit_procedures",
+            priority=priority,
+            action=f"Ejecutar primero el procedimiento auditor: {_short_text(procedure, max_chars=220)}.",
+        )
+
+    for row in _safe_list(_safe_dict(enriched_context.get("tests")).get("available_not_executed"))[:3]:
+        item = _safe_dict(row)
+        test_id = str(item.get("test_id") or "").strip()
+        if not test_id:
+            continue
+        fraud_type = str(item.get("fraud_type") or "").strip()
+        _add(
+            source="available_tests_not_executed",
+            priority="medium",
+            related_test_id=test_id,
+            action=(
+                f"Ejecutar como prueba complementaria no ejecutada {test_id}"
+                + (f" para ampliar cobertura sobre {fraud_type}." if fraud_type else ".")
+            ),
+        )
+
+    summary = _safe_dict(deterministic_comparison.get("summary"))
+    has_history = bool(_safe_list(summary.get("historical_run_ids")) or _safe_list(summary.get("cross_process_run_ids")))
+    if not has_history:
+        _add(
+            source="comparison_context",
+            priority="low",
+            action=(
+                "Programar una comparación histórica o cross-process adicional solo como contexto secundario, "
+                "manteniendo la revisión principal sobre los hallazgos actuales."
+            ),
+        )
+
+    return candidates[:max_items]
+
+
 def _load_catalog_tests(*, metadata: dict[str, Any], executed_test_ids: set[str]) -> list[dict[str, Any]]:
     catalog_path = resolve_project_path(str(metadata.get("catalog_path", "tests/catalog")).strip() or "tests/catalog")
     root = Path(catalog_path)
@@ -604,6 +717,114 @@ def _fallback_recommended_tests_from_candidates(*, available_tests_not_executed:
         if len(out) >= max_items:
             break
     return out
+
+
+def _next_action_text(item: Any) -> str:
+    parsed = _parse_structured_value(item)
+    if isinstance(parsed, dict):
+        return str(parsed.get("action") or parsed.get("title") or parsed.get("summary") or parsed.get("why") or "").strip()
+    return str(parsed or "").strip()
+
+
+def _is_generic_comparison_action(text: str) -> bool:
+    lowered = str(text or "").strip().lower()
+    if not lowered:
+        return False
+    generic_markers = (
+        "otra familia",
+        "dataset hash",
+        "compare-runs",
+        "comparación interproceso",
+        "comparacion interproceso",
+        "comparación histórica",
+        "comparacion historica",
+        "cross-process",
+        "run histórico",
+        "run historico",
+    )
+    return any(marker in lowered for marker in generic_markers)
+
+
+def _next_actions_quality_warning(*, next_actions: Any, candidate_next_actions: Any) -> str | None:
+    candidates = _safe_list(candidate_next_actions)
+    if not candidates:
+        return None
+    actions = [_next_action_text(item) for item in _safe_list(next_actions)]
+    actions = [text for text in actions if text]
+    if not actions:
+        return "missing_next_actions"
+    specific_candidate_sources = {
+        str(_safe_dict(item).get("source") or "").strip()
+        for item in candidates
+        if str(_safe_dict(item).get("source") or "").strip() in {"top_findings", "top_entities", "audit_procedures"}
+    }
+    if specific_candidate_sources and all(_is_generic_comparison_action(text) for text in actions):
+        return "generic_actions_only"
+    return None
+
+
+def _retry_next_actions_with_candidates(
+    *,
+    runtime_target: dict[str, Any],
+    llm_mode: str,
+    prompt_text: str,
+    input_payload: dict[str, Any],
+    current_llm_insights: dict[str, Any],
+    candidate_next_actions: list[dict[str, Any]],
+    metadata: dict[str, Any],
+) -> tuple[list[Any], dict[str, Any]]:
+    if not bool(runtime_target.get("enabled", False)) or not candidate_next_actions:
+        return [], {"attempted": False, "status": "SKIPPED"}
+    retry_prompt = (
+        f"{prompt_text}\n\n"
+        "RETRY ESPECÍFICO PARA next_actions:\n"
+        "- Devuelve SOLO JSON con la clave next_actions.\n"
+        "- Selecciona 3-5 acciones desde candidate_next_actions.\n"
+        "- No copies todos los candidatos literalmente; prioriza y reformula.\n"
+        "- Si hay candidatos de top_findings/top_entities/audit_procedures, al menos una acción debe usar uno de ellos.\n"
+        "- Las acciones de comparación histórica o cross-process no deben ser las únicas cuando hay candidatos específicos.\n"
+    )
+    retry_payload = {
+        "candidate_next_actions": candidate_next_actions,
+        "current_next_actions": _safe_list(current_llm_insights.get("next_actions")),
+        "current_run_context": _safe_dict(input_payload.get("current_run_context")),
+        "deterministic_comparison_summary": _safe_dict(_safe_dict(input_payload.get("deterministic_comparison")).get("summary")),
+    }
+    try:
+        retry_output, retry_meta = call_openai_json(
+            model_used=str(runtime_target.get("model_used", "")).strip() or "gpt-5.4-mini",
+            temperature=float(runtime_target.get("temperature", 0.0) or 0.0),
+            max_tokens=min(int(runtime_target.get("max_tokens", 900) or 900), 900),
+            prompt_text=retry_prompt,
+            input_payload=retry_payload,
+            repair_feedback=["next_actions debe seleccionar acciones específicas desde candidate_next_actions."],
+            timeout_s=float(metadata.get("llm_timeout_s", 30.0) or 30.0),
+            max_retries=int(metadata.get("llm_max_retries", 1) or 1),
+            retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
+            json_schema={
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {"next_actions": SECOND_LEVEL_OUTPUT_SCHEMA["properties"]["next_actions"]},
+            },
+            json_schema_name="second_level_next_actions_retry_output",
+            json_schema_strict=False,
+            log_raw_response=True,
+            raw_response_log_event="second_level_next_actions_retry_raw_response",
+            raw_response_max_chars=int(metadata.get("second_level_llm_output_log_max_chars", 6000) or 6000),
+        )
+    except Exception as exc:
+        return [], {"attempted": True, "status": f"ERROR:{type(exc).__name__}", "error": str(exc)}
+    retry_payload_out = _safe_dict(retry_output)
+    return _safe_list(retry_payload_out.get("next_actions")), {
+        "attempted": True,
+        "status": str(retry_meta.get("status", "UNKNOWN")).strip(),
+        "llm_mode": llm_mode,
+        "model_used": str(retry_meta.get("model_used") or runtime_target.get("model_used") or "").strip(),
+        "input_tokens": int(retry_meta.get("input_tokens", 0) or 0),
+        "output_tokens": int(retry_meta.get("output_tokens", 0) or 0),
+        "total_tokens": int(retry_meta.get("total_tokens", 0) or 0),
+        "retries_done": int(retry_meta.get("retries_done", 0) or 0),
+    }
 
 
 def _normalize_comparison_items(*, raw_items: Any, deterministic_payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1068,7 +1289,11 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "Para recommended_tests, recomienda únicamente tests presentes en available_tests_not_executed; "
             "no recomiendes tests ya ejecutados. Si no hay tests disponibles no ejecutados, devuelve recommended_tests: []. "
             "Cada recommended_test debe incluir test_id y reason. "
-            "Para next_actions, prioriza acciones sobre entidades concretas, no acciones genéricas de configuración. "
+            "Para next_actions, usa candidate_next_actions como opciones de trabajo; no copies todos los candidatos literalmente. "
+            "Selecciona las 3-5 acciones más útiles y puedes reformularlas o combinarlas. "
+            "Si hay findings, al menos una next_action debe estar basada en findings/top_entities/audit_procedures. "
+            "Las acciones de comparación histórica o cross-process pueden aparecer, pero no deben ser las únicas salvo que no haya findings. "
+            "Prioriza acciones sobre entidades concretas, no acciones genéricas de configuración. "
             "Prioriza primero la documentación del proyecto y después ACFE/externo. "
             "No uses defaults; justifica acciones con evidencia de runs y KB cuando exista."
         ),
@@ -1174,6 +1399,19 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
     metadata["second_level_context_available_tests_count"] = len(
         _safe_list(_safe_dict(enriched_context.get("tests")).get("available_not_executed"))
     )
+    candidate_next_actions = _build_candidate_next_actions(
+        enriched_context=enriched_context,
+        deterministic_comparison=deterministic_payload,
+    )
+    candidate_next_action_sources = sorted(
+        {
+            str(_safe_dict(item).get("source") or "").strip()
+            for item in candidate_next_actions
+            if str(_safe_dict(item).get("source") or "").strip()
+        }
+    )
+    metadata["second_level_candidate_next_actions_count"] = len(candidate_next_actions)
+    metadata["second_level_candidate_next_actions_sources"] = candidate_next_action_sources
     input_payload = {
         "deterministic_comparison": deterministic_payload,
         "kb_context": {
@@ -1190,6 +1428,7 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "llm_mode": llm_mode,
         },
         "available_tests_not_executed": _safe_list(_safe_dict(enriched_context.get("tests")).get("available_not_executed"))[:15],
+        "candidate_next_actions": candidate_next_actions,
         "current_run_context": enriched_context,
     }
     try:
@@ -1235,6 +1474,62 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         if synthetic_procedures:
             llm_insights["audit_procedures"] = synthetic_procedures
             metadata["second_level_audit_procedures_synthesized"] = len(synthetic_procedures)
+
+    candidate_next_actions = _build_candidate_next_actions(
+        enriched_context=enriched_context,
+        deterministic_comparison=deterministic_payload,
+        audit_procedures=llm_insights.get("audit_procedures"),
+    )
+    candidate_next_action_sources = sorted(
+        {
+            str(_safe_dict(item).get("source") or "").strip()
+            for item in candidate_next_actions
+            if str(_safe_dict(item).get("source") or "").strip()
+        }
+    )
+    input_payload["candidate_next_actions"] = candidate_next_actions
+    metadata["second_level_candidate_next_actions_count"] = len(candidate_next_actions)
+    metadata["second_level_candidate_next_actions_sources"] = candidate_next_action_sources
+    runtime_snapshot = _safe_dict(runtime_by_node.get("second_level_explainer"))
+    fallback_used_for_node = bool(runtime_snapshot.get("fallback_used", False)) or str(runtime_snapshot.get("status", "")).upper() in {
+        "SKIPPED",
+        "DEGRADED",
+    }
+    next_actions_source = "deterministic_fallback" if fallback_used_for_node else "llm"
+    next_actions_quality_warning = _next_actions_quality_warning(
+        next_actions=llm_insights.get("next_actions"),
+        candidate_next_actions=candidate_next_actions,
+    )
+    retry_meta: dict[str, Any] = {"attempted": False, "status": "NOT_NEEDED"}
+    if next_actions_quality_warning and not fallback_used_for_node:
+        retry_actions, retry_meta = _retry_next_actions_with_candidates(
+            runtime_target=runtime_target,
+            llm_mode=llm_mode,
+            prompt_text=prompt_text,
+            input_payload=input_payload,
+            current_llm_insights=llm_insights,
+            candidate_next_actions=candidate_next_actions,
+            metadata=metadata,
+        )
+        retry_warning = _next_actions_quality_warning(
+            next_actions=retry_actions,
+            candidate_next_actions=candidate_next_actions,
+        )
+        if retry_actions and retry_warning is None:
+            llm_insights["next_actions"] = retry_actions
+            next_actions_source = "llm_retry"
+            next_actions_quality_warning = None
+        else:
+            next_actions_quality_warning = retry_warning if retry_actions else next_actions_quality_warning
+    metadata["second_level_next_actions_retry"] = retry_meta
+    llm_insights["candidate_next_actions"] = candidate_next_actions
+    llm_insights["candidate_next_actions_count"] = len(candidate_next_actions)
+    llm_insights["candidate_next_actions_sources"] = candidate_next_action_sources
+    llm_insights["candidate_next_actions_available"] = bool(candidate_next_actions)
+    llm_insights["next_actions_source"] = next_actions_source
+    llm_insights["next_actions_quality_warning"] = next_actions_quality_warning
+    metadata["second_level_next_actions_source"] = next_actions_source
+    metadata["second_level_next_actions_quality_warning"] = next_actions_quality_warning
 
     tests_context = _safe_dict(enriched_context.get("tests"))
     executed_test_ids = _safe_list(tests_context.get("executed_test_ids"))

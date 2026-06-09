@@ -7,6 +7,7 @@ import duckdb
 
 from src.erp_fraud.graph import run_graph_full
 from src.erp_fraud.graph.nodes import second_level_explainer as second_level_module
+from src.erp_fraud.graph.state import GraphState
 
 
 def test_rf16_second_level_agent_runs_after_persist(tmp_path: Path) -> None:
@@ -296,3 +297,198 @@ def test_rf16_recommended_tests_fallback_uses_only_catalog_candidates() -> None:
     assert [row["test_id"] for row in fallback] == ["TST-NEW-1", "TST-NEW-2", "TST-NEW-3"]
     assert all(row["source"] == "deterministic_available_not_executed_fallback" for row in fallback)
     assert all(row["rationale"] for row in fallback)
+
+
+def test_rf16_builds_candidate_next_actions_from_real_context() -> None:
+    enriched_context = {
+        "top_findings": [
+            {
+                "test_id": "TST-RISK",
+                "entity_id": "belegnummer=100|kreditor=V01",
+                "score": 9.5,
+                "anomaly_description": "betrag=4984.0; threshold_gap=16",
+            }
+        ],
+        "top_entities": [
+            {
+                "entity_id": "belegnummer=100|kreditor=V01",
+                "tests_triggered": ["TST-RISK"],
+            }
+        ],
+        "tests": {
+            "available_not_executed": [
+                {"test_id": "TST-NOT-RUN", "fraud_type": "authorization_bypass"},
+            ]
+        },
+    }
+    deterministic_comparison = {"summary": {"historical_run_ids": [], "cross_process_run_ids": []}}
+
+    candidates = second_level_module._build_candidate_next_actions(
+        enriched_context=enriched_context,
+        deterministic_comparison=deterministic_comparison,
+        audit_procedures=[{"procedure": "Contrastar factura 100", "priority": "high"}],
+    )
+
+    assert candidates
+    assert {row["source"] for row in candidates} >= {
+        "top_findings",
+        "top_entities",
+        "audit_procedures",
+        "available_tests_not_executed",
+        "comparison_context",
+    }
+    assert candidates[0]["related_test_id"] == "TST-RISK"
+    assert "belegnummer=100" in candidates[0]["related_entity"]
+
+
+def test_rf16_second_level_payload_includes_candidate_next_actions_and_keeps_llm_actions(monkeypatch, tmp_path: Path) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_alpha_loop(**kwargs):
+        captured["input_payload"] = kwargs["input_payload"]
+        return {
+            "executive_summary": {"overall_assessment": "Riesgo con evidencia concreta"},
+            "audit_procedures": [
+                {
+                    "procedure": "Contrastar documento 100 con aprobación y soporte documental",
+                    "why": "Entidad de mayor riesgo",
+                    "priority": "high",
+                }
+            ],
+            "recommended_tests": [{"test_id": "TST-UNUSUAL-AMOUNT-BY-VENDOR", "reason": "Cobertura adicional"}],
+            "next_actions": [
+                {
+                    "action": "Revisar manualmente la entidad belegnummer=100|kreditor=V01 asociada a TST-RISK.",
+                    "why": "Es el top finding del run",
+                    "owner": "auditor",
+                    "urgency": "high",
+                }
+            ],
+        }
+
+    monkeypatch.setattr(second_level_module, "_run_alpha_loop_for_node", _fake_alpha_loop)
+
+    graph_dir = tmp_path / "run_results" / "rf16-candidates-it" / "graph"
+    graph_dir.mkdir(parents=True)
+    state = GraphState(
+        run_id="rf16-candidates-it",
+        selected_tests=[{"test_id": "TST-RISK"}],
+        findings=[
+            {
+                "test_id": "TST-RISK",
+                "fraud_type": "authorization_bypass",
+                "finding_count": 1,
+                "rows": [
+                    {
+                        "entity_key": "belegnummer=100|kreditor=V01",
+                        "keys": {"belegnummer": "100", "kreditor": "V01"},
+                        "threshold_gap": 16,
+                    }
+                ],
+            }
+        ],
+        scores=[
+            {
+                "ranking": [
+                    {
+                        "entity_key": "belegnummer=100|kreditor=V01",
+                        "score_total": 9.5,
+                        "fraud_types": ["authorization_bypass"],
+                        "tests_triggered": ["TST-RISK"],
+                    }
+                ]
+            }
+        ],
+        run_metadata={
+            "run_id": "rf16-candidates-it",
+            "llm_mode": "real",
+            "process_family": "p2p",
+            "catalog_path": "tests/catalog",
+            "persist_base_dir": str(tmp_path / "run_results"),
+            "persist_graph_dir": str(graph_dir),
+            "persist_manifest_path": str(graph_dir / "manifest.json"),
+            "rf16_include_current_run": False,
+            "rf16_auto_latest_p2p_o2c": False,
+            "rf16_compare_run_ids": [],
+            "kb_search_enabled": False,
+        },
+    )
+
+    out = second_level_module.second_level_explainer_node(state)
+
+    input_payload = captured["input_payload"]
+    assert isinstance(input_payload, dict)
+    assert input_payload["candidate_next_actions"]
+    assert any(row["source"] == "top_findings" for row in input_payload["candidate_next_actions"])
+
+    payload = json.loads((graph_dir / "second_level_analysis.json").read_text(encoding="utf-8"))
+    assert payload["llm_insights"]["next_actions"][0]["action"].startswith("Revisar manualmente")
+    assert payload["llm_insights"]["next_actions_source"] == "llm"
+    assert payload["llm_insights"]["next_actions_quality_warning"] is None
+    assert out.run_metadata["second_level_candidate_next_actions_count"] > 0
+
+
+def test_rf16_marks_warning_when_llm_actions_are_only_generic_with_candidates(monkeypatch, tmp_path: Path) -> None:
+    def _fake_alpha_loop(**_kwargs):
+        return {
+            "executive_summary": {"overall_assessment": "Riesgo con evidencia concreta"},
+            "audit_procedures": [{"procedure": "Contrastar documento 100", "priority": "high"}],
+            "recommended_tests": [],
+            "next_actions": [
+                {
+                    "action": "Ejecutar al menos un run de la otra familia de proceso y repetir compare-runs.",
+                    "why": "Comparación pendiente",
+                }
+            ],
+        }
+
+    def _empty_retry(**_kwargs):
+        return [], {"attempted": True, "status": "TEST_NO_IMPROVEMENT"}
+
+    monkeypatch.setattr(second_level_module, "_run_alpha_loop_for_node", _fake_alpha_loop)
+    monkeypatch.setattr(second_level_module, "_retry_next_actions_with_candidates", _empty_retry)
+
+    graph_dir = tmp_path / "run_results" / "rf16-generic-warning-it" / "graph"
+    graph_dir.mkdir(parents=True)
+    state = GraphState(
+        run_id="rf16-generic-warning-it",
+        selected_tests=[{"test_id": "TST-RISK"}],
+        findings=[
+            {
+                "test_id": "TST-RISK",
+                "fraud_type": "authorization_bypass",
+                "finding_count": 1,
+                "rows": [{"entity_key": "belegnummer=100|kreditor=V01", "keys": {"belegnummer": "100"}}],
+            }
+        ],
+        run_metadata={
+            "run_id": "rf16-generic-warning-it",
+            "llm_mode": "real",
+            "process_family": "p2p",
+            "catalog_path": "tests/catalog",
+            "persist_base_dir": str(tmp_path / "run_results"),
+            "persist_graph_dir": str(graph_dir),
+            "persist_manifest_path": str(graph_dir / "manifest.json"),
+            "rf16_include_current_run": False,
+            "rf16_auto_latest_p2p_o2c": False,
+            "rf16_compare_run_ids": [],
+            "kb_search_enabled": False,
+        },
+    )
+
+    second_level_module.second_level_explainer_node(state)
+
+    payload = json.loads((graph_dir / "second_level_analysis.json").read_text(encoding="utf-8"))
+    assert payload["llm_insights"]["next_actions_quality_warning"] == "generic_actions_only"
+    assert payload["llm_insights"]["candidate_next_actions_available"] is True
+    assert payload["llm_insights"]["next_actions"][0]["action"].startswith("Ejecutar al menos un run")
+
+
+def test_rf16_next_actions_quality_allows_empty_candidates() -> None:
+    assert (
+        second_level_module._next_actions_quality_warning(
+            next_actions=[],
+            candidate_next_actions=[],
+        )
+        is None
+    )
