@@ -24,7 +24,6 @@ DRILLDOWN_MIN_KEYS_BY_TEST_ID: dict[str, tuple[str, ...]] = {
         "betrag",
     ),
     "TST-JUST-BELOW-AUTH-THRESHOLD": (
-        "kreditor",
         "belegnummer",
         "betrag",
     ),

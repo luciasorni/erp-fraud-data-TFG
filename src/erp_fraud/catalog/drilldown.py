@@ -140,17 +140,19 @@ def _build_drilldown_query_and_params(
         return query, params
 
     if resolved_query_id == "drilldown_just_below_auth_threshold_v1":
+        kreditor_filter = normalized_keys.get("kreditor")
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE {_eq_normalized_sql('"Kreditor"')}
+            WHERE (? IS NULL OR {_eq_normalized_sql('"Kreditor"')})
               AND {_eq_normalized_sql('"Belegnummer"')}
               AND ABS(TRY_CAST("Betrag" AS DOUBLE) - TRY_CAST(? AS DOUBLE)) < 1e-9
             ORDER BY "Belegnummer" {resolved_order_direction}
             LIMIT ?
         """
         params = [
-            normalized_keys["kreditor"],
+            kreditor_filter,
+            kreditor_filter,
             normalized_keys["belegnummer"],
             normalized_keys["betrag"],
             resolved_limit,
