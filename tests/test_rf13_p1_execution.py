@@ -109,3 +109,42 @@ def test_rf13_p1_duplicate_material_items_executes() -> None:
         conn.close()
     assert out["status"] == "OK"
     assert out["finding_count"] >= 1
+
+
+def test_rf13_p1_duplicate_material_items_omits_null_kreditor_from_drilldown_params() -> None:
+    specs = load_test_specs_from_catalog("tests/catalog", validate_schema=True)
+    spec = _spec_by_id(specs, "TST-DUPLICATE-MATERIAL-ITEMS")
+    conn = duckdb.connect(":memory:")
+    conn.execute(
+        """
+        CREATE TABLE fraud_1 (
+            Kreditor VARCHAR,
+            Belegnummer VARCHAR,
+            Position VARCHAR,
+            Betrag DOUBLE,
+            Transaktionsart VARCHAR,
+            Menge DOUBLE,
+            Material VARCHAR
+        )
+        """
+    )
+    conn.executemany(
+        "INSERT INTO fraud_1 VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+            (None, "4900001152", "1", 10.0, "N", 1.0, "AA-F03"),
+            (None, "4900001152", "1", 12.0, "N", 1.0, "AA-F03"),
+        ],
+    )
+    try:
+        out = run_test_duplicate_material_items(spec, conn=conn, table_name="fraud_1", schema_name="main")
+    finally:
+        conn.close()
+
+    assert out["status"] == "OK"
+    assert out["finding_count"] == 1
+    params = out["rows"][0]["drilldown_template"]["params"]
+    assert params == {
+        "belegnummer": "4900001152",
+        "position": "1",
+        "material": "AA-F03",
+    }

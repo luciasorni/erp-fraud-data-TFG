@@ -48,7 +48,10 @@ def _build_drilldown_query_and_params(
 ) -> tuple[str, list[object]]:
     resolved_query_id = str(query_id or "").strip() or get_drilldown_query_id_for_test_id(test_id)
     normalized_keys = normalize_drilldown_keys(keys)
-    validate_minimum_keys_for_test_id(test_id, normalized_keys)
+    validation_keys = dict(normalized_keys)
+    if resolved_query_id == "drilldown_duplicate_material_items_v1" and "kreditor" not in validation_keys:
+        validation_keys["kreditor"] = "__optional__"
+    validate_minimum_keys_for_test_id(test_id, validation_keys)
     resolved_limit = _normalize_limit(limit_rows)
     resolved_order_direction = _normalize_order_direction(order_direction)
     filters = dict(extra_filters or {})
@@ -205,10 +208,11 @@ def _build_drilldown_query_and_params(
         return query, params
 
     if resolved_query_id == "drilldown_duplicate_material_items_v1":
+        kreditor_filter = normalized_keys.get("kreditor")
         query = f"""
             SELECT *
             FROM {table_ref}
-            WHERE {_eq_normalized_sql('"Kreditor"')}
+            WHERE (? IS NULL OR {_eq_normalized_sql('"Kreditor"')})
               AND {_eq_normalized_sql('"Belegnummer"')}
               AND {_eq_normalized_sql('"Position"')}
               AND {_eq_normalized_sql('"Material"')}
@@ -216,7 +220,8 @@ def _build_drilldown_query_and_params(
             LIMIT ?
         """
         params = [
-            normalized_keys["kreditor"],
+            kreditor_filter,
+            kreditor_filter,
             normalized_keys["belegnummer"],
             normalized_keys["position"],
             normalized_keys["material"],

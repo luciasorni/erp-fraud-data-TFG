@@ -41,7 +41,18 @@ def build_drilldown_template_ref(
     keys: Mapping[str, str],
 ) -> dict[str, object]:
     """Construye referencia segura para drilldown (query_id + params)."""
+    params: dict[str, str] = {}
+    for raw_key, raw_value in keys.items():
+        key = str(raw_key or "").strip()
+        if not key:
+            continue
+        if raw_value is None:
+            continue
+        value = str(raw_value).strip()
+        if not value or value.lower() in {"none", "null"}:
+            continue
+        params[key] = value
     return {
         "query_id": get_drilldown_query_id_for_test_id(test_id),
-        "params": {str(k): str(v) for k, v in keys.items()},
+        "params": params,
     }

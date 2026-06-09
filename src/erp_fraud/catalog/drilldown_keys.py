@@ -116,6 +116,8 @@ def normalize_drilldown_keys(keys: Mapping[str, object]) -> dict[str, str]:
         if not key:
             continue
         value = str(raw_value).strip() if raw_value is not None else ""
+        if value.lower() in {"none", "null"}:
+            value = ""
         if value:
             normalized[key] = value
     return normalized

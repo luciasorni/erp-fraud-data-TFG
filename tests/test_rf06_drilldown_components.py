@@ -9,6 +9,7 @@ import pytest
 from src.erp_fraud.catalog import (
     DRILLDOWN_MIN_KEYS_BY_TEST_ID,
     DRILLDOWN_QUERY_ID_BY_TEST_ID,
+    build_drilldown_template_ref,
     get_minimum_keys_for_test_id,
     get_missing_or_empty_minimum_keys_for_test_id,
     normalize_drilldown_keys,
@@ -63,7 +64,7 @@ def test_validate_minimum_keys_rejects_missing() -> None:
 
 def test_normalize_and_validate_keys_rejects_empty_values() -> None:
     normalized = normalize_drilldown_keys(
-        {"company_code": "1000", "receivable_document_id": "  ", "fiscal_year": 2025}
+        {"company_code": "1000", "receivable_document_id": "  ", "fiscal_year": 2025, "kreditor": "None"}
     )
     assert normalized == {"company_code": "1000", "fiscal_year": "2025"}
     missing = get_missing_or_empty_minimum_keys_for_test_id(
@@ -71,6 +72,24 @@ def test_normalize_and_validate_keys_rejects_empty_values() -> None:
         {"company_code": "1000", "receivable_document_id": "  ", "fiscal_year": 2025},
     )
     assert missing == ["receivable_document_id"]
+
+
+def test_drilldown_template_omits_null_like_params() -> None:
+    ref = build_drilldown_template_ref(
+        test_id="TST-DUPLICATE-MATERIAL-ITEMS",
+        keys={
+            "kreditor": "None",
+            "belegnummer": "4900001152",
+            "position": "1",
+            "material": "AA-F03",
+            "empty": None,
+        },
+    )
+    assert ref["params"] == {
+        "belegnummer": "4900001152",
+        "position": "1",
+        "material": "AA-F03",
+    }
 
 
 def test_drilldown_rejects_invalid_order_and_filter(tmp_path: Path) -> None:
@@ -163,6 +182,41 @@ def test_p2p_drilldown_normalizes_numeric_like_and_spaced_keys(tmp_path: Path) -
     assert len(rows_amount) == 2
     assert len(rows_material) == 1
     assert rows_material[0]["Position"] == "10.0"
+
+
+def test_duplicate_material_drilldown_allows_missing_kreditor_for_null_source(tmp_path: Path) -> None:
+    db_path = tmp_path / "rf06_duplicate_material_null_kreditor.duckdb"
+    conn = duckdb.connect(str(db_path))
+    conn.execute(
+        """
+        CREATE TABLE fraud_1 (
+            Kreditor VARCHAR,
+            Belegnummer VARCHAR,
+            Position VARCHAR,
+            Betrag DOUBLE,
+            Material VARCHAR,
+            Transaktionsart VARCHAR
+        )
+        """
+    )
+    conn.executemany(
+        "INSERT INTO fraud_1 VALUES (?, ?, ?, ?, ?, ?)",
+        [
+            (None, "4900001152", "1", 100.0, "AA-F03", "N"),
+            (None, "4900001152", "1", 101.0, "AA-F03", "N"),
+            ("V1", "4900001152", "1", 102.0, "AA-F03", "N"),
+        ],
+    )
+    conn.close()
+
+    rows = drilldown(
+        test_id="TST-DUPLICATE-MATERIAL-ITEMS",
+        keys={"belegnummer": "4900001152", "position": "1", "material": "AA-F03"},
+        db_path=db_path,
+    )
+
+    assert len(rows) == 3
+    assert {row["Material"] for row in rows} == {"AA-F03"}
 
 
 def test_o2c_drilldown_cases_execute_with_minimum_keys(tmp_path: Path) -> None:
