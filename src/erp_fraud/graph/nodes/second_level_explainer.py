@@ -301,8 +301,10 @@ def _load_catalog_tests(*, metadata: dict[str, Any], executed_test_ids: set[str]
         tests.append(
             {
                 "test_id": test_id,
+                "name": str(payload.get("name") or payload.get("title") or "").strip(),
                 "fraud_type": str(payload.get("fraud_type") or "").strip(),
                 "title": str(payload.get("title") or payload.get("name") or "").strip(),
+                "why_applicable": str(payload.get("description") or payload.get("objective") or "").strip(),
             }
         )
     return tests[:20]
@@ -473,7 +475,7 @@ def _normalize_action_items(*, raw_items: Any, kind: str) -> list[dict[str, Any]
                 normalized.append(
                     {
                         "title": str(parsed.get("test_id") or parsed.get("title") or f"Test recomendado {idx}").strip(),
-                        "summary": str(parsed.get("rationale") or parsed.get("summary") or "").strip(),
+                        "summary": str(parsed.get("rationale") or parsed.get("reason") or parsed.get("summary") or "").strip(),
                         "status": "recommended_test",
                         "section": "recommended_tests",
                         "priority": str(parsed.get("priority") or "").strip() or None,
@@ -527,6 +529,81 @@ def _normalize_action_items(*, raw_items: Any, kind: str) -> list[dict[str, Any]
             base.update({"status": "recommended_action", "section": "recommendations"})
         normalized.append(base)
     return normalized
+
+
+def _recommended_test_identity(item: Any) -> str:
+    parsed = _parse_structured_value(item)
+    if isinstance(parsed, dict):
+        for key in ("test_id", "id", "name", "title"):
+            value = str(parsed.get(key) or "").strip()
+            if value:
+                return value
+        return ""
+    return str(parsed or "").strip()
+
+
+def _filter_recommended_tests_against_executed(
+    *,
+    recommended_tests: Any,
+    executed_test_ids: Any,
+    available_tests_not_executed: Any,
+) -> tuple[list[Any], list[str]]:
+    executed = {str(item).strip() for item in _safe_list(executed_test_ids) if str(item).strip()}
+    allowed = {
+        str(_safe_dict(item).get("test_id") or "").strip()
+        for item in _safe_list(available_tests_not_executed)
+        if str(_safe_dict(item).get("test_id") or "").strip()
+    }
+    raw_items = _safe_list(recommended_tests)
+    if not raw_items:
+        return [], []
+
+    filtered: list[Any] = []
+    removed: list[str] = []
+    removed_seen: set[str] = set()
+    for item in raw_items:
+        test_id = _recommended_test_identity(item)
+        should_remove = bool(test_id and test_id in executed) or not bool(test_id and test_id in allowed)
+        if should_remove:
+            if test_id and test_id not in removed_seen:
+                removed.append(test_id)
+                removed_seen.add(test_id)
+            continue
+        filtered.append(item)
+    return filtered, removed
+
+
+def _fallback_recommended_tests_from_candidates(*, available_tests_not_executed: Any, max_items: int = 3) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in _safe_list(available_tests_not_executed):
+        item = _safe_dict(row)
+        test_id = str(item.get("test_id") or "").strip()
+        if not test_id or test_id in seen:
+            continue
+        seen.add(test_id)
+        fraud_type = str(item.get("fraud_type") or "").strip()
+        title = str(item.get("title") or item.get("name") or "").strip()
+        reason_tail = f" sobre {fraud_type}" if fraud_type else ""
+        if title:
+            reason_tail += f" ({title})"
+        reason = (
+            "No se ejecutó en el run actual y es compatible como prueba complementaria "
+            f"para ampliar cobertura{reason_tail}."
+        )
+        out.append(
+            {
+                "test_id": test_id,
+                "reason": reason,
+                "rationale": reason,
+                "priority": "medium",
+                "expected_value": "Ampliar cobertura con una prueba del catálogo no ejecutada en este run.",
+                "source": "deterministic_available_not_executed_fallback",
+            }
+        )
+        if len(out) >= max_items:
+            break
+    return out
 
 
 def _normalize_comparison_items(*, raw_items: Any, deterministic_payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -984,11 +1061,13 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "executive_summary{overall_assessment,risk_posture,key_observations[]}, "
             "cross_process_conclusions[{title,subtitle,summary,implication,recommendation,evidence[],section,status}], "
             "audit_procedures[{procedure,why,evidence[],priority}], "
-            "recommended_tests[{test_id,rationale,priority,expected_value}], "
+            "recommended_tests[{test_id,reason,rationale,priority,expected_value}], "
             "next_actions[{action,why,owner,urgency}]. "
             "Para audit_procedures, genera al menos un procedimiento auditor por cada hallazgo de top_findings; "
             "cada procedimiento debe referenciar el test_id y la entidad concreta. "
-            "Para recommended_tests, recomienda solo tests del catálogo disponible que NO se hayan ejecutado en este run. "
+            "Para recommended_tests, recomienda únicamente tests presentes en available_tests_not_executed; "
+            "no recomiendes tests ya ejecutados. Si no hay tests disponibles no ejecutados, devuelve recommended_tests: []. "
+            "Cada recommended_test debe incluir test_id y reason. "
             "Para next_actions, prioriza acciones sobre entidades concretas, no acciones genéricas de configuración. "
             "Prioriza primero la documentación del proyecto y después ACFE/externo. "
             "No uses defaults; justifica acciones con evidencia de runs y KB cuando exista."
@@ -1110,6 +1189,7 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             "process_family": str(metadata.get("process_family", "")).strip(),
             "llm_mode": llm_mode,
         },
+        "available_tests_not_executed": _safe_list(_safe_dict(enriched_context.get("tests")).get("available_not_executed"))[:15],
         "current_run_context": enriched_context,
     }
     try:
@@ -1155,6 +1235,30 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         if synthetic_procedures:
             llm_insights["audit_procedures"] = synthetic_procedures
             metadata["second_level_audit_procedures_synthesized"] = len(synthetic_procedures)
+
+    tests_context = _safe_dict(enriched_context.get("tests"))
+    executed_test_ids = _safe_list(tests_context.get("executed_test_ids"))
+    available_tests_not_executed = _safe_list(tests_context.get("available_not_executed"))
+    filtered_recommended_tests, filtered_out_test_ids = _filter_recommended_tests_against_executed(
+        recommended_tests=llm_insights.get("recommended_tests", []),
+        executed_test_ids=executed_test_ids,
+        available_tests_not_executed=available_tests_not_executed,
+    )
+    fallback_used_for_recommended_tests = False
+    if not filtered_recommended_tests and available_tests_not_executed:
+        filtered_recommended_tests = _fallback_recommended_tests_from_candidates(
+            available_tests_not_executed=available_tests_not_executed,
+            max_items=3,
+        )
+        fallback_used_for_recommended_tests = bool(filtered_recommended_tests)
+    llm_insights["recommended_tests"] = filtered_recommended_tests
+    llm_insights["recommended_tests_candidate_count"] = len(available_tests_not_executed)
+    llm_insights["recommended_tests_fallback_used"] = fallback_used_for_recommended_tests
+    if filtered_out_test_ids:
+        llm_insights["recommended_tests_filtered_out"] = filtered_out_test_ids
+        metadata["second_level_recommended_tests_filtered_out_count"] = len(filtered_out_test_ids)
+    metadata["second_level_recommended_tests_candidate_count"] = len(available_tests_not_executed)
+    metadata["second_level_recommended_tests_fallback_used"] = fallback_used_for_recommended_tests
 
     normalized_insights = {
         "executive_summary": _normalize_executive_summary(
