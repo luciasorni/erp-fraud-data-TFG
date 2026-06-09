@@ -480,20 +480,27 @@ def main() -> None:
     with tab_rec:
         sections = split_recommendation_sections(graph.get("second_level_analysis", []))
 
+        st.subheader("Acciones recomendadas")
         render_recommendations_panel(
             sections["recommendations"],
             title="Recomendaciones globales del run",
-            empty_message="No hay recomendaciones globales generadas para este run.",
+            empty_message="No hay acciones recomendadas para este run.",
         )
+        st.divider()
+
+        st.subheader("Tests sugeridos")
         render_recommendations_panel(
             sections["recommended_tests"],
             title="Tests recomendados",
-            empty_message="No hay tests adicionales sugeridos por el second-level explainer.",
+            empty_message="No hay tests sugeridos para este run.",
         )
+        st.divider()
+
+        st.subheader("Procedimiento auditor")
         render_recommendations_panel(
             sections["audit_procedures"],
             title="Procedimiento auditor",
-            empty_message="El second-level no generó procedimientos auditores para este run.",
+            empty_message="No hay procedimiento auditor para este run.",
         )
 
     with st.expander("Detalle técnico del run", expanded=False):

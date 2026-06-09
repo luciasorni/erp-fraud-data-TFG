@@ -27,13 +27,13 @@ _run_alpha_loop_for_node = run_alpha_loop_for_node
 
 SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "additionalProperties": False,
-    "required": ["executive_summary", "cross_process_conclusions", "audit_procedures", "recommended_tests", "next_actions"],
+    "additionalProperties": True,
+    "required": [],
     "properties": {
         "executive_summary": {
             "type": "object",
-            "additionalProperties": False,
-            "required": ["overall_assessment", "risk_posture", "key_observations"],
+            "additionalProperties": True,
+            "required": [],
             "properties": {
                 "overall_assessment": {"type": "string"},
                 "risk_posture": {"type": "string"},
@@ -44,8 +44,8 @@ SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": False,
-                "required": ["title", "subtitle", "summary", "implication", "recommendation", "evidence", "section", "status"],
+                "additionalProperties": True,
+                "required": [],
                 "properties": {
                     "title": {"type": "string"},
                     "subtitle": {"type": "string"},
@@ -62,8 +62,8 @@ SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": False,
-                "required": ["procedure", "why", "evidence", "priority"],
+                "additionalProperties": True,
+                "required": [],
                 "properties": {
                     "procedure": {"type": "string"},
                     "why": {"type": "string"},
@@ -76,8 +76,8 @@ SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": False,
-                "required": ["test_id", "rationale", "priority", "expected_value"],
+                "additionalProperties": True,
+                "required": [],
                 "properties": {
                     "test_id": {"type": "string"},
                     "rationale": {"type": "string"},
@@ -90,8 +90,8 @@ SECOND_LEVEL_OUTPUT_SCHEMA: dict[str, Any] = {
             "type": "array",
             "items": {
                 "type": "object",
-                "additionalProperties": False,
-                "required": ["action", "why", "owner", "urgency"],
+                "additionalProperties": True,
+                "required": [],
                 "properties": {
                     "action": {"type": "string"},
                     "why": {"type": "string"},
@@ -715,12 +715,9 @@ def _compare_runs_degrading_on_missing_context(
 def _validate_second_level_output(output: Any, _input_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(output, dict):
         return {"passed": False, "errors": ["second_level output debe ser objeto"]}
-    executive_summary = output.get("executive_summary")
-    if executive_summary in (None, "", [], {}):
-        return {"passed": False, "errors": ["campo requerido vacío: executive_summary"]}
     required_lists = ("audit_procedures", "recommended_tests", "next_actions")
     for field in required_lists:
-        if not isinstance(output.get(field, []), list):
+        if field in output and not isinstance(output.get(field), list):
             return {"passed": False, "errors": [f"campo requerido debe ser lista: {field}"]}
     if not (
         _safe_list(output.get("audit_procedures"))
@@ -729,6 +726,74 @@ def _validate_second_level_output(output: Any, _input_payload: dict[str, Any]) -
     ):
         return {"passed": False, "errors": ["el agente debe proponer al menos una acción/procedimiento/test"]}
     return {"passed": True, "errors": []}
+
+
+def _looks_like_executive_summary_fragment(output: Any) -> bool:
+    if not isinstance(output, dict):
+        return False
+    root_keys = {"executive_summary", "cross_process_conclusions", "audit_procedures", "recommended_tests", "next_actions"}
+    if any(key in output for key in root_keys):
+        return False
+    summary_keys = {"overall_assessment", "risk_posture", "key_observations", "summary", "key_evidence"}
+    return any(key in output for key in summary_keys)
+
+
+def _coerce_second_level_root_output(
+    output: Any,
+    *,
+    fallback_insights: dict[str, Any],
+    metadata: dict[str, Any],
+) -> Any:
+    if not _looks_like_executive_summary_fragment(output):
+        return output
+
+    fallback_root = dict(fallback_insights)
+    fallback_root["executive_summary"] = output
+    metadata["second_level_executive_summary_fragment_wrapped"] = True
+    return fallback_root
+
+
+def _alpha_loop_diagnostics(metadata: dict[str, Any], *, node_id: str) -> dict[str, Any]:
+    alpha_meta = metadata.get("alphacodium", {})
+    node_meta = _safe_dict(_safe_dict(alpha_meta).get(node_id))
+    last_validation = _safe_dict(node_meta.get("last_validation"))
+    checks = _safe_list(last_validation.get("checks"))
+    validation_errors: list[str] = []
+    for check in checks:
+        item = _safe_dict(check)
+        for err in _safe_list(item.get("errors")):
+            text = str(err).strip()
+            if text:
+                validation_errors.append(text)
+    iterations = int(node_meta.get("iterations", 0) or 0)
+    return {
+        "alpha_loop_final_state": str(node_meta.get("status") or "unknown").strip() or "unknown",
+        "alpha_loop_error_detail": "; ".join(validation_errors) or "unknown",
+        "alpha_loop_iterations": iterations,
+        "alpha_loop_retries_done": max(0, iterations - 1),
+        "validation_error": validation_errors[0] if validation_errors else "unknown",
+    }
+
+
+def _log_second_level_llm_output(
+    *,
+    output: Any,
+    metadata: dict[str, Any],
+    iteration: int,
+    repair_feedback: list[str],
+) -> None:
+    max_chars = int(metadata.get("second_level_llm_output_log_max_chars", 6000) or 6000)
+    text = json.dumps(output, ensure_ascii=False, sort_keys=True, default=str)
+    truncated = max_chars > 0 and len(text) > max_chars
+    payload = {
+        "event": "second_level_llm_output_before_validation",
+        "iteration": iteration,
+        "repair_feedback": repair_feedback,
+        "output": text[:max_chars] if truncated else text,
+        "output_truncated": truncated,
+        "output_length": len(text),
+    }
+    print(json.dumps(payload, ensure_ascii=False, default=str), flush=True)
 
 
 def _fallback_llm_insights(*, deterministic_payload: dict[str, Any]) -> dict[str, Any]:
@@ -961,6 +1026,10 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
                 retry_backoff_s=float(metadata.get("llm_retry_backoff_s", 0.6) or 0.6),
                 json_schema=SECOND_LEVEL_OUTPUT_SCHEMA,
                 json_schema_name="second_level_explainer_output",
+                json_schema_strict=False,
+                log_raw_response=True,
+                raw_response_log_event="second_level_openai_raw_response",
+                raw_response_max_chars=int(metadata.get("second_level_llm_output_log_max_chars", 6000) or 6000),
             )
             runtime_by_node["second_level_explainer"] = {
                 "model_used": str(llm_meta.get("model_used", "")).strip()
@@ -977,7 +1046,11 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
                 "status": str(llm_meta.get("status", "UNKNOWN")).strip(),
             }
             if isinstance(llm_output, dict):
-                output = llm_output
+                output = _coerce_second_level_root_output(
+                    llm_output,
+                    fallback_insights=fallback_insights,
+                    metadata=metadata,
+                )
         else:
             model_config_by_node = metadata.get("agent_model_config", {})
             second_model_config = (
@@ -1006,6 +1079,12 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
             }
         if not isinstance(output, dict):
             output = dict(fallback_insights)
+        _log_second_level_llm_output(
+            output=output,
+            metadata=metadata,
+            iteration=_iteration,
+            repair_feedback=repair_feedback,
+        )
         return output
 
     enriched_context = _build_enriched_context(state=state)
@@ -1045,16 +1124,30 @@ def second_level_explainer_node(state: GraphState) -> GraphState:
         )
     except RuntimeError as exc:
         reason = f"{type(exc).__name__}: {exc}"
+        alpha_diag = _alpha_loop_diagnostics(metadata, node_id="second_level_explainer")
+        alpha_loop_retries_done = int(alpha_diag.get("alpha_loop_retries_done", 0) or 0)
+        existing_runtime = _safe_dict(runtime_by_node.get("second_level_explainer"))
         metadata["second_level_explainer_degraded"] = True
         metadata["second_level_explainer_degraded_reason"] = reason
         metadata["second_level_explainer_status"] = "OK_WITH_WARNINGS"
         runtime_by_node["second_level_explainer"] = {
-            **_safe_dict(runtime_by_node.get("second_level_explainer")),
+            **existing_runtime,
             "fallback_used": True,
             "status": "DEGRADED",
             "degraded_reason": reason,
+            "retries_done": max(int(existing_runtime.get("retries_done", 0) or 0), alpha_loop_retries_done),
+            **alpha_diag,
         }
         llm_insights = dict(fallback_insights)
+    alpha_diag = _alpha_loop_diagnostics(metadata, node_id="second_level_explainer")
+    if alpha_diag.get("alpha_loop_final_state") != "unknown":
+        existing_runtime = _safe_dict(runtime_by_node.get("second_level_explainer"))
+        alpha_loop_retries_done = int(alpha_diag.get("alpha_loop_retries_done", 0) or 0)
+        runtime_by_node["second_level_explainer"] = {
+            **existing_runtime,
+            "retries_done": max(int(existing_runtime.get("retries_done", 0) or 0), alpha_loop_retries_done),
+            **alpha_diag,
+        }
     if not isinstance(llm_insights, dict):
         llm_insights = dict(fallback_insights)
     if not _safe_list(llm_insights.get("audit_procedures")):

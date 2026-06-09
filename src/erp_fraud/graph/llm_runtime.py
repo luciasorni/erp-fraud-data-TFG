@@ -10,6 +10,14 @@ from typing import Any
 
 from .nodes.common import resolve_graph_node_model_config, resolve_llm_mode
 
+_ROOT_JSON_KEYS = {
+    "audit_procedures",
+    "recommended_tests",
+    "next_actions",
+    "cross_process_conclusions",
+    "executive_summary",
+}
+
 
 def resolve_node_runtime_target(
     *,
@@ -49,17 +57,44 @@ def resolve_node_runtime_target(
 
 
 def _extract_json(text: str) -> Any:
-    raw = _strip_json_response_text(text)
+    original = str(text or "").strip()
+    if not original:
+        raise ValueError("empty_response")
+    try:
+        return json.loads(original)
+    except Exception:
+        pass
+
+    raw = _strip_json_response_text(original)
     if not raw:
         raise ValueError("empty_response")
     try:
         return json.loads(raw)
     except Exception:
         pass
-    for opening, closing in (("{", "}"), ("[", "]")):
-        candidate = _extract_balanced_json_block(raw, opening=opening, closing=closing)
-        if candidate:
+
+    parsed_candidates: list[tuple[str, Any]] = []
+    for candidate in _extract_balanced_json_blocks(raw, opening="{", closing="}"):
+        try:
+            parsed_candidates.append((candidate, json.loads(candidate)))
+        except Exception:
+            continue
+    root_candidates = [
+        (candidate, parsed)
+        for candidate, parsed in parsed_candidates
+        if isinstance(parsed, dict) and any(key in parsed for key in _ROOT_JSON_KEYS)
+    ]
+    if root_candidates:
+        _candidate, parsed = max(root_candidates, key=lambda item: len(item[0]))
+        return parsed
+    if parsed_candidates:
+        return parsed_candidates[0][1]
+
+    for candidate in _extract_balanced_json_blocks(raw, opening="[", closing="]"):
+        try:
             return json.loads(candidate)
+        except Exception:
+            continue
     raise ValueError("json_not_found")
 
 
@@ -74,6 +109,12 @@ def _strip_json_response_text(text: str) -> str:
 
 
 def _extract_balanced_json_block(raw: str, *, opening: str, closing: str) -> str:
+    blocks = _extract_balanced_json_blocks(raw, opening=opening, closing=closing)
+    return blocks[0] if blocks else ""
+
+
+def _extract_balanced_json_blocks(raw: str, *, opening: str, closing: str) -> list[str]:
+    blocks: list[str] = []
     start = raw.find(opening)
     while start >= 0:
         depth = 0
@@ -96,9 +137,10 @@ def _extract_balanced_json_block(raw: str, *, opening: str, closing: str) -> str
             elif char == closing:
                 depth -= 1
                 if depth == 0:
-                    return raw[start : idx + 1].strip()
+                    blocks.append(raw[start : idx + 1].strip())
+                    break
         start = raw.find(opening, start + 1)
-    return ""
+    return blocks
 
 
 def _compact_payload_for_retry(value: Any, *, depth: int = 0) -> Any:
@@ -132,12 +174,16 @@ def _build_openai_user_payload(
     instruction = "Devuelve SOLO JSON válido, sin markdown ni texto extra."
     resolved_payload: dict[str, Any] = input_payload
     resolved_feedback = list(repair_feedback)
-    if attempt > 1:
+    if attempt > 1 or resolved_feedback:
         instruction = (
             "Responde ÚNICAMENTE con el JSON. Sin texto adicional, sin markdown, sin explicaciones. "
-            "La respuesta anterior no fue JSON válido o no pudo parsearse."
+            "La respuesta anterior no fue JSON válido o no superó la validación. "
+            "Si falta contexto, devuelve al menos una acción, un test recomendado o un procedimiento auditor."
         )
-        resolved_feedback.append("Reintento: devuelve exclusivamente un objeto JSON válido.")
+        resolved_feedback.append(
+            "Reintento: devuelve exclusivamente un objeto JSON válido con al menos una de estas listas no vacía: "
+            "next_actions, recommended_tests, audit_procedures."
+        )
         resolved_payload = _compact_payload_for_retry(input_payload)
     return {
         "instruction": instruction,
@@ -157,6 +203,27 @@ def _log_raw_response_parse_failure(*, model_used: str, attempt: int, response_t
     print(json.dumps(payload, ensure_ascii=False, default=str), flush=True)
 
 
+def _log_raw_response_success(
+    *,
+    event: str,
+    model_used: str,
+    attempt: int,
+    response_text: str,
+    max_chars: int,
+) -> None:
+    text = str(response_text or "")
+    truncated = max_chars > 0 and len(text) > max_chars
+    payload = {
+        "event": event,
+        "model_used": model_used,
+        "attempt": attempt,
+        "response_text": text[:max_chars] if truncated else text,
+        "response_text_truncated": truncated,
+        "response_text_length": len(text),
+    }
+    print(json.dumps(payload, ensure_ascii=False, default=str), flush=True)
+
+
 def call_openai_json(
     *,
     model_used: str,
@@ -170,6 +237,10 @@ def call_openai_json(
     retry_backoff_s: float = 0.6,
     json_schema: dict[str, Any] | None = None,
     json_schema_name: str = "structured_output",
+    json_schema_strict: bool = True,
+    log_raw_response: bool = False,
+    raw_response_log_event: str = "openai_json_response",
+    raw_response_max_chars: int = 6000,
 ) -> tuple[Any | None, dict[str, Any]]:
     started = time.perf_counter()
     retries_done = 0
@@ -229,7 +300,7 @@ def call_openai_json(
                         "type": "json_schema",
                         "name": str(json_schema_name or "structured_output").strip() or "structured_output",
                         "schema": json_schema,
-                        "strict": True,
+                        "strict": bool(json_schema_strict),
                     }
                 }
             if max_tokens > 0:
@@ -243,6 +314,14 @@ def call_openai_json(
             response_text = str(getattr(response, "output_text", "") or "").strip()
             if not response_text and hasattr(response, "model_dump"):
                 response_text = json.dumps(response.model_dump(), ensure_ascii=False, default=str)
+            if log_raw_response:
+                _log_raw_response_success(
+                    event=raw_response_log_event,
+                    model_used=model_used,
+                    attempt=attempt,
+                    response_text=response_text,
+                    max_chars=int(raw_response_max_chars or 0),
+                )
             try:
                 parsed = _extract_json(response_text)
             except Exception:
