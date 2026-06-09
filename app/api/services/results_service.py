@@ -576,7 +576,7 @@ def _as_ui_item(*, raw: dict[str, Any], kind: str) -> UISectionItem:
             row_keys = row.get("keys", {}) if isinstance(row.get("keys"), dict) else {}
             template = row.get("drilldown_template", {}) if isinstance(row.get("drilldown_template"), dict) else {}
             template_params = template.get("params", {}) if isinstance(template.get("params"), dict) else {}
-            merged_keys = normalize_drilldown_keys({**template_params, **row_keys})
+            merged_keys = normalize_drilldown_keys({**row_keys, **template_params})
             query_id = str(template.get("query_id", "")).strip()
             required_keys: list[str] = []
             missing_keys: list[str] = []
