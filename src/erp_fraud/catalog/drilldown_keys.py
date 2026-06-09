@@ -42,7 +42,6 @@ DRILLDOWN_MIN_KEYS_BY_TEST_ID: dict[str, tuple[str, ...]] = {
         "material",
     ),
     "TST-DUPLICATE-MATERIAL-ITEMS": (
-        "kreditor",
         "belegnummer",
         "position",
         "material",
